@@ -1,0 +1,7 @@
+{
+    "name": <"Engineers Guild">,
+    "description": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EngineersGuild.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "kind": <"building">
+}

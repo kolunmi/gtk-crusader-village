@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageMapEditorStatus" parent="GtkCrusaderVillageUtilBin">
+    <property name="has-tooltip">TRUE</property>
+    <property name="child">
+      <object class="GtkCenterBox">
+        <property name="orientation">horizontal</property>
+
+        <property name="start-widget">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            
+            <child>
+              <object class="GtkLabel" id="name_label"/>
+            </child>
+            
+          </object>
+        </property>
+        
+        <property name="end-widget">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            
+            <child>
+              <object class="GtkLabel" id="hover_label"/>
+            </child>
+            
+          </object>
+        </property>
+        
+      </object>
+    </property>
+  </template>
+</interface>

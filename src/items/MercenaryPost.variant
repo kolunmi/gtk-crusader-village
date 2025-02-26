@@ -1,0 +1,7 @@
+{
+    "name": <"Mercenary Post">,
+    "description": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/MercenaryPost.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "kind": <"building">
+}

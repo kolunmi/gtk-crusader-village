@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="am.kolunmi.GtkCrusaderVillage" path="/am/kolunmi/GtkCrusaderVillage/" gettext-domain="gtk-crusader-village">
+    <key name="theme" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'default'</default>
+      <summary>The application GUI theme</summary>
+      <description>Use a light or dark variant of GTK. 'default' will attempt to read OS settings on supported platforms.</description>
+    </key>
+    <key name="show-grid" type="b">
+      <default>true</default>
+      <summary>Show Grid</summary>
+      <description>Whether to show a grid in the map editor</description>
+    </key>
+    <key name="show-gradient" type="b">
+      <default>true</default>
+      <summary>Show Gradient</summary>
+      <description>Whether to show a radial gradient in the map editor, visually indicating how far a tile is from the center</description>
+    </key>
+  </schema>
+</schemalist>

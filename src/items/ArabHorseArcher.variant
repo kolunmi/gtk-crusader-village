@@ -1,0 +1,7 @@
+{
+    "name": <"Horse Archer">,
+    "description": <"[English Manual] \"These fast moving mounted archers are a major thorn in the European's side. Their ability to while on the move allows them to run circles around the opposition.\"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabHorseArcher.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/arab_sword.png">,
+    "kind": <"unit">
+}

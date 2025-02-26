@@ -1,0 +1,8 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+data/am.kolunmi.GtkCrusaderVillage.desktop.in
+data/am.kolunmi.GtkCrusaderVillage.metainfo.xml.in
+data/am.kolunmi.GtkCrusaderVillage.gschema.xml
+src/main.c
+src/gtk-crusader-village-window.c
+src/gtk-crusader-village-window.ui

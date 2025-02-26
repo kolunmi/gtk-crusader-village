@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=gtk-crusader-village
+Exec=gtk-crusader-village
+Icon=am.kolunmi.GtkCrusaderVillage
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=GTK;
+StartupNotify=true
+DBusActivatable=true

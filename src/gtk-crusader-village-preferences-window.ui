@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillagePreferencesWindow" parent="GtkWindow">
+    <property name="title" translatable="yes">Preferences</property>
+    <property name="default-width">600</property>
+    <property name="default-height">400</property>
+    <property name="titlebar">
+      <object class="GtkHeaderBar"/>
+    </property>
+    <property name="child">
+      <object class="GtkScrolledWindow">
+        <property name="hscrollbar-policy">GTK_POLICY_NEVER</property>
+        <property name="child">
+          <!-- maybe improve this with a list view? -->
+          <!-- also read description from schema? -->
+          <object class="GtkListBox">
+            <property name="selection-mode">GTK_SELECTION_NONE</property>
+            
+            <child>
+              <object class="GtkCenterBox">
+                <property name="start-widget">
+                  <object class="GtkLabel">
+                    <property name="label">Show a visual grid in the map editor.</property>
+                  </object>
+                </property>
+                <property name="end-widget">
+                  <object class="GtkSwitch" id="show_grid"/>
+                </property>
+              </object>
+            </child>
+
+            <child>
+              <object class="GtkCenterBox">
+                <property name="start-widget">
+                  <object class="GtkLabel">
+                    <property name="label">Show a radial gradient in the map editor.</property>
+                  </object>
+                </property>
+                <property name="end-widget">
+                  <object class="GtkSwitch" id="show_gradient"/>
+                </property>
+              </object>
+            </child>
+            
+          </object>
+        </property>
+      </object>
+    </property>
+  </template>
+</interface>

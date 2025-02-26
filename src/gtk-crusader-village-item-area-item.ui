@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageItemAreaItem" parent="GtkCrusaderVillageUtilBin">
+    <property name="has-tooltip">TRUE</property>
+    <property name="child">
+      <object class="GtkCenterBox">
+        <property name="orientation">horizontal</property>
+
+        <property name="start-widget">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="margin-start">10</property>
+                
+                <child>
+                  <object class="GtkLabel" id="label">
+                    <property name="xalign">0.0</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">horizontal</property>
+
+                    <child>
+                      <object class="GtkPicture" id="icon">
+                        <property name="can-shrink">FALSE</property>
+                        <property name="content-fit">GTK_CONTENT_FIT_SCALE_DOWN</property>
+                      </object>
+                    </child>
+                    
+                    <child>
+                      <object class="GtkLabel" id="kind">
+                        <style>
+                          <class name="dim-label"/>
+                        </style>
+                        <property name="margin-start">10</property>
+                        <property name="xalign">0.0</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+              </object>
+            </child>
+            
+          </object>
+        </property>
+
+        <property name="end-widget">
+          <object class="GtkPicture" id="picture">
+            <property name="width-request">80</property>
+          </object>
+        </property>
+        
+      </object>
+    </property>
+  </template>
+</interface>

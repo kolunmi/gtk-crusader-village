@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/am/kolunmi/GtkCrusaderVillage"> 
+    <file preprocess="xml-stripblanks">gtk-crusader-village-window.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-preferences-window.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-item-area.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-item-area-item.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
+    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+
+    <!-- items -->
+    <file>items/ArabArcher.variant</file>
+    <file>items/ArabAssassin.variant</file>
+    <file>items/ArabFireThrower.variant</file>
+    <file>items/ArabHorseArcher.variant</file>
+    <file>items/ArabSlave.variant</file>
+    <file>items/ArabSlinger.variant</file>
+    <file>items/ArabSwordsman.variant</file>
+    <file>items/Ballista.variant</file>
+    <file>items/BatteringRam.variant</file>
+    <file>items/Catapult.variant</file>
+    <file>items/Engineer.variant</file>
+    <file>items/EuroArcher.variant</file>
+    <file>items/EuroCrossbowman.variant</file>
+    <file>items/EuroKnight.variant</file>
+    <file>items/EuroMaceman.variant</file>
+    <file>items/EuroMonk.variant</file>
+    <file>items/EuroPikeman.variant</file>
+    <file>items/EuroSpearman.variant</file>
+    <file>items/EuroSwordsman.variant</file>
+    <file>items/FireBallista.variant</file>
+    <file>items/Ladderman.variant</file>
+    <file>items/Mangonel.variant</file>
+    <file>items/PortableShield.variant</file>
+    <file>items/SiegeTower.variant</file>
+    <file>items/Trebuchet.variant</file>
+    <file>items/Tunneler.variant</file>
+
+    <file>items/ArmourersWorkshop.variant</file>
+    <file>items/Armoury.variant</file>
+    <file>items/Barracks.variant</file>
+    <file>items/BlacksmithsWorkshop.variant</file>
+    <file>items/DogCage.variant</file>
+    <file>items/Drawbridge.variant</file>
+    <file>items/EngineersGuild.variant</file>
+    <file>items/FletchersWorkshop.variant</file>
+    <file>items/LargeGatehouse.variant</file>
+    <file>items/MercenaryPost.variant</file>
+    <file>items/OilSmelter.variant</file>
+    <file>items/PoleturnersWorkshop.variant</file>
+    <file>items/SmallGatehouse.variant</file>
+    <file>items/Stables.variant</file>
+    <file>items/TannersWorkshop.variant</file>
+    <file>items/Tower1.variant</file>
+    <file>items/Tower2.variant</file>
+    <file>items/Tower3.variant</file>
+    <file>items/Tower4.variant</file>
+    <file>items/Tower5.variant</file>
+    <file>items/TunnellersGuild.variant</file>
+
+    <!-- assets -->
+    <file>shc-data/ArabArcher.png</file>
+    <file>shc-data/ArabAssassin.png</file>
+    <file>shc-data/ArabFireThrower.png</file>
+    <file>shc-data/ArabHorseArcher.png</file>
+    <file>shc-data/ArabSlave.png</file>
+    <file>shc-data/ArabSlinger.png</file>
+    <file>shc-data/ArabSwordsman.png</file>
+    <file>shc-data/Ballista.png</file>
+    <file>shc-data/BatteringRam.png</file>
+    <file>shc-data/Catapult.png</file>
+    <file>shc-data/Engineer.png</file>
+    <file>shc-data/EuroArcher.png</file>
+    <file>shc-data/EuroCrossbowman.png</file>
+    <file>shc-data/EuroKnight.png</file>
+    <file>shc-data/EuroMaceman.png</file>
+    <file>shc-data/EuroMonk.png</file>
+    <file>shc-data/EuroPikeman.png</file>
+    <file>shc-data/EuroSpearman.png</file>
+    <file>shc-data/EuroSwordsman.png</file>
+    <file>shc-data/FireBallista.png</file>
+    <file>shc-data/Ladderman.png</file>
+    <file>shc-data/Mangonel.png</file>
+    <file>shc-data/PortableShield.png</file>
+    <file>shc-data/SiegeTower.png</file>
+    <file>shc-data/Trebuchet.png</file>
+    <file>shc-data/Tunneler.png</file>
+
+    <file>shc-data/ArmourersWorkshop.png</file>
+    <file>shc-data/Armoury.png</file>
+    <file>shc-data/Barracks.png</file>
+    <file>shc-data/BlacksmithsWorkshop.png</file>
+    <file>shc-data/DogCage.png</file>
+    <file>shc-data/Drawbridge.png</file>
+    <file>shc-data/EngineersGuild.png</file>
+    <file>shc-data/FletchersWorkshop.png</file>
+    <file>shc-data/LargeGatehouse.png</file>
+    <file>shc-data/MercenaryPost.png</file>
+    <file>shc-data/OilSmelter.png</file>
+    <file>shc-data/PoleturnersWorkshop.png</file>
+    <file>shc-data/SmallGatehouse.png</file>
+    <file>shc-data/Stables.png</file>
+    <file>shc-data/TannersWorkshop.png</file>
+    <file>shc-data/Tower1.png</file>
+    <file>shc-data/Tower2.png</file>
+    <file>shc-data/Tower3.png</file>
+    <file>shc-data/Tower4.png</file>
+    <file>shc-data/Tower5.png</file>
+    <file>shc-data/TunnellersGuild.png</file>
+
+    <file>shc-data/icons/arab_sword.png</file>
+    <file>shc-data/icons/euro_sword.png</file>
+    <file>shc-data/icons/house.png</file>
+    <file>shc-data/icons/shield.png</file>
+    <file>shc-data/icons/tower.png</file>
+    <file>shc-data/icons/crown.png</file>
+    <file>shc-data/icons/hammer.png</file>
+    <file>shc-data/icons/ruins.png</file>
+    <file>shc-data/icons/sickle.png</file>
+    <file>shc-data/icons/trumpet.png</file>
+    
+  </gresource>
+</gresources>

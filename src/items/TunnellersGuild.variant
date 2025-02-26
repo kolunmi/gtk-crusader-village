@@ -1,0 +1,7 @@
+{
+    "name": <"Tunnellers Guild">,
+    "description": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/TunnellersGuild.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "kind": <"building">
+}

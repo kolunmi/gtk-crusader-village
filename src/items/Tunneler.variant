@@ -1,0 +1,7 @@
+{
+    "name": <"Tunneler">,
+    "description": <"[English Manual] \"These special units can burrow beneath the foundations of enemy walls and turrets, causing them to collapse. They are trained (for a cost in gold) at the tunneler's guild.\"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Tunneler.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "kind": <"unit">
+}

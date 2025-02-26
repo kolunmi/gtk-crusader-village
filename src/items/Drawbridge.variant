@@ -1,0 +1,7 @@
+{
+    "name": <"Drawbridge">,
+    "description": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Drawbridge.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "kind": <"building">
+}

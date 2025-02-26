@@ -1,0 +1,7 @@
+{
+    "name": <"Portable Shield">,
+    "description": <"[English Manual] \"These are good for protecting your infantry from volleys of arrows and bolts but are very weak against infantry attacks. Each shield requires 1 siege engineer to man it before it will become operational.\"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/PortableShield.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "kind": <"unit">
+}

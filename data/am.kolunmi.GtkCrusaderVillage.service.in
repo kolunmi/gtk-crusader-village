@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=am.kolunmi.GtkCrusaderVillage
+Exec=@bindir@/gtk-crusader-village --gapplication-service

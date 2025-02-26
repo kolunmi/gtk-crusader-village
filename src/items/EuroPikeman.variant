@@ -1,0 +1,7 @@
+{
+    "name": <"Pikeman">,
+    "description": <"[English Manual] \"Their heavy pike and metal armor make pikemen slow to move but also make them the ultimate defensive unit. They are able to take a lot of damage and are ideal for blocking access to areas of the castle.\"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroPikeman.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "kind": <"unit">
+}
