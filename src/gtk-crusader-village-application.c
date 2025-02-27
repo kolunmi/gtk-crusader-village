@@ -151,6 +151,9 @@ gtk_crusader_village_application_activate (GApplication *app)
   GtkCrusaderVillageApplication *self   = GTK_CRUSADER_VILLAGE_APPLICATION (app);
   GtkWindow                     *window = NULL;
 
+#ifdef USE_THEME_PORTAL
+  init_portal (self);
+#endif
   ensure_settings (self);
 
   window = gtk_application_get_active_window (GTK_APPLICATION (app));
@@ -163,10 +166,6 @@ gtk_crusader_village_application_activate (GApplication *app)
         NULL);
 
   gtk_window_present (window);
-
-#ifdef USE_THEME_PORTAL
-  init_portal (self);
-#endif
 }
 
 static void
@@ -463,13 +462,11 @@ init_portal (GtkCrusaderVillageApplication *self)
 
   was_read = read_setting (self, "org.freedesktop.appearance",
                            "color-scheme", "u", &variant);
-  if (!was_read)
-    {
-      g_debug ("Could not read color scheme info from portal");
-      return;
-    }
+  if (was_read)
+    self->portal_wants_dark = is_dark (variant);
+  else
+    g_debug ("Could not read color scheme info from portal");
 
-  self->portal_wants_dark = is_dark (variant);
   g_signal_connect (self->settings_portal, "g-signal",
                     G_CALLBACK (changed_cb), self);
 }
