@@ -21,5 +21,10 @@
       <summary>Show Gradient</summary>
       <description>Whether to show a radial gradient in the map editor, visually indicating how far a tile is from the center</description>
     </key>
+    <key name="show-cursor-glow" type="b">
+      <default>true</default>
+      <summary>Show Cursor Glow</summary>
+      <description>Whether to show a glow around the currently hovered tile in the map editor</description>
+    </key>
   </schema>
 </schemalist>

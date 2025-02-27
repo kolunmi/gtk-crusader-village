@@ -38,6 +38,7 @@ struct _GtkCrusaderVillageMapEditor
   GSettings *settings;
   gboolean   show_grid;
   gboolean   show_gradient;
+  gboolean   show_cursor_glow;
 
   GtkCrusaderVillageMap      *map;
   GtkCrusaderVillageItemArea *item_area;
@@ -140,6 +141,11 @@ show_gradient_changed (GSettings                   *self,
                        GtkCrusaderVillageMapEditor *editor);
 
 static void
+show_cursor_glow_changed (GSettings                   *self,
+                          gchar                       *key,
+                          GtkCrusaderVillageMapEditor *editor);
+
+static void
 adjustment_value_changed (GtkAdjustment               *adjustment,
                           GtkCrusaderVillageMapEditor *text_view);
 
@@ -225,6 +231,8 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
           self->settings, show_grid_changed, self);
       g_signal_handlers_disconnect_by_func (
           self->settings, show_gradient_changed, self);
+      g_signal_handlers_disconnect_by_func (
+          self->settings, show_cursor_glow_changed, self);
     }
   g_clear_object (&self->settings);
 
@@ -304,6 +312,8 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
               self->settings, show_grid_changed, self);
           g_signal_handlers_disconnect_by_func (
               self->settings, show_gradient_changed, self);
+          g_signal_handlers_disconnect_by_func (
+              self->settings, show_cursor_glow_changed, self);
         }
       g_clear_object (&self->settings);
 
@@ -314,9 +324,12 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
                             G_CALLBACK (show_grid_changed), self);
           g_signal_connect (self->settings, "changed::show-gradient",
                             G_CALLBACK (show_gradient_changed), self);
+          g_signal_connect (self->settings, "changed::show-cursor-glow",
+                            G_CALLBACK (show_cursor_glow_changed), self);
 
-          self->show_grid     = g_settings_get_boolean (self->settings, "show-grid");
-          self->show_gradient = g_settings_get_boolean (self->settings, "show-gradient");
+          self->show_grid        = g_settings_get_boolean (self->settings, "show-grid");
+          self->show_gradient    = g_settings_get_boolean (self->settings, "show-gradient");
+          self->show_cursor_glow = g_settings_get_boolean (self->settings, "show-cursor-glow");
         }
       else
         {
@@ -777,12 +790,13 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       center_x   = top_left_x + (BASE_TILE_SIZE * editor->zoom) / 2.0;
       center_y   = top_left_y + (BASE_TILE_SIZE * editor->zoom) / 2.0;
 
-      gtk_snapshot_append_radial_gradient (
-          snapshot,
-          &GRAPHENE_RECT_INIT (center_x - 100.0, center_y - 100.0, 200.0, 200.0),
-          &GRAPHENE_POINT_INIT (center_x, center_y),
-          100.0, 100.0, 0.0, 1.0,
-          cursor_radial_gradient_color_stops, G_N_ELEMENTS (cursor_radial_gradient_color_stops));
+      if (editor->show_cursor_glow)
+        gtk_snapshot_append_radial_gradient (
+            snapshot,
+            &GRAPHENE_RECT_INIT (center_x - 100.0, center_y - 100.0, 200.0, 200.0),
+            &GRAPHENE_POINT_INIT (center_x, center_y),
+            100.0, 100.0, 0.0, 1.0,
+            cursor_radial_gradient_color_stops, G_N_ELEMENTS (cursor_radial_gradient_color_stops));
 
       gtk_snapshot_append_border (
           snapshot,
@@ -834,6 +848,15 @@ show_gradient_changed (GSettings                   *self,
                        GtkCrusaderVillageMapEditor *editor)
 {
   editor->show_gradient = g_settings_get_boolean (self, key);
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
+show_cursor_glow_changed (GSettings                   *self,
+                          gchar                       *key,
+                          GtkCrusaderVillageMapEditor *editor)
+{
+  editor->show_cursor_glow = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 

@@ -22,9 +22,10 @@
 
 #include "gtk-crusader-village-preferences-window.h"
 
-#define KEY_THEME         "theme"
-#define KEY_SHOW_GRID     "show-grid"
-#define KEY_SHOW_GRADIENT "show-gradient"
+#define KEY_THEME            "theme"
+#define KEY_SHOW_GRID        "show-grid"
+#define KEY_SHOW_GRADIENT    "show-gradient"
+#define KEY_SHOW_CURSOR_GLOW "show-cursor-glow"
 
 /* TODO: perhaps read from schema instead */
 static const char *theme_choices[] = {
@@ -43,6 +44,7 @@ struct _GtkCrusaderVillagePreferencesWindow
   GtkDropDown *theme;
   GtkSwitch   *show_grid;
   GtkSwitch   *show_gradient;
+  GtkSwitch   *show_cursor_glow;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_TYPE_WINDOW)
@@ -133,6 +135,7 @@ gtk_crusader_village_preferences_window_set_property (GObject      *object,
           read_theme (self, self->settings, KEY_THEME);
           gtk_switch_set_active (self->show_grid, g_settings_get_boolean (self->settings, KEY_SHOW_GRID));
           gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, KEY_SHOW_GRADIENT));
+          gtk_switch_set_active (self->show_cursor_glow, g_settings_get_boolean (self->settings, KEY_SHOW_CURSOR_GLOW));
         }
       break;
     default:
@@ -164,6 +167,7 @@ gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreference
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, theme);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_grid);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_gradient);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_cursor_glow);
 }
 
 static void
@@ -176,6 +180,8 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
   g_signal_connect (self->show_grid, "notify::active",
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->show_gradient, "notify::active",
+                    G_CALLBACK (ui_changed), self);
+  g_signal_connect (self->show_cursor_glow, "notify::active",
                     G_CALLBACK (ui_changed), self);
 }
 
@@ -190,6 +196,8 @@ setting_changed (GSettings                           *self,
     gtk_switch_set_active (window->show_grid, g_settings_get_boolean (self, KEY_SHOW_GRID));
   else if (g_strcmp0 (key, KEY_SHOW_GRADIENT) == 0)
     gtk_switch_set_active (window->show_gradient, g_settings_get_boolean (self, KEY_SHOW_GRADIENT));
+  else if (g_strcmp0 (key, KEY_SHOW_CURSOR_GLOW) == 0)
+    gtk_switch_set_active (window->show_cursor_glow, g_settings_get_boolean (self, KEY_SHOW_CURSOR_GLOW));
 }
 
 static void
@@ -206,6 +214,8 @@ ui_changed (GtkWidget                           *widget,
     g_settings_set_boolean (window->settings, KEY_SHOW_GRID, gtk_switch_get_active (window->show_grid));
   else if (widget == (GtkWidget *) window->show_gradient)
     g_settings_set_boolean (window->settings, KEY_SHOW_GRADIENT, gtk_switch_get_active (window->show_gradient));
+  else if (widget == (GtkWidget *) window->show_cursor_glow)
+    g_settings_set_boolean (window->settings, KEY_SHOW_CURSOR_GLOW, gtk_switch_get_active (window->show_cursor_glow));
 }
 
 void
@@ -263,9 +273,7 @@ gtk_crusader_village_theme_str_to_enum (const char *theme)
   for (int i = 0; i < G_N_ELEMENTS (theme_choices); i++)
     {
       if (g_strcmp0 (theme, theme_choices[i]) == 0)
-        {
-          return i;
-        }
+        return i;
     }
 
   return GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;

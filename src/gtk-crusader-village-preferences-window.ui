@@ -66,6 +66,19 @@
               </object>
             </child>
             
+            <child>
+              <object class="GtkCenterBox">
+                <property name="start-widget">
+                  <object class="GtkLabel">
+                    <property name="label">Add a glow around the currently hovered tile</property>
+                  </object>
+                </property>
+                <property name="end-widget">
+                  <object class="GtkSwitch" id="show_cursor_glow"/>
+                </property>
+              </object>
+            </child>
+            
           </object>
         </property>
       </object>
