@@ -28,8 +28,17 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_CRUSADER_VILLAGE, PREFERENCES_WINDOW, GtkWindow)
 
+/* Keep these in sync with `gtk-crusader-village-preferences-window.ui` */
+/* TODO: make this better */
+#define GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT 0
+#define GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT   1
+#define GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK    2
+
 void
 gtk_crusader_village_preferences_window_spawn (GSettings *settings,
                                                GtkWindow *parent);
+
+int
+gtk_crusader_village_theme_str_to_enum (const char *theme);
 
 G_END_DECLS

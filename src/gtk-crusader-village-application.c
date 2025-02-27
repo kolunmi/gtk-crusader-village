@@ -45,9 +45,11 @@ struct _GtkCrusaderVillageApplication
   GtkApplication parent_instance;
 
   GSettings *settings;
+  int        theme_setting;
 
 #ifdef USE_THEME_PORTAL
   GDBusProxy *settings_portal;
+  gboolean    portal_wants_dark;
 #endif
 };
 
@@ -63,6 +65,17 @@ enum
 };
 
 static GParamSpec *props[LAST_PROP] = { 0 };
+
+static void
+theme_changed (GSettings                     *self,
+               char                          *key,
+               GtkCrusaderVillageApplication *application);
+
+static void
+read_theme_from_settings (GtkCrusaderVillageApplication *self);
+
+static void
+apply_gtk_theme (GtkCrusaderVillageApplication *self);
 
 static void
 ensure_settings (GtkCrusaderVillageApplication *self);
@@ -124,6 +137,9 @@ gtk_crusader_village_application_dispose (GObject *object)
   g_clear_object (&self->settings_portal);
 #endif
 
+  if (self->settings != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->settings, theme_changed, self);
   g_clear_object (&self->settings);
 
   G_OBJECT_CLASS (gtk_crusader_village_application_parent_class)->dispose (object);
@@ -232,6 +248,7 @@ static const GActionEntry app_actions[] = {
 static void
 gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 {
+  self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
 
   g_action_map_add_action_entries (G_ACTION_MAP (self),
                                    app_actions,
@@ -240,6 +257,43 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
   gtk_application_set_accels_for_action (GTK_APPLICATION (self),
                                          "app.quit",
                                          (const char *[]) { "<primary>q", NULL });
+}
+
+static void
+theme_changed (GSettings                     *self,
+               char                          *key,
+               GtkCrusaderVillageApplication *application)
+{
+  read_theme_from_settings (application);
+}
+
+static void
+read_theme_from_settings (GtkCrusaderVillageApplication *self)
+{
+  g_autofree char *theme = NULL;
+
+  theme               = g_settings_get_string (self->settings, "theme");
+  self->theme_setting = gtk_crusader_village_theme_str_to_enum (theme);
+
+  apply_gtk_theme (self);
+}
+
+static void
+apply_gtk_theme (GtkCrusaderVillageApplication *self)
+{
+  gboolean dark = FALSE;
+
+#ifdef USE_THEME_PORTAL
+  dark = self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK ||
+         (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT && self->portal_wants_dark);
+#else
+  dark = self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK;
+#endif
+
+  g_object_set (
+      gtk_settings_get_default (),
+      "gtk-application-prefer-dark-theme", dark,
+      NULL);
 }
 
 static void
@@ -254,6 +308,10 @@ ensure_settings (GtkCrusaderVillageApplication *self)
   g_assert (app_id != NULL);
 
   self->settings = g_settings_new (app_id);
+
+  g_signal_connect (self->settings, "changed::theme",
+                    G_CALLBACK (theme_changed), self);
+  read_theme_from_settings (self);
 }
 
 #ifdef USE_THEME_PORTAL
@@ -375,11 +433,8 @@ changed_cb (GDBusProxy                    *proxy,
   if (g_strcmp0 (namespace, "org.freedesktop.appearance") == 0 &&
       g_strcmp0 (name, "color-scheme") == 0)
     {
-      g_object_set (
-          gtk_settings_get_default (),
-          "gtk-application-prefer-dark-theme", is_dark (value),
-          NULL);
-      return;
+      self->portal_wants_dark = is_dark (value);
+      apply_gtk_theme (self);
     }
 }
 
@@ -414,11 +469,7 @@ init_portal (GtkCrusaderVillageApplication *self)
       return;
     }
 
-  g_object_set (
-      gtk_settings_get_default (),
-      "gtk-application-prefer-dark-theme", is_dark (variant),
-      NULL);
-
+  self->portal_wants_dark = is_dark (variant);
   g_signal_connect (self->settings_portal, "g-signal",
                     G_CALLBACK (changed_cb), self);
 }

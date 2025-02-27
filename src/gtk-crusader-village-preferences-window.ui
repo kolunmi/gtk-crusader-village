@@ -4,7 +4,7 @@
   <template class="GtkCrusaderVillagePreferencesWindow" parent="GtkWindow">
     <property name="title" translatable="yes">Preferences</property>
     <property name="default-width">600</property>
-    <property name="default-height">400</property>
+    <property name="default-height">200</property>
     <property name="titlebar">
       <object class="GtkHeaderBar"/>
     </property>
@@ -16,12 +16,35 @@
           <!-- also read description from schema? -->
           <object class="GtkListBox">
             <property name="selection-mode">GTK_SELECTION_NONE</property>
+
+            <child>
+              <object class="GtkCenterBox">
+                <property name="start-widget">
+                  <object class="GtkLabel">
+                    <property name="label">Application theme</property>
+                  </object>
+                </property>
+                <property name="end-widget">
+                  <object class="GtkDropDown" id="theme">
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item>default</item>
+                          <item>light</item>
+                          <item>dark</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </property>
+              </object>
+            </child>
             
             <child>
               <object class="GtkCenterBox">
                 <property name="start-widget">
                   <object class="GtkLabel">
-                    <property name="label">Show a visual grid in the map editor.</property>
+                    <property name="label">Show a visual grid in the map editor</property>
                   </object>
                 </property>
                 <property name="end-widget">
@@ -34,7 +57,7 @@
               <object class="GtkCenterBox">
                 <property name="start-widget">
                   <object class="GtkLabel">
-                    <property name="label">Show a radial gradient in the map editor.</property>
+                    <property name="label">Show a radial gradient in the map editor</property>
                   </object>
                 </property>
                 <property name="end-widget">

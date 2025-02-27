@@ -32,6 +32,9 @@ struct _GtkCrusaderVillageMapEditor
 {
   GtkWidget parent_instance;
 
+  GtkSettings *gtk_settings;
+  gboolean     dark_theme;
+
   GSettings *settings;
   gboolean   show_grid;
   gboolean   show_gradient;
@@ -122,6 +125,11 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                                           GtkSnapshot *snapshot);
 
 static void
+dark_theme_changed (GtkSettings                 *settings,
+                    GParamSpec                  *pspec,
+                    GtkCrusaderVillageMapEditor *editor);
+
+static void
 show_grid_changed (GSettings                   *self,
                    gchar                       *key,
                    GtkCrusaderVillageMapEditor *editor);
@@ -207,6 +215,9 @@ static void
 gtk_crusader_village_map_editor_dispose (GObject *object)
 {
   GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+
+  g_signal_handlers_disconnect_by_func (
+      self->gtk_settings, dark_theme_changed, self);
 
   if (self->settings != NULL)
     {
@@ -487,6 +498,10 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   self->hover_x_device = -1.0;
   self->hover_y_device = -1.0;
 
+  self->gtk_settings = gtk_settings_get_default ();
+  g_signal_connect (self->gtk_settings, "notify::gtk-application-prefer-dark-theme",
+                    G_CALLBACK (dark_theme_changed), self);
+
   self->drag_gesture = gtk_gesture_drag_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->drag_gesture), 2);
   g_signal_connect (self->drag_gesture, "drag-update",
@@ -600,7 +615,6 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
   const GtkCrusaderVillageItem **grid            = NULL;
   double                         map_width       = 0.0;
   double                         map_height      = 0.0;
-  gboolean                       use_dark_colors = FALSE;
   /* double                       canvas_width    = 0.0; */
   /* double                       canvas_height   = 0.0; */
 
@@ -662,19 +676,14 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           (double) editor->border_gap * BASE_TILE_SIZE * editor->zoom,
           (double) editor->border_gap * BASE_TILE_SIZE * editor->zoom));
 
-  g_object_get (
-      gtk_settings_get_default (),
-      "gtk-application-prefer-dark-theme", &use_dark_colors,
-      NULL);
-
   if (editor->show_gradient)
     gtk_snapshot_append_radial_gradient (
         snapshot,
         &GRAPHENE_RECT_INIT (0, 0, map_width, map_height),
         &GRAPHENE_POINT_INIT (map_width / 2.0, map_height / 2.0),
         map_width / 2.0, map_height / 2.0, 0.0, 1.0,
-        use_dark_colors ? bg_radial_gradient_color_stops_dark : bg_radial_gradient_color_stops,
-        use_dark_colors ? G_N_ELEMENTS (bg_radial_gradient_color_stops_dark) : G_N_ELEMENTS (bg_radial_gradient_color_stops));
+        editor->dark_theme ? bg_radial_gradient_color_stops_dark : bg_radial_gradient_color_stops,
+        editor->dark_theme ? G_N_ELEMENTS (bg_radial_gradient_color_stops_dark) : G_N_ELEMENTS (bg_radial_gradient_color_stops));
 
   if (editor->show_grid)
     {
@@ -792,6 +801,18 @@ static void
 scrollable_iface_init (GtkScrollableInterface *iface)
 {
   iface->get_border = scrollable_get_border;
+}
+
+static void
+dark_theme_changed (GtkSettings                 *settings,
+                    GParamSpec                  *pspec,
+                    GtkCrusaderVillageMapEditor *editor)
+{
+  g_object_get (
+      settings,
+      "gtk-application-prefer-dark-theme", &editor->dark_theme,
+      NULL);
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void

@@ -22,6 +22,17 @@
 
 #include "gtk-crusader-village-preferences-window.h"
 
+#define KEY_THEME         "theme"
+#define KEY_SHOW_GRID     "show-grid"
+#define KEY_SHOW_GRADIENT "show-gradient"
+
+/* TODO: perhaps read from schema instead */
+static const char *theme_choices[] = {
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT] = "default",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT]   = "light",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK]    = "dark",
+};
+
 struct _GtkCrusaderVillagePreferencesWindow
 {
   GtkApplicationWindow parent_instance;
@@ -29,8 +40,9 @@ struct _GtkCrusaderVillagePreferencesWindow
   GSettings *settings;
 
   /* Template widgets */
-  GtkSwitch *show_grid;
-  GtkSwitch *show_gradient;
+  GtkDropDown *theme;
+  GtkSwitch   *show_grid;
+  GtkSwitch   *show_gradient;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_TYPE_WINDOW)
@@ -55,6 +67,16 @@ static void
 ui_changed (GtkWidget                           *widget,
             GParamSpec                          *pspec,
             GtkCrusaderVillagePreferencesWindow *window);
+
+static void
+read_theme (GtkCrusaderVillagePreferencesWindow *self,
+            GSettings                           *settings,
+            const char                          *key);
+
+static void
+write_theme (GtkCrusaderVillagePreferencesWindow *self,
+             GSettings                           *settings,
+             const char                          *key);
 
 static void
 gtk_crusader_village_preferences_window_dispose (GObject *object)
@@ -106,10 +128,11 @@ gtk_crusader_village_preferences_window_set_property (GObject      *object,
       self->settings = g_value_dup_object (value);
       if (self->settings != NULL)
         {
-          gtk_switch_set_active (self->show_grid, g_settings_get_boolean (self->settings, "show-grid"));
-          gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, "show-gradient"));
           g_signal_connect (self->settings, "changed",
                             G_CALLBACK (setting_changed), self);
+          read_theme (self, self->settings, KEY_THEME);
+          gtk_switch_set_active (self->show_grid, g_settings_get_boolean (self->settings, KEY_SHOW_GRID));
+          gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, KEY_SHOW_GRADIENT));
         }
       break;
     default:
@@ -138,6 +161,7 @@ gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreference
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-preferences-window.ui");
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, theme);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_grid);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_gradient);
 }
@@ -147,6 +171,8 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  g_signal_connect (self->theme, "notify::selected-item",
+                    G_CALLBACK (ui_changed), self);
   g_signal_connect (self->show_grid, "notify::active",
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->show_gradient, "notify::active",
@@ -158,10 +184,12 @@ setting_changed (GSettings                           *self,
                  gchar                               *key,
                  GtkCrusaderVillagePreferencesWindow *window)
 {
-  if (g_strcmp0 (key, "show-grid") == 0)
-    gtk_switch_set_active (window->show_grid, g_settings_get_boolean (self, "show-grid"));
-  else if (g_strcmp0 (key, "show-gradient") == 0)
-    gtk_switch_set_active (window->show_gradient, g_settings_get_boolean (self, "show-gradient"));
+  if (g_strcmp0 (key, KEY_THEME) == 0)
+    read_theme (window, self, key);
+  else if (g_strcmp0 (key, KEY_SHOW_GRID) == 0)
+    gtk_switch_set_active (window->show_grid, g_settings_get_boolean (self, KEY_SHOW_GRID));
+  else if (g_strcmp0 (key, KEY_SHOW_GRADIENT) == 0)
+    gtk_switch_set_active (window->show_gradient, g_settings_get_boolean (self, KEY_SHOW_GRADIENT));
 }
 
 static void
@@ -172,10 +200,12 @@ ui_changed (GtkWidget                           *widget,
   if (window->settings == NULL)
     return;
 
-  if (widget == (GtkWidget *) window->show_grid)
-    g_settings_set_boolean (window->settings, "show-grid", gtk_switch_get_active (window->show_grid));
+  if (widget == (GtkWidget *) window->theme)
+    write_theme (window, window->settings, KEY_THEME);
+  else if (widget == (GtkWidget *) window->show_grid)
+    g_settings_set_boolean (window->settings, KEY_SHOW_GRID, gtk_switch_get_active (window->show_grid));
   else if (widget == (GtkWidget *) window->show_gradient)
-    g_settings_set_boolean (window->settings, "show-gradient", gtk_switch_get_active (window->show_gradient));
+    g_settings_set_boolean (window->settings, KEY_SHOW_GRADIENT, gtk_switch_get_active (window->show_gradient));
 }
 
 void
@@ -197,4 +227,46 @@ gtk_crusader_village_preferences_window_spawn (GSettings *settings,
 
   gtk_window_set_transient_for (window, parent);
   gtk_window_present (window);
+}
+
+static void
+read_theme (GtkCrusaderVillagePreferencesWindow *self,
+            GSettings                           *settings,
+            const char                          *key)
+{
+  g_autofree char *theme     = NULL;
+  guint            theme_idx = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
+
+  theme     = g_settings_get_string (settings, key);
+  theme_idx = gtk_crusader_village_theme_str_to_enum (theme);
+
+  gtk_drop_down_set_selected (self->theme, theme_idx);
+}
+
+static void
+write_theme (GtkCrusaderVillagePreferencesWindow *self,
+             GSettings                           *settings,
+             const char                          *key)
+{
+  guint idx = 0;
+
+  idx = gtk_drop_down_get_selected (self->theme);
+  g_assert (idx < G_N_ELEMENTS (theme_choices));
+
+  g_settings_set_string (settings, key, theme_choices[idx]);
+}
+
+/* I don't like this whole setup */
+int
+gtk_crusader_village_theme_str_to_enum (const char *theme)
+{
+  for (int i = 0; i < G_N_ELEMENTS (theme_choices); i++)
+    {
+      if (g_strcmp0 (theme, theme_choices[i]) == 0)
+        {
+          return i;
+        }
+    }
+
+  return GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
 }
