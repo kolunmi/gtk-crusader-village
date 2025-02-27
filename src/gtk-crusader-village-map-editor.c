@@ -501,6 +501,10 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   self->gtk_settings = gtk_settings_get_default ();
   g_signal_connect (self->gtk_settings, "notify::gtk-application-prefer-dark-theme",
                     G_CALLBACK (dark_theme_changed), self);
+  g_object_get (
+      self->gtk_settings,
+      "gtk-application-prefer-dark-theme", &self->dark_theme,
+      NULL);
 
   self->drag_gesture = gtk_gesture_drag_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->drag_gesture), 2);
