@@ -63,6 +63,8 @@ gtk_crusader_village_window_dispose (GObject *object)
   GtkCrusaderVillageWindow *self = GTK_CRUSADER_VILLAGE_WINDOW (object);
 
   g_clear_object (&self->settings);
+  g_clear_object (&self->item_store);
+  g_clear_object (&self->map);
 
   G_OBJECT_CLASS (gtk_crusader_village_window_parent_class)->dispose (object);
 }

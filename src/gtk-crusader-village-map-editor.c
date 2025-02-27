@@ -606,6 +606,35 @@ gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
   update_scrollable (editor, FALSE);
 }
 
+typedef struct
+{
+  GtkCrusaderVillageMapEditor *editor;
+  int                          map_tile_width;
+  int                          map_tile_height;
+  GtkSnapshot                 *snapshot;
+} GridIterData;
+
+static void
+iterate_over_grid_and_draw (gpointer                key,
+                            GtkCrusaderVillageItem *item,
+                            GridIterData           *data)
+{
+  int x = 0;
+  int y = 0;
+
+  x = GPOINTER_TO_UINT (key) % data->map_tile_width;
+  y = GPOINTER_TO_UINT (key) / data->map_tile_width;
+
+  gtk_snapshot_append_color (
+      data->snapshot,
+      &(GdkRGBA) { 0.2, 0.37, 0.9, 0.3 },
+      &GRAPHENE_RECT_INIT (
+          x * BASE_TILE_SIZE * data->editor->zoom,
+          y * BASE_TILE_SIZE * data->editor->zoom,
+          BASE_TILE_SIZE * data->editor->zoom,
+          BASE_TILE_SIZE * data->editor->zoom));
+}
+
 static void
 gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                                           GtkSnapshot *snapshot)
@@ -623,15 +652,15 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
     { 1.0, { 0.1, 0.1, 0.1, 0.0 } },
   };
 
-  GtkCrusaderVillageMapEditor   *editor          = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  int                            widget_width    = 0;
-  int                            widget_height   = 0;
-  double                         tile_size       = 0.0;
-  int                            map_tile_width  = 0;
-  int                            map_tile_height = 0;
-  const GtkCrusaderVillageItem **grid            = NULL;
-  double                         map_width       = 0.0;
-  double                         map_height      = 0.0;
+  GtkCrusaderVillageMapEditor *editor          = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  int                          widget_width    = 0;
+  int                          widget_height   = 0;
+  double                       tile_size       = 0.0;
+  int                          map_tile_width  = 0;
+  int                          map_tile_height = 0;
+  g_autoptr (GHashTable) grid                  = NULL;
+  double map_width                             = 0.0;
+  double map_height                            = 0.0;
   /* double                       canvas_width    = 0.0; */
   /* double                       canvas_height   = 0.0; */
 
@@ -727,25 +756,15 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       &(GdkRGBA) { 0.0, 0.0, 0.0, 1.0 },
       0.0, 0.0, 20.0 * editor->zoom, 60.0 * editor->zoom);
 
-  /* TODO: improve efficiency */
-  for (int y = 0; y < map_tile_height; y++)
-    {
-      for (int x = 0; x < map_tile_width; x++)
-        {
-          const GtkCrusaderVillageItem *item = NULL;
-
-          item = grid[y * map_tile_width + x];
-          if (item != NULL)
-            gtk_snapshot_append_color (
-                snapshot,
-                &(GdkRGBA) { 0.2, 0.37, 0.9, 0.3 },
-                &GRAPHENE_RECT_INIT (
-                    x * BASE_TILE_SIZE * editor->zoom,
-                    y * BASE_TILE_SIZE * editor->zoom,
-                    BASE_TILE_SIZE * editor->zoom,
-                    BASE_TILE_SIZE * editor->zoom));
-        }
-    }
+  g_hash_table_foreach (
+      grid,
+      (GHFunc) iterate_over_grid_and_draw,
+      &(GridIterData) {
+          .editor          = editor,
+          .map_tile_width  = map_tile_width,
+          .map_tile_height = map_tile_height,
+          .snapshot        = snapshot,
+      });
 
   if (editor->current_stroke != NULL)
     {
@@ -759,10 +778,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       for (guint i = 0; i < instances->len; i++)
         {
           GtkCrusaderVillageItemStrokeInstance instance = { 0 };
-          const GtkCrusaderVillageItem        *item     = NULL;
+          GtkCrusaderVillageItem              *item     = NULL;
 
           instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, i);
-          item     = grid[instance.y * map_tile_width + instance.x];
+          item     = g_hash_table_lookup (grid, GUINT_TO_POINTER (instance.y * map_tile_width + instance.x));
 
           gtk_snapshot_append_color (
               snapshot,

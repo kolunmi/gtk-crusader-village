@@ -100,7 +100,7 @@ list_model_iface_init (GListModelInterface *iface)
 void
 gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *self)
 {
-  char **children = NULL;
+  g_auto (GStrv) children = NULL;
 
 #define ITEMS_PATH "/am/kolunmi/GtkCrusaderVillage/items/"
   children = g_resources_enumerate_children (ITEMS_PATH, G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
@@ -124,6 +124,4 @@ gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *sel
 
       g_list_store_append (self->list_store, g_steal_pointer (&item));
     }
-
-  g_strfreev (children);
 }

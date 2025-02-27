@@ -36,8 +36,8 @@ struct _GtkCrusaderVillageMap
 
   GListStore *strokes;
 
-  GPtrArray *cache_grid;
-  gboolean   cache_refresh;
+  GHashTable *cache;
+  guint       last_append_position;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageMap, gtk_crusader_village_map, G_TYPE_OBJECT)
@@ -68,16 +68,13 @@ static void
 ensure_cache (GtkCrusaderVillageMap *self);
 
 static void
-maybe_unref_object (gpointer object);
-
-static void
 gtk_crusader_village_map_dispose (GObject *object)
 {
   GtkCrusaderVillageMap *self = GTK_CRUSADER_VILLAGE_MAP (object);
 
   g_clear_pointer (&self->name, g_free);
   g_clear_object (&self->strokes);
-  g_clear_pointer (&self->cache_grid, g_ptr_array_unref);
+  g_clear_pointer (&self->cache, g_hash_table_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_parent_class)->dispose (object);
 }
@@ -106,7 +103,7 @@ gtk_crusader_village_map_get_property (GObject    *object,
       break;
     case PROP_GRID:
       ensure_cache (self);
-      g_value_set_pointer (value, self->cache_grid->pdata);
+      g_value_set_boxed (value, self->cache);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -128,13 +125,13 @@ gtk_crusader_village_map_set_property (GObject      *object,
       self->name = g_value_dup_string (value);
       break;
     case PROP_WIDTH:
-      self->width         = g_value_get_int (value);
-      self->cache_refresh = TRUE;
+      self->width = g_value_get_int (value);
+      g_clear_pointer (&self->cache, g_hash_table_unref);
       g_object_notify_by_pspec (object, props[PROP_GRID]);
       break;
     case PROP_HEIGHT:
-      self->height        = g_value_get_int (value);
-      self->cache_refresh = TRUE;
+      self->height = g_value_get_int (value);
+      g_clear_pointer (&self->cache, g_hash_table_unref);
       g_object_notify_by_pspec (object, props[PROP_GRID]);
       break;
     default:
@@ -184,11 +181,12 @@ gtk_crusader_village_map_class_init (GtkCrusaderVillageMapClass *klass)
           G_PARAM_READABLE);
 
   props[PROP_GRID] =
-      g_param_spec_pointer (
+      g_param_spec_boxed (
           "grid",
           "Grid",
-          "A const pointer to an array of `GtkCrusaderVillageItem *` "
-          "the length of which is the map width times the map height",
+          "A hash table mapping `guint` tile indices to `GtkCrusaderVillageItem`s "
+          "which will be out-of-date after any other property is modified",
+          G_TYPE_HASH_TABLE,
           G_PARAM_READABLE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
@@ -204,7 +202,7 @@ gtk_crusader_village_map_init (GtkCrusaderVillageMap *self)
   g_signal_connect (self->strokes, "items-changed",
                     G_CALLBACK (strokes_changed), self);
 
-  self->cache_refresh = TRUE;
+  self->last_append_position = G_MAXUINT;
 }
 
 static void
@@ -214,90 +212,97 @@ strokes_changed (GListModel            *self,
                  guint                  added,
                  GtkCrusaderVillageMap *map)
 {
-  map->cache_refresh = TRUE;
+  if (removed > 0 || position < g_list_model_get_n_items (self) - added)
+    /* We need to completely regenerate cache */
+    g_clear_pointer (&map->cache, g_hash_table_unref);
+  else
+    /* It was just an append, no need to regenerate */
+    map->last_append_position = MIN (position, map->last_append_position);
+
   g_object_notify_by_pspec (G_OBJECT (map), props[PROP_GRID]);
 }
 
 static void
 ensure_cache (GtkCrusaderVillageMap *self)
 {
-  if (self->cache_grid == NULL)
+  guint start_stroke_idx = 0;
+  guint n_strokes        = 0;
+
+  if (self->cache != NULL && self->last_append_position == G_MAXUINT)
+    return;
+
+  if (self->cache == NULL)
     {
-      self->cache_grid    = g_ptr_array_new_with_free_func (maybe_unref_object);
-      self->cache_refresh = TRUE;
+      self->cache = g_hash_table_new_full (
+          /* |------ key: tile index -------|  | val:  Item | */
+          g_direct_hash, g_direct_equal, NULL, g_object_unref);
+      start_stroke_idx = 0;
     }
+  else
+    start_stroke_idx = self->last_append_position;
 
-  if (self->cache_refresh)
+  n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+
+  for (guint i = start_stroke_idx; i < n_strokes; i++)
     {
-      guint n_strokes = 0;
+      g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
+      g_autoptr (GtkCrusaderVillageItem) item         = NULL;
+      GtkCrusaderVillageItemKind item_kind            = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
+      int                        tile_width           = 0;
+      int                        tile_height          = 0;
+      g_autoptr (GArray) instances                    = NULL;
 
-      /* Clear all existing items */
-      g_ptr_array_set_size (self->cache_grid, 0);
-      g_ptr_array_set_size (self->cache_grid, self->width * self->height);
+      stroke = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
+      g_object_get (
+          stroke,
+          "item", &item,
+          NULL);
 
-      n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+      g_object_get (
+          item,
+          "kind", &item_kind,
+          NULL);
 
-      for (guint i = 0; i < n_strokes; i++)
+      if (item_kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT)
+        /* Ignore units for now */
+        continue;
+
+      g_object_get (
+          item,
+          "tile-width", &tile_width,
+          "tile-height", &tile_height,
+          NULL);
+      g_assert (tile_width > 0 && tile_height > 0);
+
+      g_object_get (
+          stroke,
+          "instances", &instances,
+          NULL);
+
+      for (guint j = 0; j < instances->len; j++)
         {
-          g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
-          g_autoptr (GtkCrusaderVillageItem) item         = NULL;
-          GtkCrusaderVillageItemKind item_kind            = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
+          GtkCrusaderVillageItemStrokeInstance *instance          = NULL;
+          int                                   paint_tile_width  = 0;
+          int                                   paint_tile_height = 0;
 
-          stroke = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
-          g_object_get (
-              stroke,
-              "item", &item,
-              NULL);
+          instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
+          g_assert (instance->x >= 0 && instance->y >= 0);
 
-          g_object_get (
-              item,
-              "kind", &item_kind,
-              NULL);
+          paint_tile_width  = MIN (tile_width, self->width - instance->x);
+          paint_tile_height = MIN (tile_height, self->height - instance->y);
 
-          if (item_kind != GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT)
+          for (int y = 0; y < paint_tile_width; y++)
             {
-              int tile_width               = 0;
-              int tile_height              = 0;
-              g_autoptr (GArray) instances = NULL;
-
-              g_object_get (
-                  item,
-                  "tile-width", &tile_width,
-                  "tile-height", &tile_height,
-                  NULL);
-              g_assert (tile_width > 0 && tile_height > 0);
-
-              g_object_get (
-                  stroke,
-                  "instances", &instances,
-                  NULL);
-
-              for (guint j = 0; j < instances->len; j++)
+              for (int x = 0; x < paint_tile_height; x++)
                 {
-                  GtkCrusaderVillageItemStrokeInstance *instance = NULL;
+                  guint idx = 0;
 
-                  instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
-                  g_assert (instance->x >= 0 && instance->y >= 0);
-
-                  if (instance->x < self->width || instance->y < self->height)
-                    {
-                      guint idx = 0;
-
-                      idx = instance->y * self->width + instance->x;
-                      g_clear_object (&g_ptr_array_index (self->cache_grid, idx));
-                      g_ptr_array_index (self->cache_grid, idx) = g_object_ref (item);
-                    }
+                  idx = (instance->y + y) * self->width + (instance->x + x);
+                  g_hash_table_replace (self->cache, GUINT_TO_POINTER (idx), g_object_ref (item));
                 }
             }
         }
-
-      self->cache_refresh = FALSE;
     }
-}
 
-static void
-maybe_unref_object (gpointer object)
-{
-  if (object != NULL)
-    g_object_unref (object);
+  self->last_append_position = G_MAXUINT;
 }
