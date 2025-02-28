@@ -42,6 +42,14 @@ struct _GtkCrusaderVillageItem
   GtkCrusaderVillageItemKind kind;
   int                        tile_width;
   int                        tile_height;
+
+  struct
+  {
+    gboolean needs_regen;
+    float    r;
+    float    g;
+    float    b;
+  } name_color_cache;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItem, gtk_crusader_village_item, G_TYPE_OBJECT)
@@ -124,7 +132,8 @@ gtk_crusader_village_item_set_property (GObject      *object,
     {
     case PROP_NAME:
       g_clear_pointer (&self->name, g_free);
-      self->name = g_value_dup_string (value);
+      self->name                         = g_value_dup_string (value);
+      self->name_color_cache.needs_regen = TRUE;
       break;
     case PROP_DESCRIPTION:
       g_clear_pointer (&self->description, g_free);
@@ -256,6 +265,10 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
     case PROP_SECTION_ICON_RESOURCE:
       RECEIVE_BASIC_VARIANT (string, G_VARIANT_TYPE_STRING, variant, NULL);
       break;
+    case PROP_TILE_WIDTH:
+    case PROP_TILE_HEIGHT:
+      RECEIVE_BASIC_VARIANT (int32, G_VARIANT_TYPE_INT32, variant);
+      break;
     case PROP_KIND:
       if (g_variant_is_of_type (variant, G_VARIANT_TYPE_STRING))
         {
@@ -285,27 +298,6 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
     }
 
 #undef RECEIVE_VARIANT
-}
-
-void
-gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *self,
-                                                     const char             *property,
-                                                     GVariant               *variant)
-{
-  gboolean found = FALSE;
-
-  for (int prop_id = PROP_0 + 1; prop_id < LAST_PROP; prop_id++)
-    {
-      if (g_strcmp0 (property, props[prop_id]->name) == 0)
-        {
-          gtk_crusader_village_item_set_property_from_variant_inner (self, prop_id, variant);
-          found = TRUE;
-          break;
-        }
-    }
-
-  if (!found)
-    g_critical ("%s: property '%s' not found", G_STRFUNC, property);
 }
 
 GtkCrusaderVillageItem *
@@ -360,4 +352,50 @@ gtk_crusader_village_item_new_for_resource (const char *resource_path,
     }
 
   return g_steal_pointer (&item);
+}
+
+void
+gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *self,
+                                                     const char             *property,
+                                                     GVariant               *variant)
+{
+  gboolean found = FALSE;
+
+  for (int prop_id = PROP_0 + 1; prop_id < LAST_PROP; prop_id++)
+    {
+      if (g_strcmp0 (property, props[prop_id]->name) == 0)
+        {
+          gtk_crusader_village_item_set_property_from_variant_inner (self, prop_id, variant);
+          found = TRUE;
+          break;
+        }
+    }
+
+  if (!found)
+    g_critical ("%s: property '%s' not found", G_STRFUNC, property);
+}
+
+void
+gtk_crusader_village_item_get_name_color (GtkCrusaderVillageItem *self,
+                                          float                  *r,
+                                          float                  *g,
+                                          float                  *b)
+{
+  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self));
+  g_return_if_fail (self->name != NULL);
+  g_return_if_fail (r != NULL && g != NULL && b != NULL);
+
+  if (self->name_color_cache.needs_regen)
+    {
+      guint hash = 0;
+
+      hash                     = g_str_hash (self->name);
+      self->name_color_cache.r = (float) ((hash & 0xff0000) >> 16) / 256.0;
+      self->name_color_cache.g = (float) ((hash & 0x00ff00) >> 8) / 256.0;
+      self->name_color_cache.b = (float) (hash & 0x0000ff) / 256.0;
+    }
+
+  *r = self->name_color_cache.r;
+  *g = self->name_color_cache.g;
+  *b = self->name_color_cache.b;
 }

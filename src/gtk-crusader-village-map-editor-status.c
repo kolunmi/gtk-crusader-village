@@ -28,6 +28,7 @@ struct _GtkCrusaderVillageMapEditorStatus
 {
   GtkCrusaderVillageUtilBin parent_instance;
 
+  GtkCrusaderVillageMap       *map;
   GtkCrusaderVillageMapEditor *editor;
 
   /* Template widgets */
@@ -54,9 +55,25 @@ hover_changed (GtkCrusaderVillageMapEditor       *editor,
                GtkCrusaderVillageMapEditorStatus *status);
 
 static void
+map_changed (GtkCrusaderVillageMapEditor       *editor,
+             GParamSpec                        *pspec,
+             GtkCrusaderVillageMapEditorStatus *status);
+
+static void
+name_changed (GtkCrusaderVillageMap             *map,
+              GParamSpec                        *pspec,
+              GtkCrusaderVillageMapEditorStatus *status);
+
+static void
 update_hover (GtkCrusaderVillageMapEditorStatus *self,
               int                                hover_x,
               int                                hover_y);
+
+static void
+read_map (GtkCrusaderVillageMapEditorStatus *self);
+
+static void
+update_name (GtkCrusaderVillageMapEditorStatus *self);
 
 static void
 gtk_crusader_village_map_editor_status_dispose (GObject *object)
@@ -66,6 +83,10 @@ gtk_crusader_village_map_editor_status_dispose (GObject *object)
   if (self->editor != NULL)
     g_signal_handlers_disconnect_by_func (self->editor, hover_changed, self);
   g_clear_object (&self->editor);
+
+  if (self->map != NULL)
+    g_signal_handlers_disconnect_by_func (self->map, hover_changed, self);
+  g_clear_object (&self->map);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_status_parent_class)->dispose (object);
 }
@@ -101,37 +122,38 @@ gtk_crusader_village_map_editor_status_set_property (GObject      *object,
     case PROP_EDITOR:
       {
         if (self->editor != NULL)
-          g_signal_handlers_disconnect_by_func (self->editor, hover_changed, self);
+          {
+            g_signal_handlers_disconnect_by_func (self->editor, hover_changed, self);
+            g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+          }
         g_clear_object (&self->editor);
+
+        if (self->map != NULL)
+          g_signal_handlers_disconnect_by_func (self->map, name_changed, self);
+        g_clear_object (&self->map);
 
         self->editor = g_value_dup_object (value);
 
         if (self->editor != NULL)
           {
-            int hover_x                           = 0;
-            int hover_y                           = 0;
-            g_autoptr (GtkCrusaderVillageMap) map = NULL;
-            g_autofree char *name                 = NULL;
+            int hover_x = 0;
+            int hover_y = 0;
 
             g_object_get (
                 self->editor,
                 "hover-x", &hover_x,
                 "hover-y", &hover_y,
-                "map", &map,
                 NULL);
 
-            g_object_get (
-                map,
-                "name", &name,
-                NULL);
-
-            gtk_label_set_label (self->name_label, name);
             update_hover (self, hover_x, hover_y);
-
             g_signal_connect (self->editor, "notify::hover-x",
                               G_CALLBACK (hover_changed), self);
             g_signal_connect (self->editor, "notify::hover-y",
                               G_CALLBACK (hover_changed), self);
+
+            read_map (self);
+            g_signal_connect (self->editor, "notify::map",
+                              G_CALLBACK (map_changed), self);
           }
         else
           {
@@ -194,6 +216,22 @@ hover_changed (GtkCrusaderVillageMapEditor       *editor,
 }
 
 static void
+map_changed (GtkCrusaderVillageMapEditor       *editor,
+             GParamSpec                        *pspec,
+             GtkCrusaderVillageMapEditorStatus *status)
+{
+  read_map (status);
+}
+
+static void
+name_changed (GtkCrusaderVillageMap             *map,
+              GParamSpec                        *pspec,
+              GtkCrusaderVillageMapEditorStatus *status)
+{
+  update_name (status);
+}
+
+static void
 update_hover (GtkCrusaderVillageMapEditorStatus *self,
               int                                hover_x,
               int                                hover_y)
@@ -206,4 +244,45 @@ update_hover (GtkCrusaderVillageMapEditorStatus *self,
     g_snprintf (buf, sizeof (buf), "X=%d Y=%d", hover_x, hover_y);
 
   gtk_label_set_label (self->hover_label, buf);
+}
+
+static void
+read_map (GtkCrusaderVillageMapEditorStatus *self)
+{
+  if (self->map != NULL)
+    g_signal_handlers_disconnect_by_func (self->map, hover_changed, self);
+  g_clear_object (&self->map);
+
+  if (self->editor == NULL)
+    return;
+
+  g_object_get (
+      self->editor,
+      "map", &self->map,
+      NULL);
+
+  update_name (self);
+
+  if (self->map != NULL)
+    g_signal_connect (self->map, "notify::name",
+                      G_CALLBACK (name_changed), self);
+}
+
+static void
+update_name (GtkCrusaderVillageMapEditorStatus *self)
+{
+  if (self->map != NULL)
+    {
+      g_autofree char *name = NULL;
+
+      g_object_get (
+          self->map,
+          "name", &name,
+          NULL);
+      gtk_label_set_label (self->name_label, name);
+    }
+  else
+    {
+      gtk_label_set_label (self->name_label, "---");
+    }
 }

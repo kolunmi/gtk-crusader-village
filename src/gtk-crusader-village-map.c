@@ -248,8 +248,8 @@ ensure_cache (GtkCrusaderVillageMap *self)
       g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
       g_autoptr (GtkCrusaderVillageItem) item         = NULL;
       GtkCrusaderVillageItemKind item_kind            = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
-      int                        tile_width           = 0;
-      int                        tile_height          = 0;
+      int                        item_tile_width      = 0;
+      int                        item_tile_height     = 0;
       g_autoptr (GArray) instances                    = NULL;
 
       stroke = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
@@ -269,10 +269,10 @@ ensure_cache (GtkCrusaderVillageMap *self)
 
       g_object_get (
           item,
-          "tile-width", &tile_width,
-          "tile-height", &tile_height,
+          "tile-width", &item_tile_width,
+          "tile-height", &item_tile_height,
           NULL);
-      g_assert (tile_width > 0 && tile_height > 0);
+      g_assert (item_tile_width > 0 && item_tile_height > 0);
 
       g_object_get (
           stroke,
@@ -281,19 +281,18 @@ ensure_cache (GtkCrusaderVillageMap *self)
 
       for (guint j = 0; j < instances->len; j++)
         {
-          GtkCrusaderVillageItemStrokeInstance *instance          = NULL;
-          int                                   paint_tile_width  = 0;
-          int                                   paint_tile_height = 0;
+          GtkCrusaderVillageItemStrokeInstance *instance = NULL;
 
           instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
           g_assert (instance->x >= 0 && instance->y >= 0);
 
-          paint_tile_width  = MIN (tile_width, self->width - instance->x);
-          paint_tile_height = MIN (tile_height, self->height - instance->y);
+          if (instance->x + item_tile_width > self->width ||
+              instance->y + item_tile_height > self->height)
+            continue;
 
-          for (int y = 0; y < paint_tile_width; y++)
+          for (int y = 0; y < item_tile_height; y++)
             {
-              for (int x = 0; x < paint_tile_height; x++)
+              for (int x = 0; x < item_tile_width; x++)
                 {
                   guint idx = 0;
 

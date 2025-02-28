@@ -63,6 +63,11 @@ static int match (GtkCrusaderVillageItem     *item,
                   GtkCrusaderVillageItemArea *item_area);
 
 static void
+selected_item_changed (GtkSingleSelection         *selection,
+                       GParamSpec                 *pspec,
+                       GtkCrusaderVillageItemArea *item_area);
+
+static void
 gtk_crusader_village_item_area_dispose (GObject *object)
 {
   GtkCrusaderVillageItemArea *self = GTK_CRUSADER_VILLAGE_ITEM_AREA (object);
@@ -183,6 +188,9 @@ gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
   gtk_list_view_set_model (self->list_view, selection_model);
 
   g_signal_connect (self->entry, "changed", G_CALLBACK (search_changed), self);
+
+  g_signal_connect (selection_model, "notify::selected-item",
+                    G_CALLBACK (selected_item_changed), self);
 }
 
 static void
@@ -247,4 +255,12 @@ match (GtkCrusaderVillageItem     *item,
       NULL);
 
   return strcasestr (name, search_text) != NULL ? 1 : 0;
+}
+
+static void
+selected_item_changed (GtkSingleSelection         *selection,
+                       GParamSpec                 *pspec,
+                       GtkCrusaderVillageItemArea *item_area)
+{
+  g_object_notify_by_pspec (G_OBJECT (item_area), props[PROP_SELECTED_ITEM]);
 }

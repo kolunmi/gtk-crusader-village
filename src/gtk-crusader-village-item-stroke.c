@@ -28,6 +28,8 @@ struct _GtkCrusaderVillageItemStroke
   GObject parent_instance;
 
   GtkCrusaderVillageItem *item;
+  int                     item_tile_width;
+  int                     item_tile_height;
   GArray                 *instances;
 };
 
@@ -90,6 +92,12 @@ gtk_crusader_village_item_stroke_set_property (GObject      *object,
     case PROP_ITEM:
       g_clear_object (&self->item);
       self->item = g_value_dup_object (value);
+      if (self->item != NULL)
+        g_object_get (
+            self->item,
+            "tile-width", &self->item_tile_width,
+            "tile-height", &self->item_tile_height,
+            NULL);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -131,19 +139,58 @@ gtk_crusader_village_item_stroke_init (GtkCrusaderVillageItemStroke *self)
   self->instances = g_array_new (FALSE, TRUE, sizeof (GtkCrusaderVillageItemStrokeInstance));
 }
 
+static gboolean
+rect_insersects (int ax,
+                 int ay,
+                 int aw,
+                 int ah,
+                 int bx,
+                 int by,
+                 int bw,
+                 int bh)
+{
+  int x1          = 0;
+  int y1          = 0;
+  int x2          = 0;
+  int y2          = 0;
+  int intersect_w = 0;
+  int intersect_h = 0;
+
+  if (aw <= 0 || ah <= 0 || bw <= 0 || bh <= 0)
+    return FALSE;
+
+  x1 = MAX (ax, bx);
+  y1 = MAX (ay, by);
+  x2 = MIN (ax + aw, bx + bw);
+  y2 = MIN (ay + ah, by + bh);
+
+  // intersect_x = x1;
+  // intersect_y = y1;
+  intersect_w = x2 - x1;
+  intersect_h = y2 - y1;
+
+  return intersect_w > 0 && intersect_h > 0;
+}
+
 /* We trust that the caller won't pass an invalid instance */
 gboolean
 gtk_crusader_village_item_stroke_add_instance (GtkCrusaderVillageItemStroke        *self,
                                                GtkCrusaderVillageItemStrokeInstance instance)
 {
   g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STROKE (self), FALSE);
+  g_return_val_if_fail (self->item != NULL, FALSE);
 
   for (guint i = 0; i < self->instances->len; i++)
     {
-      GtkCrusaderVillageItemStrokeInstance check = { 0 };
+      GtkCrusaderVillageItemStrokeInstance check      = { 0 };
+      gboolean                             intersects = FALSE;
 
-      check = g_array_index (self->instances, GtkCrusaderVillageItemStrokeInstance, i);
-      if (check.x == instance.x && check.y == instance.y)
+      check      = g_array_index (self->instances, GtkCrusaderVillageItemStrokeInstance, i);
+      intersects = rect_insersects (
+          check.x, check.y, self->item_tile_width, self->item_tile_height,
+          instance.x, instance.y, self->item_tile_width, self->item_tile_height);
+
+      if (intersects)
         return FALSE;
     }
 

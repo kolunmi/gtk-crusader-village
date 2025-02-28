@@ -47,4 +47,10 @@ gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *sel
                                                      const char             *property,
                                                      GVariant               *variant);
 
+void
+gtk_crusader_village_item_get_name_color (GtkCrusaderVillageItem *self,
+                                          float                  *r,
+                                          float                  *g,
+                                          float                  *b);
+
 G_END_DECLS
