@@ -47,10 +47,12 @@ struct _GtkCrusaderVillageMapEditor
   double   zoom;
   gboolean queue_center;
 
+  double pointer_x;
+  double pointer_y;
   int    hover_x;
   int    hover_y;
-  double hover_x_device;
-  double hover_y_device;
+  double canvas_x;
+  double canvas_y;
 
   GtkScrollablePolicy hscroll_policy;
   GtkScrollablePolicy vscroll_policy;
@@ -66,10 +68,6 @@ struct _GtkCrusaderVillageMapEditor
   GtkGesture                   *cancel_gesture;
   gboolean                      draw_is_cancelled;
   GtkCrusaderVillageItemStroke *current_stroke;
-
-  gboolean pending_scroll;
-  double   pending_scroll_x;
-  double   pending_scroll_y;
 };
 
 static void scrollable_iface_init (GtkScrollableInterface *iface);
@@ -227,6 +225,11 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
                    gboolean                     center);
 
 static void
+update_motion (GtkCrusaderVillageMapEditor *self,
+               double                       x,
+               double                       y);
+
+static void
 gtk_crusader_village_map_editor_dispose (GObject *object)
 {
   GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
@@ -372,9 +375,9 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
                             G_CALLBACK (dimensions_changed), self);
           g_signal_connect (self->map, "notify::grid",
                             G_CALLBACK (grid_changed), self);
+          self->queue_center = TRUE;
         }
 
-      self->queue_center = TRUE;
       gtk_widget_queue_resize (GTK_WIDGET (self));
       break;
 
@@ -536,10 +539,12 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   self->last_drag_x = -1.0;
   self->last_drag_y = -1.0;
 
-  self->hover_x        = -1;
-  self->hover_y        = -1;
-  self->hover_x_device = -1.0;
-  self->hover_y_device = -1.0;
+  self->pointer_x = -1.0;
+  self->pointer_y = -1.0;
+  self->hover_x   = -1;
+  self->hover_y   = -1;
+  self->canvas_x  = -1.0;
+  self->canvas_y  = -1.0;
 
   self->gtk_settings = gtk_settings_get_default ();
   g_signal_connect (self->gtk_settings, "notify::gtk-application-prefer-dark-theme",
@@ -819,11 +824,12 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
             "selected-item", &current_item,
             NULL);
 
-      g_object_get (
-          current_item,
-          "tile-width", &item_tile_width,
-          "tile-height", &item_tile_height,
-          NULL);
+      if (current_item != NULL)
+        g_object_get (
+            current_item,
+            "tile-width", &item_tile_width,
+            "tile-height", &item_tile_height,
+            NULL);
 
       if (editor->current_stroke != NULL)
         {
@@ -1134,25 +1140,14 @@ scroll_event (GtkEventControllerScroll    *self,
               double                       dy,
               GtkCrusaderVillageMapEditor *editor)
 {
-  double delta_zoom = 0.0;
-  double scroll_x   = 0.0;
-  double scroll_y   = 0.0;
-
-  // GdkModifierType mods = 0;
-  // mods = gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (self));
-
-  delta_zoom = dy * -0.04 * editor->zoom;
-  editor->zoom += delta_zoom;
+  editor->zoom += dy * -0.06 * editor->zoom;
   editor->zoom = CLAMP (editor->zoom, 0.15, 5.0);
 
-  scroll_x = editor->hover_x_device * delta_zoom;
-  scroll_y = editor->hover_y_device * delta_zoom;
-
-  editor->pending_scroll   = TRUE;
-  editor->pending_scroll_x = scroll_x;
-  editor->pending_scroll_y = scroll_y;
-
-  gtk_widget_queue_allocate (GTK_WIDGET (editor));
+  update_scrollable (editor, FALSE);
+  /* Sometimes two scroll events happend before motion
+   * is invoked for some reason, update now to be safe.
+   */
+  update_motion (editor, editor->pointer_x, editor->pointer_y);
 
   return GDK_EVENT_STOP;
 }
@@ -1163,7 +1158,7 @@ motion_enter (GtkEventControllerMotion    *self,
               gdouble                      y,
               GtkCrusaderVillageMapEditor *editor)
 {
-  motion_event (self, x, y, editor);
+  update_motion (editor, x, y);
 }
 
 static void
@@ -1172,57 +1167,7 @@ motion_event (GtkEventControllerMotion    *self,
               double                       y,
               GtkCrusaderVillageMapEditor *editor)
 {
-  double   hscroll         = 0.0;
-  double   vscroll         = 0.0;
-  double   map_offset      = 0.0;
-  double   abs_x           = 0.0;
-  double   abs_y           = 0.0;
-  int      new_hover_x     = 0;
-  int      new_hover_y     = 0;
-  int      map_tile_width  = 0;
-  int      map_tile_height = 0;
-  gboolean was_invalid     = FALSE;
-  gboolean is_invalid      = FALSE;
-  gboolean x_changed       = FALSE;
-  gboolean y_changed       = FALSE;
-  gboolean redraw          = FALSE;
-
-  hscroll     = gtk_adjustment_get_value (editor->hadjustment);
-  vscroll     = gtk_adjustment_get_value (editor->vadjustment);
-  map_offset  = (double) editor->border_gap * BASE_TILE_SIZE * editor->zoom;
-  abs_x       = x + hscroll - map_offset;
-  abs_y       = y + vscroll - map_offset;
-  new_hover_x = floor (abs_x / (BASE_TILE_SIZE * editor->zoom));
-  new_hover_y = floor (abs_y / (BASE_TILE_SIZE * editor->zoom));
-
-  g_object_get (
-      editor->map,
-      "width", &map_tile_width,
-      "height", &map_tile_height,
-      NULL);
-
-  was_invalid = editor->hover_x < 0 || editor->hover_y < 0;
-  is_invalid  = new_hover_x < 0 || new_hover_y < 0 ||
-               new_hover_x >= map_tile_width || new_hover_y >= map_tile_height;
-
-  if (is_invalid)
-    new_hover_x = new_hover_y = -1;
-
-  x_changed = new_hover_x != editor->hover_x;
-  y_changed = new_hover_y != editor->hover_y;
-  redraw    = (x_changed || y_changed) && (!was_invalid || !is_invalid);
-
-  editor->hover_x        = new_hover_x;
-  editor->hover_y        = new_hover_y;
-  editor->hover_x_device = x;
-  editor->hover_y_device = y;
-
-  if (x_changed)
-    g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_HOVER_X]);
-  if (y_changed)
-    g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_HOVER_Y]);
-  if (redraw)
-    gtk_widget_queue_draw (GTK_WIDGET (editor));
+  update_motion (editor, x, y);
 }
 
 static void
@@ -1244,8 +1189,19 @@ motion_leave (GtkEventControllerMotion    *self,
       g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_HOVER_Y]);
     }
 
-  editor->hover_x_device = -1.0;
-  editor->hover_y_device = -1.0;
+  editor->pointer_x = (double) gtk_widget_get_width (GTK_WIDGET (editor)) / 2.0;
+  editor->pointer_y = (double) gtk_widget_get_height (GTK_WIDGET (editor)) / 2.0;
+
+  if (editor->hadjustment != NULL && editor->vadjustment != NULL)
+    {
+      editor->canvas_x = gtk_adjustment_get_value (editor->hadjustment) + editor->pointer_x;
+      editor->canvas_y = gtk_adjustment_get_value (editor->vadjustment) + editor->pointer_y;
+    }
+  else
+    {
+      editor->canvas_x = editor->pointer_x;
+      editor->canvas_y = editor->pointer_y;
+    }
 
   if (redraw)
     gtk_widget_queue_draw (GTK_WIDGET (editor));
@@ -1285,14 +1241,31 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
 
   if (self->map != NULL)
     {
-      int    widget_width    = 0;
-      int    widget_height   = 0;
-      int    map_tile_width  = 0;
-      int    map_tile_height = 0;
-      double width_lower     = 0.0;
-      double height_lower    = 0.0;
-      double width_upper     = 0.0;
-      double height_upper    = 0.0;
+      double   old_h_lower     = 0.0;
+      double   old_v_lower     = 0.0;
+      double   old_h_upper     = 0.0;
+      double   old_v_upper     = 0.0;
+      int      widget_width    = 0;
+      int      widget_height   = 0;
+      int      map_tile_width  = 0;
+      int      map_tile_height = 0;
+      double   h_lower         = 0.0;
+      double   v_lower         = 0.0;
+      double   h_upper         = 0.0;
+      double   v_upper         = 0.0;
+      gboolean force_center_h  = FALSE;
+      gboolean force_center_v  = FALSE;
+
+      g_object_get (
+          self->hadjustment,
+          "lower", &old_h_lower,
+          "upper", &old_h_upper,
+          NULL);
+      g_object_get (
+          self->vadjustment,
+          "lower", &old_v_lower,
+          "upper", &old_v_upper,
+          NULL);
 
       widget_width  = gtk_widget_get_width (GTK_WIDGET (self));
       widget_height = gtk_widget_get_height (GTK_WIDGET (self));
@@ -1303,61 +1276,69 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
           "height", &map_tile_height,
           NULL);
 
-      width_upper  = (double) (map_tile_width + self->border_gap * 2) * BASE_TILE_SIZE * self->zoom;
-      height_upper = (double) (map_tile_height + self->border_gap * 2) * BASE_TILE_SIZE * self->zoom;
+      h_upper = (double) (map_tile_width + self->border_gap * 2) * BASE_TILE_SIZE * self->zoom;
+      v_upper = (double) (map_tile_height + self->border_gap * 2) * BASE_TILE_SIZE * self->zoom;
 
-      if (width_upper < (double) widget_width)
+      if (h_upper < (double) widget_width)
         {
-          width_lower = width_upper = -((double) widget_width - width_upper) / 2.0;
-          center                    = TRUE;
+          h_lower        = -((double) widget_width - h_upper) / 2.0;
+          h_upper        = h_lower + (double) widget_width;
+          force_center_h = TRUE;
         }
-      else
-        width_upper -= (double) widget_width;
 
-      if (height_upper < (double) widget_height)
+      if (v_upper < (double) widget_height)
         {
-          height_lower = height_upper = -((double) widget_height - height_upper) / 2.0;
-          center                      = TRUE;
+          v_lower        = -((double) widget_height - v_upper) / 2.0;
+          v_upper        = v_lower + (double) widget_height;
+          force_center_v = TRUE;
         }
-      else
-        height_upper -= (double) widget_height;
 
       g_object_set (
           self->hadjustment,
-          "lower", width_lower,
-          "upper", width_upper,
+          "page-size", (double) widget_width,
+          "lower", h_lower,
+          "upper", h_upper,
           NULL);
       g_object_set (
           self->vadjustment,
-          "lower", height_lower,
-          "upper", height_upper,
+          "page-size", (double) widget_height,
+          "lower", v_lower,
+          "upper", v_upper,
           NULL);
 
-      if (center || self->queue_center)
+      if (center || self->queue_center || force_center_h)
+        gtk_adjustment_set_value (
+            self->hadjustment,
+            force_center_h
+                ? h_lower
+                : (h_lower + h_upper - (double) widget_width) / 2.0);
+      else
         {
-          gtk_adjustment_set_value (
-              self->hadjustment,
-              (width_lower + width_upper) / 2.0);
-          gtk_adjustment_set_value (
-              self->vadjustment,
-              (height_lower + height_upper) / 2.0);
+          double ratio_x    = 0.0;
+          double adjusted_x = 0.0;
 
-          self->queue_center   = FALSE;
-          self->pending_scroll = FALSE;
+          ratio_x    = (h_upper - h_lower) / (old_h_upper - old_h_lower);
+          adjusted_x = self->canvas_x * ratio_x - self->pointer_x;
+          gtk_adjustment_set_value (self->hadjustment, adjusted_x);
         }
-      else if (self->pending_scroll)
+
+      if (center || self->queue_center || force_center_v)
+        gtk_adjustment_set_value (
+            self->vadjustment,
+            force_center_v
+                ? v_lower
+                : (v_lower + v_upper - (double) widget_height) / 2.0);
+      else
         {
-          gtk_adjustment_set_value (
-              self->hadjustment,
-              gtk_adjustment_get_value (self->hadjustment) +
-                  self->pending_scroll_x);
-          gtk_adjustment_set_value (
-              self->vadjustment,
-              gtk_adjustment_get_value (self->vadjustment) +
-                  self->pending_scroll_y);
+          double ratio_y    = 0.0;
+          double adjusted_y = 0.0;
 
-          self->pending_scroll = FALSE;
+          ratio_y    = (v_upper - v_lower) / (old_v_upper - old_v_lower);
+          adjusted_y = self->canvas_y * ratio_y - self->pointer_y;
+          gtk_adjustment_set_value (self->vadjustment, adjusted_y);
         }
+
+      self->queue_center = FALSE;
     }
   else
     {
@@ -1372,4 +1353,60 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
           "upper", 0.0,
           NULL);
     }
+}
+
+static void
+update_motion (GtkCrusaderVillageMapEditor *self,
+               double                       x,
+               double                       y)
+{
+  double   hscroll         = 0.0;
+  double   vscroll         = 0.0;
+  double   map_offset      = 0.0;
+  int      new_hover_x     = 0;
+  int      new_hover_y     = 0;
+  int      map_tile_width  = 0;
+  int      map_tile_height = 0;
+  gboolean was_invalid     = FALSE;
+  gboolean is_invalid      = FALSE;
+  gboolean x_changed       = FALSE;
+  gboolean y_changed       = FALSE;
+  gboolean redraw          = FALSE;
+
+  hscroll         = gtk_adjustment_get_value (self->hadjustment);
+  vscroll         = gtk_adjustment_get_value (self->vadjustment);
+  self->pointer_x = x;
+  self->pointer_y = y;
+  self->canvas_x  = x + hscroll;
+  self->canvas_y  = y + vscroll;
+  map_offset      = (double) self->border_gap * BASE_TILE_SIZE * self->zoom;
+  new_hover_x     = floor ((self->canvas_x - map_offset) / (BASE_TILE_SIZE * self->zoom));
+  new_hover_y     = floor ((self->canvas_y - map_offset) / (BASE_TILE_SIZE * self->zoom));
+
+  g_object_get (
+      self->map,
+      "width", &map_tile_width,
+      "height", &map_tile_height,
+      NULL);
+
+  was_invalid = self->hover_x < 0 || self->hover_y < 0;
+  is_invalid  = new_hover_x < 0 || new_hover_y < 0 ||
+               new_hover_x >= map_tile_width || new_hover_y >= map_tile_height;
+
+  if (is_invalid)
+    new_hover_x = new_hover_y = -1;
+
+  x_changed = new_hover_x != self->hover_x;
+  y_changed = new_hover_y != self->hover_y;
+  redraw    = (x_changed || y_changed) && (!was_invalid || !is_invalid);
+
+  self->hover_x = new_hover_x;
+  self->hover_y = new_hover_y;
+
+  if (x_changed)
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HOVER_X]);
+  if (y_changed)
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HOVER_Y]);
+  if (redraw)
+    gtk_widget_queue_draw (GTK_WIDGET (self));
 }
