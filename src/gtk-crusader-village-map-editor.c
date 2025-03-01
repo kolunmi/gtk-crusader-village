@@ -853,7 +853,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                       instance.x * tile_size,
                       instance.y * tile_size,
                       item_tile_width * tile_size,
-                      item_tile_width * tile_size));
+                      item_tile_height * tile_size));
             }
         }
 
