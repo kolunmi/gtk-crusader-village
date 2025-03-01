@@ -18,7 +18,7 @@ sudo ninja -C build install
 ## This is a WIP
 
 TODO:
-* Finish editor functionality (adding all the in-game buildings and units and being able to place them in the editor, fix zooming, etc)
+* Finish editor functionality (adding all the in-game buildings and units and being able to place them in the editor, etc)
 * Save/Export: Add two impls
   1. "Normal" likely just a serialized `GVariant`
   2. `.aiv` format: the binary format from the original game is not fully understood afaict, so this will require some reverse engineering. Please file an issue if you have any useful information regarding this format
