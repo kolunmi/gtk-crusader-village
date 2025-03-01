@@ -16,6 +16,12 @@
         </child>
         
         <child>
+          <object class="GtkSeparator">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          </object>
+        </child>
+        
+        <child>
           <object class="GtkScrolledWindow">
             <property name="vexpand">TRUE</property>
             <property name="hscrollbar-policy">GTK_POLICY_NEVER</property>
