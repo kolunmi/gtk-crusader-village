@@ -169,6 +169,11 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
       NULL);
 
   g_object_set (
+      self->timeline_view,
+      "map", self->map,
+      NULL);
+
+  g_object_set (
       self->map_editor_status,
       "editor", self->map_editor,
       NULL);

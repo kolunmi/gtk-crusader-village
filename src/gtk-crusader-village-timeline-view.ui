@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageTimelineView" parent="GtkCrusaderVillageUtilBin">
+    <property name="width-request">150</property>
+    <property name="child">
+      <object class="GtkBox">
+        <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+
+        <child>
+          <object class="GtkLabel" id="stats"/>
+        </child>
+        
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="vexpand">TRUE</property>
+            <property name="hscrollbar-policy">GTK_POLICY_NEVER</property>
+            <property name="propagate-natural-width">TRUE</property>
+            <property name="child">
+              <object class="GtkListView" id="list_view">
+                <property name="show-separators">TRUE</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        
+      </object>
+    </property>
+  </template>
+</interface>

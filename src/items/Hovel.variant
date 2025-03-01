@@ -1,0 +1,9 @@
+{
+    "name": <"Hovel">,
+    "description": <"">,
+    "thumbnail-resource": <"">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
+    "kind": <"building">,
+    "tile-width": <4>,
+    "tile-height": <4>
+}

@@ -64,7 +64,6 @@ struct _GtkCrusaderVillageMapEditor
   double      last_drag_y;
 
   GtkGesture                   *draw_gesture;
-  gboolean                      drawing;
   GtkGesture                   *cancel_gesture;
   gboolean                      draw_is_cancelled;
   GtkCrusaderVillageItemStroke *current_stroke;
@@ -1033,7 +1032,6 @@ draw_gesture_begin (GtkGestureDrag              *self,
       "item", selected_item,
       NULL);
 
-  editor->drawing = TRUE;
   draw_gesture_update (self, 0.0, 0.0, editor);
 }
 
@@ -1050,11 +1048,10 @@ draw_gesture_update (GtkGestureDrag              *gesture,
   int item_tile_width                     = 0;
   int item_tile_height                    = 0;
 
-  if (!editor->drawing)
+  if (editor->current_stroke == NULL)
     return;
   if (editor->hover_x < 0 || editor->hover_y < 0)
     return;
-  g_assert (editor->current_stroke != NULL);
 
   g_object_get (
       editor->map,
@@ -1103,20 +1100,28 @@ draw_gesture_end (GtkGestureDrag              *gesture,
                   double                       offset_y,
                   GtkCrusaderVillageMapEditor *editor)
 {
-  g_autoptr (GListStore) strokes = NULL;
+  g_autoptr (GArray) instances = NULL;
 
-  if (!editor->drawing)
+  if (editor->current_stroke == NULL)
     return;
 
-  g_assert (editor->current_stroke != NULL);
-
   g_object_get (
-      editor->map,
-      "strokes", &strokes,
+      editor->current_stroke,
+      "instances", &instances,
       NULL);
 
-  g_list_store_append (strokes, g_steal_pointer (&editor->current_stroke));
-  editor->drawing = FALSE;
+  if (instances->len > 0)
+    {
+      g_autoptr (GListStore) strokes = NULL;
+
+      g_object_get (
+          editor->map,
+          "strokes", &strokes,
+          NULL);
+      g_list_store_append (strokes, g_steal_pointer (&editor->current_stroke));
+    }
+  else
+    g_clear_object (&editor->current_stroke);
 }
 
 static void
@@ -1126,11 +1131,10 @@ cancel_gesture_pressed (GtkGestureClick             *self,
                         double                       y,
                         GtkCrusaderVillageMapEditor *editor)
 {
-  if (!editor->drawing)
+  if (editor->current_stroke == NULL)
     return;
 
   g_clear_object (&editor->current_stroke);
-  editor->drawing = FALSE;
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 

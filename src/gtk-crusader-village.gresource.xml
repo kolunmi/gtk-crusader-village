@@ -6,6 +6,8 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area-item.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
 
     <!-- items -->
@@ -57,6 +59,10 @@
     <file>items/Tower4.variant</file>
     <file>items/Tower5.variant</file>
     <file>items/TunnellersGuild.variant</file>
+
+    <file>items/Granary.variant</file>
+    <file>items/Hovel.variant</file>
+    <file>items/WoodcuttersHut.variant</file>
 
     <!-- assets -->
     <file>shc-data/ArabArcher.png</file>
