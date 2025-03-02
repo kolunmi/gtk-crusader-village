@@ -3,8 +3,8 @@
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillageWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">GTK Crusader Village</property>
-    <property name="default-width">1500</property>
-    <property name="default-height">1000</property>
+    <property name="default-width">1200</property>
+    <property name="default-height">800</property>
     <property name="titlebar">
       <object class="GtkHeaderBar">
         <child type="end">
