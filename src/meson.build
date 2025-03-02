@@ -9,6 +9,7 @@ gtk_crusader_village_sources = [
   'gtk-crusader-village-timeline-view.c',
   'gtk-crusader-village-timeline-view-item.c',
   'gtk-crusader-village-map-editor.c',
+  'gtk-crusader-village-map-editor-overlay.c',
   'gtk-crusader-village-map-editor-status.c',
   'gtk-crusader-village-item.c',
   'gtk-crusader-village-item-store.c',

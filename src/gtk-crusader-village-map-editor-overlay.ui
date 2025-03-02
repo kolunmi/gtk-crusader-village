@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageMapEditorOverlay" parent="GtkCrusaderVillageUtilBin">
+    <property name="child">
+      <object class="GtkOverlay" id="overlay">
+
+        <property name="child">
+          <object class="GtkScrolledWindow" id="scrolled_window"/>
+        </property>
+
+        <child type="overlay">
+          <object class="GtkFrame">
+            <style>
+              <class name="toolbar"/>
+              <class name="content-view"/>
+            </style>
+            
+            <property name="halign">GTK_ALIGN_CENTER</property>
+            <property name="valign">GTK_ALIGN_END</property>
+            <property name="margin-bottom">20</property>
+
+            <property name="child">
+              <object class="GtkBox">
+                <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                <property name="spacing">5</property>
+
+                <child>
+                  <object class="GtkButton" id="select">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Select</property>
+                    <property name="icon-name">edit-select-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="select_all">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Select All</property>
+                    <property name="icon-name">edit-select-all-symbolic</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+                  </object>
+                </child>
+                
+                <child>
+                  <object class="GtkButton" id="copy">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Copy</property>
+                    <property name="icon-name">edit-copy-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="cut">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Cut</property>
+                    <property name="icon-name">edit-cut-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="paste">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Paste</property>
+                    <property name="icon-name">edit-paste-symbolic</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+                  </object>
+                </child>
+                
+                <child>
+                  <object class="GtkButton" id="clear">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Clear</property>
+                    <property name="icon-name">edit-clear-all-symbolic</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+                  </object>
+                </child>
+                
+                <child>
+                  <object class="GtkButton" id="undo">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Undo</property>
+                    <property name="icon-name">edit-undo-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="redo">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Redo</property>
+                    <property name="icon-name">edit-redo-symbolic</property>
+                  </object>
+                </child>
+                
+              </object>
+            </property>
+
+          </object>
+        </child>
+        
+      </object>
+    </property>
+  </template>
+</interface>

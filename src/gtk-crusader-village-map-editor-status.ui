@@ -5,11 +5,11 @@
     <property name="has-tooltip">TRUE</property>
     <property name="child">
       <object class="GtkCenterBox">
-        <property name="orientation">horizontal</property>
+        <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
 
         <property name="start-widget">
           <object class="GtkBox">
-            <property name="orientation">horizontal</property>
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             
             <child>
               <object class="GtkLabel" id="name_label"/>
@@ -20,7 +20,7 @@
         
         <property name="end-widget">
           <object class="GtkBox">
-            <property name="orientation">horizontal</property>
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             
             <child>
               <object class="GtkLabel" id="hover_label"/>

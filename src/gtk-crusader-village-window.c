@@ -22,6 +22,7 @@
 
 #include "gtk-crusader-village-item-area.h"
 #include "gtk-crusader-village-item-store.h"
+#include "gtk-crusader-village-map-editor-overlay.h"
 #include "gtk-crusader-village-map-editor-status.h"
 #include "gtk-crusader-village-map-editor.h"
 #include "gtk-crusader-village-map.h"
@@ -131,6 +132,7 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR);
+  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_OVERLAY);
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_STATUS);
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA);
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_TIMELINE_VIEW);

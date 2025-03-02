@@ -85,7 +85,7 @@ gtk_crusader_village_map_editor_status_dispose (GObject *object)
   g_clear_object (&self->editor);
 
   if (self->map != NULL)
-    g_signal_handlers_disconnect_by_func (self->map, hover_changed, self);
+    g_signal_handlers_disconnect_by_func (self->map, name_changed, self);
   g_clear_object (&self->map);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_status_parent_class)->dispose (object);
