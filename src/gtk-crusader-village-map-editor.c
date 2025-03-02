@@ -90,6 +90,7 @@ enum
 
   PROP_HOVER_X,
   PROP_HOVER_Y,
+  PROP_DRAWING,
 
   LAST_NATIVE_PROP,
 
@@ -291,6 +292,9 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
       break;
     case PROP_HOVER_Y:
       g_value_set_int (value, self->hover_y);
+      break;
+    case PROP_DRAWING:
+      g_value_set_boolean (value, self->current_stroke != NULL);
       break;
     case PROP_HADJUSTMENT:
       g_value_set_object (value, self->hadjustment);
@@ -512,6 +516,14 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "Hover Y",
           "The y coordinate of the tile over which the editor is hovered, or -1 if no tile is currently hovered",
           -1, G_MAXINT, -1,
+          G_PARAM_READABLE);
+
+  props[PROP_DRAWING] =
+      g_param_spec_boolean (
+          "drawing",
+          "Drawing",
+          "Whether a drawing operation is currently taking place",
+          FALSE,
           G_PARAM_READABLE);
 
   g_object_class_install_properties (object_class, LAST_NATIVE_PROP, props);
@@ -1035,6 +1047,8 @@ draw_gesture_begin (GtkGestureDrag              *self,
       NULL);
 
   draw_gesture_update (self, 0.0, 0.0, editor);
+
+  g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
 static void
@@ -1124,6 +1138,8 @@ draw_gesture_end (GtkGestureDrag              *gesture,
     }
   else
     g_clear_object (&editor->current_stroke);
+
+  g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
 static void

@@ -24,6 +24,9 @@
 #include "gtk-crusader-village-map-editor.h"
 #include "gtk-crusader-village-map.h"
 
+#define TOOLBAR_HIDDEN_MAX_POINTER_DISTANCE 150.0
+#define TOOLBAR_HIDDEN_MIN_OPACITY          0.3
+
 struct _GtkCrusaderVillageMapEditorOverlay
 {
   GtkCrusaderVillageUtilBin parent_instance;
@@ -32,9 +35,14 @@ struct _GtkCrusaderVillageMapEditorOverlay
   GtkCrusaderVillageMap       *map;
   GListStore                  *strokes;
 
+  double   x;
+  double   y;
+  gboolean drawing;
+
   /* Template widgets */
   GtkOverlay        *overlay;
   GtkScrolledWindow *scrolled_window;
+  GtkFrame          *frame;
   GtkButton         *select;
   GtkButton         *select_all;
   GtkButton         *copy;
@@ -71,6 +79,30 @@ strokes_changed (GListModel                         *self,
                  GtkCrusaderVillageMapEditorOverlay *timeline_view);
 
 static void
+drawing_changed (GtkCrusaderVillageMapEditor        *editor,
+                 GParamSpec                         *pspec,
+                 GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+motion_enter (GtkEventControllerMotion           *self,
+              gdouble                             x,
+              gdouble                             y,
+              GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+motion_event (GtkEventControllerMotion           *self,
+              gdouble                             x,
+              gdouble                             y,
+              GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+motion_leave (GtkEventControllerMotion           *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self);
+
+static void
 read_map (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
@@ -82,7 +114,10 @@ gtk_crusader_village_map_editor_overlay_dispose (GObject *object)
   GtkCrusaderVillageMapEditorOverlay *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR_OVERLAY (object);
 
   if (self->editor != NULL)
-    g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+    {
+      g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+      g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
+    }
   g_clear_object (&self->editor);
 
   g_clear_object (&self->map);
@@ -124,7 +159,10 @@ gtk_crusader_village_map_editor_overlay_set_property (GObject      *object,
     case PROP_EDITOR:
       {
         if (self->editor != NULL)
-          g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+          {
+            g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+            g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
+          }
         g_clear_object (&self->editor);
 
         g_clear_object (&self->map);
@@ -139,6 +177,8 @@ gtk_crusader_village_map_editor_overlay_set_property (GObject      *object,
             read_map (self);
             g_signal_connect (self->editor, "notify::map",
                               G_CALLBACK (map_changed), self);
+            g_signal_connect (self->editor, "notify::drawing",
+                              G_CALLBACK (drawing_changed), self);
           }
         else
           update_strokes_ui (self);
@@ -174,6 +214,7 @@ gtk_crusader_village_map_editor_overlay_class_init (GtkCrusaderVillageMapEditorO
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-map-editor-overlay.ui");
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, overlay);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, scrolled_window);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, frame);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, select);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, select_all);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, copy);
@@ -187,7 +228,15 @@ gtk_crusader_village_map_editor_overlay_class_init (GtkCrusaderVillageMapEditorO
 static void
 gtk_crusader_village_map_editor_overlay_init (GtkCrusaderVillageMapEditorOverlay *self)
 {
+  GtkEventController *motion_controller = NULL;
+
   gtk_widget_init_template (GTK_WIDGET (self));
+
+  motion_controller = gtk_event_controller_motion_new ();
+  g_signal_connect (motion_controller, "enter", G_CALLBACK (motion_enter), self);
+  g_signal_connect (motion_controller, "motion", G_CALLBACK (motion_event), self);
+  g_signal_connect (motion_controller, "leave", G_CALLBACK (motion_leave), self);
+  gtk_widget_add_controller (GTK_WIDGET (self), motion_controller);
 }
 
 static void
@@ -206,6 +255,111 @@ strokes_changed (GListModel                         *self,
                  GtkCrusaderVillageMapEditorOverlay *overlay)
 {
   update_strokes_ui (overlay);
+}
+
+static void
+drawing_changed (GtkCrusaderVillageMapEditor        *editor,
+                 GParamSpec                         *pspec,
+                 GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  g_object_get (
+      overlay->editor,
+      "drawing", &overlay->drawing,
+      NULL);
+
+  update_ui_opacity (overlay);
+}
+
+static void
+motion_enter (GtkEventControllerMotion           *self,
+              gdouble                             x,
+              gdouble                             y,
+              GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  overlay->x = x;
+  overlay->y = y;
+  update_ui_opacity (overlay);
+}
+
+static void
+motion_event (GtkEventControllerMotion           *self,
+              gdouble                             x,
+              gdouble                             y,
+              GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  overlay->x = x;
+  overlay->y = y;
+  update_ui_opacity (overlay);
+}
+
+static void
+motion_leave (GtkEventControllerMotion           *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  overlay->x = -1.0;
+  overlay->y = -1.0;
+  update_ui_opacity (overlay);
+}
+
+static double
+distance_to_rect (double rx,
+                  double ry,
+                  double rw,
+                  double rh,
+                  double x,
+                  double y)
+{
+  if (x >= rx && x < rx + rw)
+    return y < ry ? ry - y : y - (ry + rh);
+  else if (y >= ry && y < ry + rh)
+    return x < rx ? rx - x : x - (rx + rw);
+  else
+    return graphene_point_distance (
+        &GRAPHENE_POINT_INIT (x, y),
+        &GRAPHENE_POINT_INIT (
+            x < rx ? rx : rx + rw,
+            y < ry ? ry : ry + rh),
+        NULL, NULL);
+}
+
+static void
+update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self)
+{
+  if (!self->drawing || self->x < 0.0 || self->y < 0.0)
+    gtk_widget_set_opacity (GTK_WIDGET (self->frame), 1.0);
+  else
+    {
+      graphene_rect_t bounds   = { 0 };
+      gboolean        computed = FALSE;
+
+      computed = gtk_widget_compute_bounds (GTK_WIDGET (self->frame), GTK_WIDGET (self), &bounds);
+
+      if (computed &&
+          (self->x < bounds.origin.x ||
+           self->y < bounds.origin.y ||
+           self->x >= bounds.origin.x + bounds.size.width ||
+           self->y >= bounds.origin.y + bounds.size.height))
+        {
+          double distance = 0.0;
+          double opacity  = 0.0;
+
+          distance = distance_to_rect (
+              bounds.origin.x, bounds.origin.y,
+              bounds.size.width, bounds.size.height,
+              self->x, self->y);
+
+          opacity = distance >= TOOLBAR_HIDDEN_MAX_POINTER_DISTANCE
+                        ? 1.0
+                        : TOOLBAR_HIDDEN_MIN_OPACITY +
+                              distance /
+                                  (TOOLBAR_HIDDEN_MAX_POINTER_DISTANCE *
+                                   (1.0 + TOOLBAR_HIDDEN_MIN_OPACITY));
+
+          gtk_widget_set_opacity (GTK_WIDGET (self->frame), opacity);
+        }
+      else
+        gtk_widget_set_opacity (GTK_WIDGET (self->frame), TOOLBAR_HIDDEN_MIN_OPACITY);
+    }
 }
 
 static void
