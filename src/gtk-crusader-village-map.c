@@ -161,7 +161,7 @@ gtk_crusader_village_map_class_init (GtkCrusaderVillageMapClass *klass)
           "width",
           "Width",
           "The width of the map",
-          16, 512, 98,
+          16, 16384, 98,
           G_PARAM_READWRITE);
 
   props[PROP_HEIGHT] =
@@ -169,7 +169,7 @@ gtk_crusader_village_map_class_init (GtkCrusaderVillageMapClass *klass)
           "height",
           "Height",
           "The height of the map",
-          16, 512, 98,
+          16, 16384, 98,
           G_PARAM_READWRITE);
 
   props[PROP_STROKES] =
