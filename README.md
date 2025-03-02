@@ -1,5 +1,7 @@
 # GTK Crusader Village
 
+![Image](https://github.com/user-attachments/assets/4a22695a-73ac-4a1b-8f1b-7de2605a822d)
+
 ## What is this
 
 In [Stronghold Crusader](https://en.wikipedia.org/wiki/Stronghold:_Crusader), `.aiv` (AI Village) files detail the way enemy lords construct their castles in skirmish mode. The [official AIV editor](https://stronghold.heavengames.com/downloads/showfile.php?fileid=7534) serves its purpose, but I think it could be improved. This application aims to be an ergonomic, cross-platform `.aiv` editor GUI.
