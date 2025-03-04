@@ -652,15 +652,6 @@ gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
   update_scrollable (editor, FALSE);
 }
 
-typedef struct
-{
-  GtkCrusaderVillageMapEditor *editor;
-  int                          map_tile_width;
-  int                          map_tile_height;
-  GtkSnapshot                 *snapshot;
-  double                       tile_size;
-} GridIterData;
-
 static void
 gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                                           GtkSnapshot *snapshot)

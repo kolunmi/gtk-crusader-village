@@ -139,7 +139,7 @@ gtk_crusader_village_item_stroke_init (GtkCrusaderVillageItemStroke *self)
   self->instances = g_array_new (FALSE, TRUE, sizeof (GtkCrusaderVillageItemStrokeInstance));
 }
 
-static gboolean
+static inline gboolean
 rect_insersects (int ax,
                  int ay,
                  int aw,

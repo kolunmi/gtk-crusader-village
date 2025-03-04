@@ -25,6 +25,7 @@
 #include "gtk-crusader-village-map-editor-overlay.h"
 #include "gtk-crusader-village-map-editor-status.h"
 #include "gtk-crusader-village-map-editor.h"
+#include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-timeline-view.h"
 #include "gtk-crusader-village-window.h"
@@ -37,6 +38,7 @@ struct _GtkCrusaderVillageWindow
 
   GtkCrusaderVillageItemStore *item_store;
   GtkCrusaderVillageMap       *map;
+  GtkCrusaderVillageMapHandle *map_handle;
 
   /* Template widgets */
   GtkCrusaderVillageMapEditor       *map_editor;
@@ -66,6 +68,7 @@ gtk_crusader_village_window_dispose (GObject *object)
   g_clear_object (&self->settings);
   g_clear_object (&self->item_store);
   g_clear_object (&self->map);
+  g_clear_object (&self->map_handle);
 
   G_OBJECT_CLASS (gtk_crusader_village_window_parent_class)->dispose (object);
 }
@@ -163,6 +166,10 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
       "width", 32,
       "height", 32,
       NULL);
+  self->map_handle = g_object_new (
+      GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+      "map", self->map,
+      NULL);
 
   g_object_set (
       self->map_editor,
@@ -172,7 +179,7 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 
   g_object_set (
       self->timeline_view,
-      "map", self->map,
+      "map-handle", self->map_handle,
       NULL);
 
   g_object_set (

@@ -7,11 +7,25 @@
         <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
 
         <property name="start-widget">
-          <object class="GtkLabel" id="left"/>
+          <object class="GtkBox">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <child>
+              <object class="GtkImage" id="inactive_indicator">
+                <property name="margin-end">10</property>
+                <property name="icon-name">edit-delete-symbolic</property>
+                <property name="visible">FALSE</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="left"/>
+            </child>
+          </object>
         </property>
+        
         <property name="center-widget">
           <object class="GtkLabel" id="center"/>
         </property>
+        
         <property name="end-widget">
           <object class="GtkLabel" id="right">
             <property name="margin-start">10</property>

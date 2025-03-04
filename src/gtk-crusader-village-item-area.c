@@ -121,12 +121,15 @@ gtk_crusader_village_item_area_set_property (GObject      *object,
         GtkSingleSelection *single_selection_model = NULL;
         GtkFilterListModel *filter_list_model      = NULL;
 
-        g_clear_object (&self->item_store);
-        self->item_store = g_value_dup_object (value);
-
         single_selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
         filter_list_model      = GTK_FILTER_LIST_MODEL (gtk_single_selection_get_model (single_selection_model));
-        gtk_filter_list_model_set_model (filter_list_model, self->item_store != NULL ? G_LIST_MODEL (self->item_store) : NULL);
+        gtk_filter_list_model_set_model (filter_list_model, NULL);
+
+        g_clear_object (&self->item_store);
+
+        self->item_store = g_value_dup_object (value);
+        if (self->item_store != NULL)
+          gtk_filter_list_model_set_model (filter_list_model, G_LIST_MODEL (self->item_store));
       }
       break;
     default:

@@ -21,7 +21,7 @@
 #include "config.h"
 
 #include "gtk-crusader-village-item-stroke.h"
-#include "gtk-crusader-village-map.h"
+#include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-timeline-view-item.h"
 #include "gtk-crusader-village-timeline-view.h"
 
@@ -29,7 +29,11 @@ struct _GtkCrusaderVillageTimelineView
 {
   GtkCrusaderVillageUtilBin parent_instance;
 
-  GtkCrusaderVillageMap *map;
+  GtkSingleSelection *selection;
+  GListStore         *wrapper_store;
+
+  GtkCrusaderVillageMapHandle *handle;
+  GListModel                  *model;
 
   /* Template widgets */
   GtkLabel    *stats;
@@ -42,7 +46,7 @@ enum
 {
   PROP_0,
 
-  PROP_MAP,
+  PROP_MAP_HANDLE,
 
   LAST_PROP
 };
@@ -50,28 +54,50 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-setup_listitem (GtkListItemFactory *factory,
-                GtkListItem        *list_item,
-                gpointer            user_data);
+setup_listitem (GtkListItemFactory             *factory,
+                GtkListItem                    *list_item,
+                GtkCrusaderVillageTimelineView *self);
 
 static void
-bind_listitem (GtkListItemFactory *factory,
-               GtkListItem        *list_item,
-               gpointer            user_data);
+bind_listitem (GtkListItemFactory             *factory,
+               GtkListItem                    *list_item,
+               GtkCrusaderVillageTimelineView *self);
 
 static void
-selection_changed (GListModel                     *self,
-                   guint                           position,
-                   guint                           removed,
-                   guint                           added,
-                   GtkCrusaderVillageTimelineView *timeline_view);
+unbind_listitem (GtkListItemFactory             *factory,
+                 GtkListItem                    *list_item,
+                 GtkCrusaderVillageTimelineView *self);
+
+static void
+listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
+                         GParamSpec                  *pspec,
+                         GtkListItem                 *list_item);
+
+static void
+row_activated (GtkListView                    *self,
+               guint                           position,
+               GtkCrusaderVillageTimelineView *timeline_view);
+
+static void
+cursor_changed (GtkCrusaderVillageMapHandle    *handle,
+                GParamSpec                     *pspec,
+                GtkCrusaderVillageTimelineView *timeline_view);
+
+static void
+update_selected (GtkCrusaderVillageTimelineView *self);
+
+static void
+update_ui (GtkCrusaderVillageTimelineView *self);
 
 static void
 gtk_crusader_village_timeline_view_dispose (GObject *object)
 {
   GtkCrusaderVillageTimelineView *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW (object);
 
-  g_clear_object (&self->map);
+  g_clear_object (&self->selection);
+  g_clear_object (&self->wrapper_store);
+  g_clear_object (&self->handle);
+  g_clear_object (&self->model);
 
   G_OBJECT_CLASS (gtk_crusader_village_timeline_view_parent_class)->dispose (object);
 }
@@ -86,8 +112,8 @@ gtk_crusader_village_timeline_view_get_property (GObject    *object,
 
   switch (prop_id)
     {
-    case PROP_MAP:
-      g_value_set_object (value, self->map);
+    case PROP_MAP_HANDLE:
+      g_value_set_object (value, self->handle);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -104,28 +130,27 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
 
   switch (prop_id)
     {
-    case PROP_MAP:
+    case PROP_MAP_HANDLE:
       {
-        GtkSingleSelection *selection = NULL;
+        g_list_store_remove_all (self->wrapper_store);
+        g_clear_object (&self->handle);
+        g_clear_object (&self->model);
 
-        g_clear_object (&self->map);
-        self->map = g_value_dup_object (value);
+        self->handle = g_value_dup_object (value);
 
-        selection = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-
-        if (self->map != NULL)
+        if (self->handle != NULL)
           {
-            g_autoptr (GListModel) strokes = NULL;
-
             g_object_get (
-                self->map,
-                "strokes", &strokes,
+                self->handle,
+                "model", &self->model,
                 NULL);
 
-            gtk_single_selection_set_model (selection, G_LIST_MODEL (strokes));
+            g_list_store_append (self->wrapper_store, g_object_ref (self->model));
+            g_signal_connect (self->handle, "notify::cursor",
+                              G_CALLBACK (cursor_changed), self);
           }
-        else
-          gtk_single_selection_set_model (selection, NULL);
+
+        update_ui (self);
       }
       break;
     default:
@@ -143,12 +168,12 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
   object_class->get_property = gtk_crusader_village_timeline_view_get_property;
   object_class->set_property = gtk_crusader_village_timeline_view_set_property;
 
-  props[PROP_MAP] =
+  props[PROP_MAP_HANDLE] =
       g_param_spec_object (
-          "map",
-          "Map",
-          "The map this widget will use",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP,
+          "map-handle",
+          "Map Handle",
+          "The map handle this widget will use",
+          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
           G_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
@@ -161,27 +186,42 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
 static void
 gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
 {
-  GtkListItemFactory *factory         = NULL;
-  GtkSelectionModel  *selection_model = NULL;
+  GtkListItemFactory  *factory       = NULL;
+  GListStore          *left_model    = NULL;
+  GtkFlattenListModel *right_model   = NULL;
+  GListStore          *main_store    = NULL;
+  GtkFlattenListModel *flatten_model = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  factory         = gtk_signal_list_item_factory_new ();
-  selection_model = GTK_SELECTION_MODEL (gtk_single_selection_new (NULL));
-
+  factory = gtk_signal_list_item_factory_new ();
   g_signal_connect (factory, "setup", G_CALLBACK (setup_listitem), self);
   g_signal_connect (factory, "bind", G_CALLBACK (bind_listitem), self);
+  g_signal_connect (factory, "unbind", G_CALLBACK (unbind_listitem), self);
   gtk_list_view_set_factory (self->list_view, factory);
-  gtk_list_view_set_model (self->list_view, selection_model);
 
-  g_signal_connect (selection_model, "items-changed",
-                    G_CALLBACK (selection_changed), self);
+  /* revisit this */
+  left_model          = g_list_store_new (GTK_TYPE_STRING_OBJECT);
+  self->wrapper_store = g_list_store_new (G_TYPE_LIST_MODEL);
+  right_model         = gtk_flatten_list_model_new (g_object_ref (G_LIST_MODEL (self->wrapper_store)));
+  main_store          = g_list_store_new (G_TYPE_LIST_MODEL);
+  flatten_model       = gtk_flatten_list_model_new (G_LIST_MODEL (main_store));
+  self->selection     = gtk_single_selection_new (G_LIST_MODEL (flatten_model));
+
+  g_list_store_append (left_model, gtk_string_object_new ("Start!"));
+  g_list_store_append (main_store, left_model);
+  g_list_store_append (main_store, right_model);
+
+  g_signal_connect (self->list_view, "activate",
+                    G_CALLBACK (row_activated), self);
+
+  gtk_list_view_set_model (self->list_view, GTK_SELECTION_MODEL (self->selection));
 }
 
 static void
-setup_listitem (GtkListItemFactory *factory,
-                GtkListItem        *list_item,
-                gpointer            user_data)
+setup_listitem (GtkListItemFactory             *factory,
+                GtkListItem                    *list_item,
+                GtkCrusaderVillageTimelineView *self)
 {
   GtkCrusaderVillageTimelineViewItem *area_item = NULL;
 
@@ -190,61 +230,119 @@ setup_listitem (GtkListItemFactory *factory,
 }
 
 static void
-bind_listitem (GtkListItemFactory *factory,
-               GtkListItem        *list_item,
-               gpointer            user_data)
+bind_listitem (GtkListItemFactory             *factory,
+               GtkListItem                    *list_item,
+               GtkCrusaderVillageTimelineView *self)
 {
-  GtkCrusaderVillageTimelineView     *self      = user_data;
-  GtkCrusaderVillageItemStroke       *stroke    = NULL;
-  GtkCrusaderVillageTimelineViewItem *view_item = NULL;
+  GObject *stroke = NULL;
 
-  stroke    = GTK_CRUSADER_VILLAGE_ITEM_STROKE (gtk_list_item_get_item (list_item));
-  view_item = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW_ITEM (gtk_list_item_get_child (list_item));
+  stroke = gtk_list_item_get_item (list_item);
 
+  if (GTK_CRUSADER_VILLAGE_IS_ITEM_STROKE (stroke))
+    {
+      GtkWidget *view_item = NULL;
+
+      view_item = gtk_list_item_get_child (list_item);
+      g_object_set (
+          view_item,
+          "stroke", stroke,
+          NULL);
+    }
+
+  if (self->handle != NULL)
+    g_signal_connect (self->handle, "notify::cursor",
+                      G_CALLBACK (listitem_cursor_changed), list_item);
+}
+
+static void
+unbind_listitem (GtkListItemFactory             *factory,
+                 GtkListItem                    *list_item,
+                 GtkCrusaderVillageTimelineView *self)
+{
+  g_signal_handlers_disconnect_by_func (
+      self->handle, listitem_cursor_changed, list_item);
+}
+
+static void
+listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
+                         GParamSpec                  *pspec,
+                         GtkListItem                 *list_item)
+{
+  guint      cursor    = 0;
+  guint      position  = 0;
+  gboolean   inactive  = FALSE;
+  GtkWidget *view_item = NULL;
+
+  g_object_get (
+      handle,
+      "cursor", &cursor,
+      NULL);
+  position = gtk_list_item_get_position (list_item);
+  inactive = position > cursor;
+
+  view_item = gtk_list_item_get_child (list_item);
   g_object_set (
       view_item,
-      "stroke", stroke,
+      "inactive", inactive,
       NULL);
 }
 
 static void
-selection_changed (GListModel                     *self,
-                   guint                           position,
-                   guint                           removed,
-                   guint                           added,
-                   GtkCrusaderVillageTimelineView *timeline_view)
+row_activated (GtkListView                    *self,
+               guint                           position,
+               GtkCrusaderVillageTimelineView *timeline_view)
 {
-  GtkSelectionModel *model     = NULL;
-  guint              n_strokes = 0;
+  g_object_set (
+      timeline_view->handle,
+      "cursor", position,
+      NULL);
+}
 
-  model = gtk_list_view_get_model (timeline_view->list_view);
-  if (model != NULL)
-    n_strokes = g_list_model_get_n_items (G_LIST_MODEL (model));
+static void
+cursor_changed (GtkCrusaderVillageMapHandle    *handle,
+                GParamSpec                     *pspec,
+                GtkCrusaderVillageTimelineView *timeline_view)
+{
+  update_selected (timeline_view);
+  update_ui (timeline_view);
+}
 
-  if (n_strokes > 0)
+static void
+update_selected (GtkCrusaderVillageTimelineView *self)
+{
+  guint cursor = 0;
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+
+  gtk_list_view_scroll_to (
+      self->list_view, cursor, GTK_LIST_SCROLL_SELECT, NULL);
+}
+
+static void
+update_ui (GtkCrusaderVillageTimelineView *self)
+{
+  guint selected  = 0;
+  guint n_strokes = 0;
+  char  buf[128]  = { 0 };
+
+  if (self->handle == NULL)
+    return;
+
+  selected  = gtk_single_selection_get_selected (self->selection);
+  n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
+
+  if (selected == n_strokes)
     {
-      char buf[128] = { 0 };
-
-      /* Hack? Only way I can find to get the
-       * list to scroll all the way down...
-       */
-      gtk_widget_allocate (
-          GTK_WIDGET (timeline_view->list_view),
-          gtk_widget_get_width (GTK_WIDGET (timeline_view)),
-          gtk_widget_get_height (GTK_WIDGET (timeline_view)),
-          -1, NULL);
-
-      gtk_list_view_scroll_to (
-          timeline_view->list_view, n_strokes - 1,
-          GTK_LIST_SCROLL_SELECT, NULL);
-
       if (n_strokes == 1)
         g_snprintf (buf, sizeof (buf), "1 stroke");
       else
         g_snprintf (buf, sizeof (buf), "%d strokes", n_strokes);
-
-      gtk_label_set_label (timeline_view->stats, buf);
     }
   else
-    gtk_label_set_label (timeline_view->stats, "---");
+    g_snprintf (buf, sizeof (buf), "cursor: %d", selected);
+
+  gtk_label_set_label (self->stats, buf);
 }

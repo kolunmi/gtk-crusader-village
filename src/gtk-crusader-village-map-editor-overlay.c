@@ -100,6 +100,14 @@ motion_leave (GtkEventControllerMotion           *self,
               GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
+clear_clicked (GtkButton                          *self,
+               GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+undo_clicked (GtkButton                          *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
 update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
@@ -232,6 +240,9 @@ gtk_crusader_village_map_editor_overlay_init (GtkCrusaderVillageMapEditorOverlay
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  g_signal_connect (self->clear, "clicked", G_CALLBACK (clear_clicked), self);
+  g_signal_connect (self->undo, "clicked", G_CALLBACK (undo_clicked), self);
+
   motion_controller = gtk_event_controller_motion_new ();
   g_signal_connect (motion_controller, "enter", G_CALLBACK (motion_enter), self);
   g_signal_connect (motion_controller, "motion", G_CALLBACK (motion_event), self);
@@ -299,6 +310,26 @@ motion_leave (GtkEventControllerMotion           *self,
   overlay->x = -1.0;
   overlay->y = -1.0;
   update_ui_opacity (overlay);
+}
+
+static void
+clear_clicked (GtkButton                          *self,
+               GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  g_list_store_remove_all (G_LIST_STORE (overlay->strokes));
+}
+
+static void
+undo_clicked (GtkButton                          *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  guint n_strokes = 0;
+
+  n_strokes = g_list_model_get_n_items (G_LIST_MODEL (overlay->strokes));
+  if (n_strokes == 0)
+    return;
+
+  g_list_store_remove (G_LIST_STORE (overlay->strokes), n_strokes - 1);
 }
 
 static double
