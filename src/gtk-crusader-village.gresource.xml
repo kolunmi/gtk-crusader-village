@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/am/kolunmi/GtkCrusaderVillage"> 
+  <gresource prefix="/am/kolunmi/GtkCrusaderVillage">
+
+    <file>styles.css</file>
+    
+    <file preprocess="xml-stripblanks">icons/scalable/actions/step-over-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-turn-left-up-symbolic.svg</file>
+
+    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    
     <file preprocess="xml-stripblanks">gtk-crusader-village-window.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-preferences-window.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area.ui</file>
@@ -9,7 +17,6 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
-    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
 
     <!-- items -->
     <file>items/ArabArcher.variant</file>

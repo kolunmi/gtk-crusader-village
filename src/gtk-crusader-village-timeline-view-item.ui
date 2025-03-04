@@ -11,9 +11,21 @@
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             <child>
               <object class="GtkImage" id="inactive_indicator">
+                <style>
+                  <class name="icon-error"/>
+                </style>
+                <property name="margin-start">5</property>
                 <property name="margin-end">10</property>
-                <property name="icon-name">edit-delete-symbolic</property>
                 <property name="visible">FALSE</property>
+                <property name="icon-name">step-over-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkImage" id="insert_indicator">
+                <property name="margin-start">5</property>
+                <property name="margin-end">10</property>
+                <property name="visible">FALSE</property>
+                <property name="icon-name">arrow-turn-left-up-symbolic</property>
               </object>
             </child>
             <child>

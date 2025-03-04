@@ -29,6 +29,23 @@
             </property>
           </object>
         </child>
+
+        <child>
+          <object class="GtkSeparator">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkCenterBox">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <property name="start-widget">
+              <object class="GtkCheckButton" id="insert_mode">
+                <property name="label">Insert</property>
+              </object>
+            </property>
+          </object>
+        </child>
         
       </object>
     </property>

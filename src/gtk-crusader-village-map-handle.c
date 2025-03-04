@@ -36,7 +36,9 @@ struct _GtkCrusaderVillageMapHandle
   GListStore          *memory;
   GListStore          *backing_model;
   GtkFlattenListModel *flatten_model;
-  guint                cursor;
+
+  guint    cursor;
+  gboolean insert_mode;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageMapHandle, gtk_crusader_village_map_handle, G_TYPE_OBJECT)
@@ -48,6 +50,7 @@ enum
   PROP_MAP,
   PROP_MODEL,
   PROP_CURSOR,
+  PROP_INSERT_MODE,
 
   LAST_PROP
 };
@@ -92,6 +95,9 @@ gtk_crusader_village_map_handle_get_property (GObject    *object,
       break;
     case PROP_CURSOR:
       g_value_set_uint (value, self->cursor);
+      break;
+    case PROP_INSERT_MODE:
+      g_value_set_boolean (value, self->insert_mode);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -148,6 +154,7 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
         g_object_notify_by_pspec (object, props[PROP_CURSOR]);
       }
       break;
+
     case PROP_CURSOR:
       {
         guint old_cursor = 0;
@@ -219,6 +226,10 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
           }
       }
       break;
+
+    case PROP_INSERT_MODE:
+      self->insert_mode = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -258,6 +269,15 @@ gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *kl
           0, G_MAXUINT, 0,
           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
+  props[PROP_INSERT_MODE] =
+      g_param_spec_boolean (
+          "insert-mode",
+          "Insert Mode",
+          "Whether to disable the automatic discard of memory "
+          "when the underlying map's strokes are appended to",
+          FALSE,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
@@ -280,7 +300,7 @@ strokes_changed (GListModel                  *self,
 {
   guint n_strokes = 0;
 
-  if (added > 0)
+  if (!handle->insert_mode && added > 0)
     /* Goodbye! */
     g_list_store_remove_all (handle->memory);
 

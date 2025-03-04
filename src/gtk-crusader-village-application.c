@@ -148,8 +148,16 @@ gtk_crusader_village_application_dispose (GObject *object)
 static void
 gtk_crusader_village_application_activate (GApplication *app)
 {
-  GtkCrusaderVillageApplication *self   = GTK_CRUSADER_VILLAGE_APPLICATION (app);
-  GtkWindow                     *window = NULL;
+  GtkCrusaderVillageApplication *self     = GTK_CRUSADER_VILLAGE_APPLICATION (app);
+  g_autoptr (GtkCssProvider) css_provider = NULL;
+  GtkWindow *window                       = NULL;
+
+  css_provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_resource (css_provider, "/am/kolunmi/GtkCrusaderVillage/styles.css");
+  gtk_style_context_add_provider_for_display (
+      gdk_display_get_default (),
+      GTK_STYLE_PROVIDER (css_provider),
+      GTK_STYLE_PROVIDER_PRIORITY_USER);
 
 #ifdef USE_THEME_PORTAL
   init_portal (self);

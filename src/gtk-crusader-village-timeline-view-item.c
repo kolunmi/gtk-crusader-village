@@ -30,9 +30,11 @@ struct _GtkCrusaderVillageTimelineViewItem
 
   GtkCrusaderVillageItemStroke *stroke;
   gboolean                      inactive;
+  gboolean                      insert_mode;
 
   /* Template widgets */
   GtkImage *inactive_indicator;
+  GtkImage *insert_indicator;
   GtkLabel *left;
   GtkLabel *center;
   GtkLabel *right;
@@ -46,6 +48,7 @@ enum
 
   PROP_STROKE,
   PROP_INACTIVE,
+  PROP_INSERT_MODE,
 
   LAST_PROP
 };
@@ -77,6 +80,9 @@ gtk_crusader_village_timeline_view_item_get_property (GObject    *object,
       break;
     case PROP_INACTIVE:
       g_value_set_boolean (value, self->inactive);
+      break;
+    case PROP_INSERT_MODE:
+      g_value_set_boolean (value, self->insert_mode);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -145,7 +151,13 @@ gtk_crusader_village_timeline_view_item_set_property (GObject      *object,
       break;
     case PROP_INACTIVE:
       self->inactive = g_value_get_boolean (value);
-      gtk_widget_set_visible (GTK_WIDGET (self->inactive_indicator), self->inactive);
+      gtk_widget_set_visible (GTK_WIDGET (self->inactive_indicator), self->inactive && !self->insert_mode);
+      gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->inactive && self->insert_mode);
+      break;
+    case PROP_INSERT_MODE:
+      self->insert_mode = g_value_get_boolean (value);
+      gtk_widget_set_visible (GTK_WIDGET (self->inactive_indicator), self->inactive && !self->insert_mode);
+      gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->inactive && self->insert_mode);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -178,10 +190,19 @@ gtk_crusader_village_timeline_view_item_class_init (GtkCrusaderVillageTimelineVi
           FALSE,
           G_PARAM_READWRITE);
 
+  props[PROP_INSERT_MODE] =
+      g_param_spec_boolean (
+          "insert-mode",
+          "Insert Mode",
+          "Whether to indicate that this widget will not be overwritten when it is inactive",
+          FALSE,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-timeline-view-item.ui");
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, inactive_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, insert_indicator);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, left);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, center);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, right);

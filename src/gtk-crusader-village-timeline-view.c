@@ -35,9 +35,12 @@ struct _GtkCrusaderVillageTimelineView
   GtkCrusaderVillageMapHandle *handle;
   GListModel                  *model;
 
+  GBinding *insert_mode_binding;
+
   /* Template widgets */
-  GtkLabel    *stats;
-  GtkListView *list_view;
+  GtkLabel       *stats;
+  GtkListView    *list_view;
+  GtkCheckButton *insert_mode;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageTimelineView, gtk_crusader_village_timeline_view, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
@@ -74,6 +77,10 @@ listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
                          GtkListItem                 *list_item);
 
 static void
+listitem_insert_mode_changed (GtkCrusaderVillageMapHandle *handle,
+                              GParamSpec                  *pspec,
+                              GtkListItem                 *list_item);
+static void
 row_activated (GtkListView                    *self,
                guint                           position,
                GtkCrusaderVillageTimelineView *timeline_view);
@@ -96,8 +103,15 @@ gtk_crusader_village_timeline_view_dispose (GObject *object)
 
   g_clear_object (&self->selection);
   g_clear_object (&self->wrapper_store);
-  g_clear_object (&self->handle);
   g_clear_object (&self->model);
+
+  if (self->handle != NULL)
+    {
+      g_signal_handlers_disconnect_by_func (
+          self->handle, cursor_changed, self);
+      g_binding_unbind (self->insert_mode_binding);
+    }
+  g_clear_object (&self->handle);
 
   G_OBJECT_CLASS (gtk_crusader_village_timeline_view_parent_class)->dispose (object);
 }
@@ -133,8 +147,15 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
     case PROP_MAP_HANDLE:
       {
         g_list_store_remove_all (self->wrapper_store);
-        g_clear_object (&self->handle);
         g_clear_object (&self->model);
+
+        if (self->handle != NULL)
+          {
+            g_signal_handlers_disconnect_by_func (
+                self->handle, cursor_changed, self);
+            g_binding_unbind (self->insert_mode_binding);
+          }
+        g_clear_object (&self->handle);
 
         self->handle = g_value_dup_object (value);
 
@@ -146,8 +167,13 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
                 NULL);
 
             g_list_store_append (self->wrapper_store, g_object_ref (self->model));
+
             g_signal_connect (self->handle, "notify::cursor",
                               G_CALLBACK (cursor_changed), self);
+            self->insert_mode_binding = g_object_bind_property (
+                self->handle, "insert-mode",
+                self->insert_mode, "active",
+                G_BINDING_BIDIRECTIONAL);
           }
 
         update_ui (self);
@@ -181,6 +207,7 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-timeline-view.ui");
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, stats);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, list_view);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, insert_mode);
 }
 
 static void
@@ -212,10 +239,10 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
   g_list_store_append (main_store, left_model);
   g_list_store_append (main_store, right_model);
 
+  gtk_list_view_set_model (self->list_view, GTK_SELECTION_MODEL (self->selection));
+
   g_signal_connect (self->list_view, "activate",
                     G_CALLBACK (row_activated), self);
-
-  gtk_list_view_set_model (self->list_view, GTK_SELECTION_MODEL (self->selection));
 }
 
 static void
@@ -240,18 +267,26 @@ bind_listitem (GtkListItemFactory             *factory,
 
   if (GTK_CRUSADER_VILLAGE_IS_ITEM_STROKE (stroke))
     {
-      GtkWidget *view_item = NULL;
+      GtkWidget *view_item   = NULL;
+      gboolean   insert_mode = FALSE;
 
       view_item = gtk_list_item_get_child (list_item);
+
+      g_object_get (
+          self->handle,
+          "insert-mode", &insert_mode,
+          NULL);
       g_object_set (
           view_item,
           "stroke", stroke,
+          "insert-mode", insert_mode,
           NULL);
-    }
 
-  if (self->handle != NULL)
-    g_signal_connect (self->handle, "notify::cursor",
-                      G_CALLBACK (listitem_cursor_changed), list_item);
+      g_signal_connect (self->handle, "notify::cursor",
+                        G_CALLBACK (listitem_cursor_changed), list_item);
+      g_signal_connect (self->handle, "notify::insert-mode",
+                        G_CALLBACK (listitem_insert_mode_changed), list_item);
+    }
 }
 
 static void
@@ -261,6 +296,8 @@ unbind_listitem (GtkListItemFactory             *factory,
 {
   g_signal_handlers_disconnect_by_func (
       self->handle, listitem_cursor_changed, list_item);
+  g_signal_handlers_disconnect_by_func (
+      self->handle, listitem_insert_mode_changed, list_item);
 }
 
 static void
@@ -284,6 +321,26 @@ listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
   g_object_set (
       view_item,
       "inactive", inactive,
+      NULL);
+}
+
+static void
+listitem_insert_mode_changed (GtkCrusaderVillageMapHandle *handle,
+                              GParamSpec                  *pspec,
+                              GtkListItem                 *list_item)
+{
+  gboolean   insert_mode = FALSE;
+  GtkWidget *view_item   = NULL;
+
+  g_object_get (
+      handle,
+      "insert-mode", &insert_mode,
+      NULL);
+
+  view_item = gtk_list_item_get_child (list_item);
+  g_object_set (
+      view_item,
+      "insert-mode", insert_mode,
       NULL);
 }
 
