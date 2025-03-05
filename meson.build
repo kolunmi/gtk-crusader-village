@@ -12,6 +12,9 @@ config_h = configuration_data()
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 config_h.set_quoted('GETTEXT_PACKAGE', 'gtk-crusader-village')
 config_h.set_quoted('LOCALEDIR', get_option('prefix') / get_option('localedir'))
+if get_option('buildtype') == 'debug'
+  config_h.set10('DEVELOPMENT_BUILD', true)
+endif
 configure_file(output: 'config.h', configuration: config_h)
 add_project_arguments(['-I' + meson.project_build_root()], language: 'c')
 

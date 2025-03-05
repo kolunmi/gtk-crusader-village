@@ -152,6 +152,10 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
+#ifdef DEVELOPMENT_BUILD
+  gtk_widget_add_css_class (GTK_WIDGET (self), "devel");
+#endif
+
   self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
   gtk_crusader_village_item_store_read_resources (self->item_store);
 

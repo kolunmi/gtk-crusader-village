@@ -175,6 +175,10 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
+#ifdef DEVELOPMENT_BUILD
+  gtk_widget_add_css_class (GTK_WIDGET (self), "devel");
+#endif
+
   g_signal_connect (self->theme, "notify::selected-item",
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->show_grid, "notify::active",
