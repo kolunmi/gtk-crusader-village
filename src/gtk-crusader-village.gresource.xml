@@ -2,8 +2,11 @@
 <gresources>
   <gresource prefix="/am/kolunmi/GtkCrusaderVillage">
 
-    <file>styles.css</file>
+    <file>gtk/styles.css</file>
+    <file>gtk/shc-light.css</file>
+    <file>gtk/shc-dark.css</file>
     
+    <file preprocess="xml-stripblanks">icons/scalable/actions/shc.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/step-over-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-turn-left-up-symbolic.svg</file>
 

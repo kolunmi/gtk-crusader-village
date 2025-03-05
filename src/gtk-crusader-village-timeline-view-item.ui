@@ -12,7 +12,7 @@
             <child>
               <object class="GtkImage" id="inactive_indicator">
                 <style>
-                  <class name="icon-error"/>
+                  <class name="icon-danger"/>
                 </style>
                 <property name="margin-start">5</property>
                 <property name="margin-end">10</property>

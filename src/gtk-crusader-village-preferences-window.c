@@ -29,9 +29,12 @@
 
 /* TODO: perhaps read from schema instead */
 static const char *theme_choices[] = {
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT] = "default",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT]   = "light",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK]    = "dark",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT] = "shc-default",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_LIGHT]   = "shc-light",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK]    = "shc-dark",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT]     = "default",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT]       = "light",
+  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK]        = "dark",
 };
 
 struct _GtkCrusaderVillagePreferencesWindow
@@ -174,10 +177,7 @@ static void
 gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-
-#ifdef DEVELOPMENT_BUILD
-  gtk_widget_add_css_class (GTK_WIDGET (self), "devel");
-#endif
+  gtk_widget_add_css_class (GTK_WIDGET (self), "shc");
 
   g_signal_connect (self->theme, "notify::selected-item",
                     G_CALLBACK (ui_changed), self);

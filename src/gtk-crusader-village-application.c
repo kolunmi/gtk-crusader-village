@@ -47,6 +47,9 @@ struct _GtkCrusaderVillageApplication
   GSettings *settings;
   int        theme_setting;
 
+  GtkCssProvider *shc_theme_light_css;
+  GtkCssProvider *shc_theme_dark_css;
+
 #ifdef USE_THEME_PORTAL
   GDBusProxy *settings_portal;
   gboolean    portal_wants_dark;
@@ -142,6 +145,9 @@ gtk_crusader_village_application_dispose (GObject *object)
         self->settings, theme_changed, self);
   g_clear_object (&self->settings);
 
+  g_clear_object (&self->shc_theme_light_css);
+  g_clear_object (&self->shc_theme_dark_css);
+
   G_OBJECT_CLASS (gtk_crusader_village_application_parent_class)->dispose (object);
 }
 
@@ -153,11 +159,17 @@ gtk_crusader_village_application_activate (GApplication *app)
   GtkWindow *window                       = NULL;
 
   css_provider = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css_provider, "/am/kolunmi/GtkCrusaderVillage/styles.css");
+  gtk_css_provider_load_from_resource (css_provider, "/am/kolunmi/GtkCrusaderVillage/gtk/styles.css");
   gtk_style_context_add_provider_for_display (
       gdk_display_get_default (),
       GTK_STYLE_PROVIDER (css_provider),
       GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  self->shc_theme_light_css = gtk_css_provider_new ();
+  gtk_css_provider_load_from_resource (self->shc_theme_light_css, "/am/kolunmi/GtkCrusaderVillage/gtk/shc-light.css");
+
+  self->shc_theme_dark_css = gtk_css_provider_new ();
+  gtk_css_provider_load_from_resource (self->shc_theme_dark_css, "/am/kolunmi/GtkCrusaderVillage/gtk/shc-dark.css");
 
 #ifdef USE_THEME_PORTAL
   init_portal (self);
@@ -288,19 +300,41 @@ read_theme_from_settings (GtkCrusaderVillageApplication *self)
 static void
 apply_gtk_theme (GtkCrusaderVillageApplication *self)
 {
-  gboolean dark = FALSE;
+  gboolean    dark    = FALSE;
+  GdkDisplay *display = NULL;
 
 #ifdef USE_THEME_PORTAL
-  dark = self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK ||
-         (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT && self->portal_wants_dark);
+  dark = (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK ||
+          self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK) ||
+         ((self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT ||
+           self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT) &&
+          self->portal_wants_dark);
 #else
-  dark = self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK;
+  dark = (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK ||
+          self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK);
 #endif
 
   g_object_set (
       gtk_settings_get_default (),
       "gtk-application-prefer-dark-theme", dark,
       NULL);
+
+  display = gdk_display_get_default ();
+  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_light_css));
+  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_dark_css));
+
+  if (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT ||
+      self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_LIGHT ||
+      self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK)
+    {
+      gtk_style_context_add_provider_for_display (
+          display,
+          GTK_STYLE_PROVIDER (
+              dark
+                  ? self->shc_theme_dark_css
+                  : self->shc_theme_light_css),
+          GTK_STYLE_PROVIDER_PRIORITY_USER);
+    }
 }
 
 static void
