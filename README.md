@@ -1,6 +1,6 @@
 # GTK Crusader Village
 
-![Image](https://github.com/user-attachments/assets/4a22695a-73ac-4a1b-8f1b-7de2605a822d)
+![Image](https://github.com/user-attachments/assets/ac804366-7017-4607-9231-03f12259b5e4)
 
 ## What is this
 
