@@ -78,6 +78,10 @@
         <attribute name="action">win.show-help-overlay</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">_Show Greeting</attribute>
+        <attribute name="action">app.greeting</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">_About GTK Crusader Village</attribute>
         <attribute name="action">app.about</attribute>
       </item>

@@ -39,7 +39,7 @@ static const char *theme_choices[] = {
 
 struct _GtkCrusaderVillagePreferencesWindow
 {
-  GtkApplicationWindow parent_instance;
+  GtkWindow parent_instance;
 
   GSettings *settings;
 

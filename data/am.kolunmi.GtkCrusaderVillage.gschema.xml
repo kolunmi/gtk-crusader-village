@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="am.kolunmi.GtkCrusaderVillage" path="/am/kolunmi/GtkCrusaderVillage/" gettext-domain="gtk-crusader-village">
+    <key name="show-startup-greeting" type="b">
+      <default>true</default>
+      <summary>Show Startup Greeting</summary>
+      <description>Whether to show the greeting dialog on application startup</description>
+    </key>
     <key name="theme" type="s">
       <choices>
         <choice value="shc-default"/>

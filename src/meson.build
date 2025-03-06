@@ -2,6 +2,7 @@ gtk_crusader_village_sources = [
   'main.c',
   'gtk-crusader-village-application.c',
   'gtk-crusader-village-window.c',
+  'gtk-crusader-village-dialog-window.c',
   'gtk-crusader-village-preferences-window.c',
   'gtk-crusader-village-util-bin.c',
   'gtk-crusader-village-item-area.c',

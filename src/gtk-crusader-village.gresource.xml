@@ -13,6 +13,7 @@
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
     
     <file preprocess="xml-stripblanks">gtk-crusader-village-window.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-dialog-window.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-preferences-window.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area-item.ui</file>

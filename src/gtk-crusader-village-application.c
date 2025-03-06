@@ -24,6 +24,7 @@
 #include <glib/gi18n.h>
 
 #include "gtk-crusader-village-application.h"
+#include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-window.h"
 
@@ -186,6 +187,9 @@ gtk_crusader_village_application_activate (GApplication *app)
         NULL);
 
   gtk_window_present (window);
+
+  if (g_settings_get_boolean (self->settings, "show-startup-greeting"))
+    g_action_group_activate_action (G_ACTION_GROUP (app), "greeting", NULL);
 }
 
 static void
@@ -225,25 +229,104 @@ gtk_crusader_village_application_preferences (GSimpleAction *action,
 }
 
 static void
+greeting_submission (GtkCrusaderVillageDialogWindow *dialog,
+                     GParamSpec                     *pspec,
+                     GtkCrusaderVillageApplication  *application)
+{
+  g_autoptr (GVariant) submission = NULL;
+  gboolean show_startup_greeting  = FALSE;
+
+  g_object_get (
+      dialog,
+      "final-submission", &submission,
+      NULL);
+  g_variant_get (submission, "(b)", &show_startup_greeting);
+
+  g_settings_set_boolean (
+      application->settings,
+      "show-startup-greeting",
+      show_startup_greeting);
+}
+
+#define GREETING_TEXT                                                          \
+  "Greetings, Sire! The desert awaits you.\n"                                  \
+  "\n"                                                                         \
+  "❤️ <a href=\"https://github.com/sponsors/kolunmi\">Support my work!</a>\n" \
+  "🖥️ <a href=\"https://github.com/kolunmi/gtk-crusader-village\">Contibute to development!</a>\n"
+
+static void
+gtk_crusader_village_application_greeting_action (GSimpleAction *action,
+                                                  GVariant      *parameter,
+                                                  gpointer       user_data)
+{
+  GtkCrusaderVillageApplication *self    = user_data;
+  GtkWindow                     *window  = NULL;
+  g_autoptr (GVariant) dialog_structure  = NULL;
+  GtkCrusaderVillageDialogWindow *dialog = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  dialog_structure = g_variant_new_parsed (
+      "{\"Show this dialog on startup\":<%b>}",
+      g_settings_get_boolean (self->settings, "show-startup-greeting"));
+
+  dialog = gtk_crusader_village_dialog (
+      "Welcome",
+      "Welcome",
+      GREETING_TEXT,
+      window, dialog_structure);
+
+  g_signal_connect (dialog, "notify::final-submission", G_CALLBACK (greeting_submission), self);
+}
+
+#define ABOUT_TEXT_FMT                                                             \
+  "version: %s (GTK: %d.%d.%d)\n"                                                  \
+  "\n"                                                                             \
+  "Copyright 2025 Adam Masciola\n"                                                 \
+  "\n"                                                                             \
+  "This program is free software: you can redistribute it and/or modify "          \
+  "it under the terms of the GNU General Public License as published by "          \
+  "the Free Software Foundation, either version 3 of the License, or "             \
+  "(at your option) any later version.\n"                                          \
+  "\n"                                                                             \
+  "This program is distributed in the hope that it will be useful, "               \
+  "but WITHOUT ANY WARRANTY; without even the implied warranty of "                \
+  "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the "                 \
+  "GNU General Public License for more details.\n"                                 \
+  "\n"                                                                             \
+  "You should have received a copy of the GNU General Public License "             \
+  "along with this program.  If not, see "                                         \
+  "<a href=\"https://www.gnu.org/licenses/\">https://www.gnu.org/licenses/</a>.\n" \
+  "\n"                                                                             \
+  "SPDX-License-Identifier: GPL-3.0-or-later"
+
+static void
 gtk_crusader_village_application_about_action (GSimpleAction *action,
                                                GVariant      *parameter,
                                                gpointer       user_data)
 {
-  static const char             *authors[] = { "Adam Masciola", NULL };
-  GtkCrusaderVillageApplication *self      = user_data;
-  GtkWindow                     *window    = NULL;
+  GtkCrusaderVillageApplication *self    = user_data;
+  GtkWindow                     *window  = NULL;
+  g_autofree char               *message = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
-  gtk_show_about_dialog (
-      window,
-      "program-name", "gtk-crusader-village",
-      "logo-icon-name", "am.kolunmi.GtkCrusaderVillage",
-      "authors", authors,
-      "translator-credits", _ ("translator-credits"),
-      "version", "0.1.0",
-      "copyright", "© 2025 Adam Masciola",
-      NULL);
+  message = g_strdup_printf (
+      ABOUT_TEXT_FMT,
+      PACKAGE_VERSION
+#ifdef DEVELOPMENT_BUILD
+      " development"
+#endif
+      ,
+      gtk_get_major_version (),
+      gtk_get_minor_version (),
+      gtk_get_micro_version ());
+
+  gtk_crusader_village_dialog (
+      "About",
+      "GTK Crusader Village",
+      message,
+      window, NULL);
 }
 
 static void
@@ -259,9 +342,10 @@ gtk_crusader_village_application_quit_action (GSimpleAction *action,
 }
 
 static const GActionEntry app_actions[] = {
-  {        "quit",  gtk_crusader_village_application_quit_action },
-  {       "about", gtk_crusader_village_application_about_action },
-  { "preferences",  gtk_crusader_village_application_preferences },
+  {        "quit",     gtk_crusader_village_application_quit_action },
+  {       "about",    gtk_crusader_village_application_about_action },
+  {    "greeting", gtk_crusader_village_application_greeting_action },
+  { "preferences",     gtk_crusader_village_application_preferences },
 };
 
 static void

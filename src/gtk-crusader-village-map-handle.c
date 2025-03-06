@@ -69,10 +69,14 @@ gtk_crusader_village_map_handle_dispose (GObject *object)
 {
   GtkCrusaderVillageMapHandle *self = GTK_CRUSADER_VILLAGE_MAP_HANDLE (object);
 
-  g_clear_object (&self->map);
   g_clear_object (&self->memory);
   g_clear_object (&self->backing_model);
   g_clear_object (&self->flatten_model);
+  g_clear_object (&self->map);
+
+  if (self->strokes != NULL)
+    g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
+  g_clear_object (&self->strokes);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_handle_parent_class)->dispose (object);
 }
