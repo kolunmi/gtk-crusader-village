@@ -248,11 +248,32 @@ greeting_submission (GtkCrusaderVillageDialogWindow *dialog,
       show_startup_greeting);
 }
 
-#define GREETING_TEXT                                                          \
-  "Greetings, Sire! The desert awaits you.\n"                                  \
-  "\n"                                                                         \
-  "❤️ <a href=\"https://github.com/sponsors/kolunmi\">Support my work!</a>\n" \
-  "🖥️ <a href=\"https://github.com/kolunmi/gtk-crusader-village\">Contibute to development!</a>\n"
+static const char *sketches[] = {
+  "armourer-sketch", "army-sketch", "baker-sketch", "bakery-sketch", "blacksmith-sketch",
+  "brewer-sketch", "bsmith-sketch", "campfire-sketch", "cess-pit-sketch", "chicken-sketch",
+  "child-sketch", "chopping-block-sketch", "church-sketch", "crossbowman-sketch", "dairy-sketch",
+  "dancing-bear-sketch", "dog-cage-sketch", "drunk-sketch", "ducking-stool-sketch", "dungeon-sketch",
+  "farmer-sketch", "fearfactor-sketch", "firewatch-sketch", "fletcher-building-sketch", "fletcher-sketch",
+  "food-sketch", "fruit-sketch", "gallows-sketch", "gardens-sketch", "ghost-sketch",
+  "gibbet-sketch", "heads-on-spikes-sketch", "healer-sketch", "healers-sketch", "hop-sketch",
+  "house-sketch", "hunter-hut-sketch", "hunter-sketch", "innkeeper-sketch", "inn-sketch",
+  "iron-miner-sketch", "iron-sketch", "jester-sketch", "keep-sketch", "killing-pits-sketch",
+  "maypole-sketch", "mill-sketch", "mother-sketch", "oil-smelter-sketch", "ox-tether-sketch",
+  "pitch-sketch", "pitchworker-sketch", "pole-sketch", "poleturner-sketch", "ponds-sketch",
+  "popularity-sketch", "population-sketch", "priest-sketch", "quarry-sketch", "religion-sketch",
+  "siege-engineer-guild-sketch", "siege-engineer-sketch", "stables-sketch", "stake-sketch", "statue-sketch",
+  "stockpile-sketch", "stocks-sketch", "stonemason-sketch", "stone-quarry-sketch", "stretching-rack-sketch",
+  "tanner-building-sketch", "tanner-sketch", "tower-sketch", "trader-sketch", "tunnelors-guild-sketch",
+  "tunnelor-sketch", "waterpot-sketch", "weapons-sketch", "wedding-sketch", "well-sketch",
+  "wheat-sketch", "woodcutter-hut-sketch", "woodcutter-sketch"
+};
+
+#define GREETING_TEXT                                                                               \
+  "Greetings, Sire! The desert awaits you.\n"                                                       \
+  "\n"                                                                                              \
+  "❤️ <a href=\"https://github.com/sponsors/kolunmi\">Support my work!</a>\n"                        \
+  "🖥️ <a href=\"https://github.com/kolunmi/gtk-crusader-village\">Contribute to development!</a>\n" \
+  "🏰 <a href=\"https://fireflyworlds.com/\">Support Firefly Studios!</a>"
 
 static void
 gtk_crusader_village_application_greeting_action (GSimpleAction *action,
@@ -275,8 +296,14 @@ gtk_crusader_village_application_greeting_action (GSimpleAction *action,
       "Welcome",
       GREETING_TEXT,
       window, dialog_structure);
+  g_object_set (
+      dialog,
+      "default-width", 650,
+      NULL);
 
   g_signal_connect (dialog, "notify::final-submission", G_CALLBACK (greeting_submission), self);
+  gtk_widget_add_css_class (GTK_WIDGET (dialog), "greeting-dialog");
+  gtk_widget_add_css_class (GTK_WIDGET (dialog), sketches[g_random_int_range (0, G_N_ELEMENTS (sketches))]);
 }
 
 #define ABOUT_TEXT_FMT                                                             \
@@ -353,13 +380,28 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 {
   self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
 
-  g_action_map_add_action_entries (G_ACTION_MAP (self),
-                                   app_actions,
-                                   G_N_ELEMENTS (app_actions),
-                                   self);
-  gtk_application_set_accels_for_action (GTK_APPLICATION (self),
-                                         "app.quit",
-                                         (const char *[]) { "<primary>q", NULL });
+  g_action_map_add_action_entries (
+      G_ACTION_MAP (self),
+      app_actions,
+      G_N_ELEMENTS (app_actions),
+      self);
+
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.quit",
+      (const char *[]) { "<primary>q", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.about",
+      (const char *[]) { "<primary>a", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.greeting",
+      (const char *[]) { "<primary>g", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.preferences",
+      (const char *[]) { "<primary>p", NULL });
 }
 
 static void

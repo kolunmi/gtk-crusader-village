@@ -2,16 +2,18 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillageDialogWindow" parent="GtkWindow">
-    <style>
-      <class name="dialog"/>
-    </style>
     <property name="title" translatable="yes">Dialog</property>
-    <property name="default-width">500</property>
-    <property name="default-height">200</property>
+    <property name="default-width">700</property>
+    <property name="default-height">0</property>
     <property name="deletable">FALSE</property>
+    <property name="modal">TRUE</property>
+    <property name="destroy-with-parent">TRUE</property>
+    <property name="resizable">FALSE</property>
+
     <property name="titlebar">
       <object class="GtkHeaderBar"/>
     </property>
+    
     <property name="child">
       <object class="GtkBox" id="main_box">
         <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
@@ -21,33 +23,30 @@
         <property name="margin-bottom">10</property>
 
         <child>
-          <object class="GtkCenterBox">
-            <property name="margin-bottom">30</property>
-            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-            <property name="start-widget">
-              <object class="GtkBox">
-                <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
-                <child>
-                  <object class="GtkLabel" id="header">
-                    <style>
-                      <class name="title-2"/>
-                    </style>
-                    <property name="xalign">0.0</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="message">
-                    <style>
-                      <class name="body"/>
-                    </style>
-                    <property name="height-request">0</property>
-                    <property name="xalign">0.0</property>
-                    <property name="wrap">TRUE</property>
-                    <property name="wrap-mode">PANGO_WRAP_WORD_CHAR</property>
-                  </object>
-                </child>
+          <object class="GtkBox">
+            <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+            <property name="vexpand">TRUE</property>
+            <property name="halign">GTK_ALIGN_START</property>
+            <property name="margin-bottom">15</property>
+            <child>
+              <object class="GtkLabel" id="header">
+                <style>
+                  <class name="title-2"/>
+                </style>
+                <property name="xalign">0.0</property>
               </object>
-            </property>
+            </child>
+            <child>
+              <object class="GtkLabel" id="message">
+                <style>
+                  <class name="body"/>
+                </style>
+                <property name="height-request">0</property>
+                <property name="xalign">0.0</property>
+                <property name="wrap">TRUE</property>
+                <property name="wrap-mode">PANGO_WRAP_WORD_CHAR</property>
+              </object>
+            </child>
           </object>
         </child>
 
@@ -56,18 +55,15 @@
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             <property name="start-widget">
               <object class="GtkBox" id="option_box">
+                <property name="valign">GTK_ALIGN_END</property>
                 <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
                 <property name="spacing">5</property>
               </object>
             </property>
             <property name="end-widget">
-              <object class="GtkCenterBox">
-                <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
-                <property name="end-widget">
-                  <object class="GtkButton" id="ok_button">
-                    <property name="label">OK</property>
-                  </object>
-                </property>
+              <object class="GtkButton" id="ok_button">
+                <property name="valign">GTK_ALIGN_END</property>
+                <property name="label">OK</property>
               </object>
             </property>
           </object>

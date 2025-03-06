@@ -266,12 +266,7 @@ gtk_crusader_village_dialog (const char *title,
       return NULL;
     }
 
-  dialog = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_DIALOG_WINDOW,
-      "modal", TRUE,
-      "destroy-with-parent", TRUE,
-      "resizable", FALSE,
-      NULL);
+  dialog = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_DIALOG_WINDOW, NULL);
 
   if (structure != NULL)
     {

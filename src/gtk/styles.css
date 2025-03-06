@@ -1,3 +1,94 @@
 .icon-danger {
     color: @warning_color;
 }
+
+.greeting-dialog {
+    background-image: linear-gradient(to right, @theme_bg_color 55%, alpha(@theme_bg_color, 0.0) 100%), var(--sketch);
+    background-repeat: no-repeat;
+    background-position: 100% 0;
+    background-size: auto 100%;
+}
+
+.armourer-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/armourer_sketch.tgx.png"); }
+.army-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/army_sketch.tgx.png"); }
+.baker-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/baker_sketch.tgx.png"); }
+.bakery-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/bakery_sketch.tgx.png"); }
+.blacksmith-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/blacksmith_sketch.tgx.png"); }
+.brewer-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/brewer_sketch.tgx.png"); }
+.bsmith-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/bsmith_sketch.tgx.png"); }
+.campfire-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/campfire_sketch.tgx.png"); }
+.cess-pit-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/cess_pit_sketch.tgx.png"); }
+.chicken-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/chicken_sketch.tgx.png"); }
+.child-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/child_sketch.tgx.png"); }
+.chopping-block-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/chopping_block_sketch.tgx.png"); }
+.church-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/church_sketch.tgx.png"); }
+.crossbowman-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/crossbowman_sketch.tgx.png"); }
+.dairy-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/dairy_sketch.tgx.png"); }
+.dancing-bear-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/dancing_bear_sketch.tgx.png"); }
+.dog-cage-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/dog_cage_sketch.tgx.png"); }
+.drunk-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/drunk_sketch.tgx.png"); }
+.ducking-stool-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/ducking_stool_sketch.tgx.png"); }
+.dungeon-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/dungeon_sketch.tgx.png"); }
+.farmer-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/farmer_sketch.tgx.png"); }
+.fearfactor-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/fearfactor_sketch.tgx.png"); }
+.firewatch-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/firewatch_sketch.tgx.png"); }
+.fletcher-building-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/fletcher_building_sketch.tgx.png"); }
+.fletcher-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/fletcher_sketch.tgx.png"); }
+.food-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/food_sketch.tgx.png"); }
+.fruit-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/fruit_sketch.tgx.png"); }
+.gallows-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/gallows_sketch.tgx.png"); }
+.gardens-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/gardens_sketch.tgx.png"); }
+.ghost-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/ghost_sketch.tgx.png"); }
+.gibbet-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/gibbet_sketch.tgx.png"); }
+.heads-on-spikes-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/heads_on_spikes_sketch.tgx.png"); }
+.healer-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/healer_sketch.tgx.png"); }
+.healers-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/healers_sketch.tgx.png"); }
+.hop-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/hop_sketch.tgx.png"); }
+.house-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/house_sketch.tgx.png"); }
+.hunter-hut-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/hunter_hut_sketch.tgx.png"); }
+.hunter-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/hunter_sketch.tgx.png"); }
+.inn-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/inn_sketch.tgx.png"); }
+.innkeeper-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/innkeeper_sketch.tgx.png"); }
+.iron-miner-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/iron_miner_sketch.tgx.png"); }
+.iron-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/iron_sketch.tgx.png"); }
+.jester-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/jester_sketch.tgx.png"); }
+.keep-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/keep_sketch.tgx.png"); }
+.killing-pits-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/killing_pits_sketch.tgx.png"); }
+.maypole-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/maypole_sketch.tgx.png"); }
+.mill-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/mill_sketch.tgx.png"); }
+.mother-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/mother_sketch.tgx.png"); }
+.oil-smelter-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/oil_smelter_sketch.tgx.png"); }
+.ox-tether-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/ox_tether_sketch.tgx.png"); }
+.pitch-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/pitch_sketch.tgx.png"); }
+.pitchworker-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/pitchworker_sketch.tgx.png"); }
+.pole-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/pole_sketch.tgx.png"); }
+.poleturner-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/poleturner_sketch.tgx.png"); }
+.ponds-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/ponds_sketch.tgx.png"); }
+.popularity-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/popularity_sketch.tgx.png"); }
+.population-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/population_sketch.tgx.png"); }
+.priest-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/priest_sketch.tgx.png"); }
+.quarry-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/quarry_sketch.tgx.png"); }
+.religion-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/religion_sketch.tgx.png"); }
+.siege-engineer-guild-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/siege_engineer_guild_sketch.tgx.png"); }
+.siege-engineer-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/siege_engineer_sketch.tgx.png"); }
+.stables-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stables_sketch.tgx.png"); }
+.stake-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stake_sketch.tgx.png"); }
+.statue-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/statue_sketch.tgx.png"); }
+.stockpile-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stockpile_sketch.tgx.png"); }
+.stocks-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stocks_sketch.tgx.png"); }
+.stone-quarry-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stone_quarry_sketch.tgx.png"); }
+.stonemason-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stonemason_sketch.tgx.png"); }
+.stretching-rack-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/stretching_rack_sketch.tgx.png"); }
+.tanner-building-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/tanner_building_sketch.tgx.png"); }
+.tanner-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/tanner_sketch.tgx.png"); }
+.tower-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/tower_sketch.tgx.png"); }
+.trader-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/trader_sketch.tgx.png"); }
+.tunnelor-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/tunnelor_sketch.tgx.png"); }
+.tunnelors-guild-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/tunnelors_guild_sketch.tgx.png"); }
+.waterpot-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/waterpot_sketch.tgx.png"); }
+.weapons-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/weapons_sketch.tgx.png"); }
+.wedding-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/wedding_sketch.tgx.png"); }
+.well-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/well_sketch.tgx.png"); }
+.wheat-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/wheat_sketch.tgx.png"); }
+.woodcutter-hut-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/woodcutter_hut_sketch.tgx.png"); }
+.woodcutter-sketch { --sketch: url("resource:///am/kolunmi/GtkCrusaderVillage/shc-data/sketches/woodcutter_sketch.tgx.png"); }
