@@ -23,6 +23,7 @@
 #include <gtk/gtk.h>
 
 #include "gtk-crusader-village-item-stroke.h"
+#include "gtk-crusader-village-item.h"
 #include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 
@@ -35,10 +36,13 @@ struct _GtkCrusaderVillageMapHandle
 
   GListStore          *memory;
   GListStore          *backing_model;
-  GtkFlattenListModel *flatten_model;
+  GtkFlattenListModel *model;
 
   guint    cursor;
   gboolean insert_mode;
+
+  GHashTable *cache;
+  guint       last_append_position;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageMapHandle, gtk_crusader_village_map_handle, G_TYPE_OBJECT)
@@ -51,6 +55,7 @@ enum
   PROP_MODEL,
   PROP_CURSOR,
   PROP_INSERT_MODE,
+  PROP_GRID,
 
   LAST_PROP
 };
@@ -65,18 +70,31 @@ strokes_changed (GListModel                  *self,
                  GtkCrusaderVillageMapHandle *handle);
 
 static void
+dimensions_changed (GtkCrusaderVillageMap       *map,
+                    GParamSpec                  *pspec,
+                    GtkCrusaderVillageMapHandle *handle);
+
+static void
+ensure_cache (GtkCrusaderVillageMapHandle *self);
+
+static void
 gtk_crusader_village_map_handle_dispose (GObject *object)
 {
   GtkCrusaderVillageMapHandle *self = GTK_CRUSADER_VILLAGE_MAP_HANDLE (object);
 
   g_clear_object (&self->memory);
   g_clear_object (&self->backing_model);
-  g_clear_object (&self->flatten_model);
+  g_clear_object (&self->model);
+
+  if (self->map != NULL)
+    g_signal_handlers_disconnect_by_func (self->map, dimensions_changed, self);
   g_clear_object (&self->map);
 
   if (self->strokes != NULL)
     g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
   g_clear_object (&self->strokes);
+
+  g_clear_pointer (&self->cache, g_hash_table_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_handle_parent_class)->dispose (object);
 }
@@ -95,13 +113,17 @@ gtk_crusader_village_map_handle_get_property (GObject    *object,
       g_value_set_object (value, self->map);
       break;
     case PROP_MODEL:
-      g_value_set_object (value, self->flatten_model);
+      g_value_set_object (value, self->model);
       break;
     case PROP_CURSOR:
       g_value_set_uint (value, self->cursor);
       break;
     case PROP_INSERT_MODE:
       g_value_set_boolean (value, self->insert_mode);
+      break;
+    case PROP_GRID:
+      ensure_cache (self);
+      g_value_set_boxed (value, self->cache);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -149,12 +171,18 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
 
             g_signal_connect (self->strokes, "items-changed",
                               G_CALLBACK (strokes_changed), self);
+            g_signal_connect (self->map, "notify::width",
+                              G_CALLBACK (dimensions_changed), self);
+            g_signal_connect (self->map, "notify::height",
+                              G_CALLBACK (dimensions_changed), self);
           }
         else
           self->cursor = 0;
 
         g_list_store_remove_all (self->memory);
+        g_clear_pointer (&self->cache, g_hash_table_unref);
 
+        g_object_notify_by_pspec (object, props[PROP_GRID]);
         g_object_notify_by_pspec (object, props[PROP_CURSOR]);
       }
       break;
@@ -181,7 +209,7 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
                 self->cursor = new_cursor;
 
                 g_signal_handlers_block_by_func (self->strokes, strokes_changed, self);
-                g_object_freeze_notify (G_OBJECT (self->flatten_model));
+                g_object_freeze_notify (G_OBJECT (self->model));
 
                 if (new_cursor < old_cursor)
                   {
@@ -218,7 +246,7 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
                       g_object_unref (restore[i]);
                   }
 
-                g_object_thaw_notify (G_OBJECT (self->flatten_model));
+                g_object_thaw_notify (G_OBJECT (self->model));
                 g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
                 g_object_notify_by_pspec (object, props[PROP_CURSOR]);
               }
@@ -232,7 +260,15 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
       break;
 
     case PROP_INSERT_MODE:
-      self->insert_mode = g_value_get_boolean (value);
+      {
+        guint n_strokes = 0;
+
+        self->insert_mode = g_value_get_boolean (value);
+
+        n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
+        if (self->cursor < n_strokes)
+          g_clear_pointer (&self->cache, g_hash_table_unref);
+      }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -282,6 +318,15 @@ gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *kl
           FALSE,
           G_PARAM_READWRITE);
 
+  props[PROP_GRID] =
+      g_param_spec_boxed (
+          "grid",
+          "Grid",
+          "A hash table mapping `guint` tile indices to `GtkCrusaderVillageItem`s "
+          "which will be out-of-date after any other property is modified",
+          G_TYPE_HASH_TABLE,
+          G_PARAM_READABLE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
@@ -290,9 +335,11 @@ gtk_crusader_village_map_handle_init (GtkCrusaderVillageMapHandle *self)
 {
   self->memory        = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE);
   self->backing_model = g_list_store_new (G_TYPE_LIST_MODEL);
-  self->flatten_model = gtk_flatten_list_model_new (G_LIST_MODEL (g_object_ref (self->backing_model)));
+  self->model         = gtk_flatten_list_model_new (G_LIST_MODEL (g_object_ref (self->backing_model)));
 
   g_list_store_append (self->backing_model, g_object_ref (self->memory));
+
+  self->last_append_position = G_MAXUINT;
 }
 
 static void
@@ -305,8 +352,19 @@ strokes_changed (GListModel                  *self,
   guint n_strokes = 0;
 
   if (!handle->insert_mode && added > 0)
-    /* Goodbye! */
-    g_list_store_remove_all (handle->memory);
+    {
+      /* Goodbye! */
+      g_list_store_remove_all (handle->memory);
+      g_clear_pointer (&handle->cache, g_hash_table_unref);
+    }
+  else if (removed > 0 || position < g_list_model_get_n_items (self) - added)
+    /* We need to completely regenerate cache */
+    g_clear_pointer (&handle->cache, g_hash_table_unref);
+  else
+    /* It was just an append, no need to regenerate */
+    handle->last_append_position = MIN (position, handle->last_append_position);
+
+  g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_GRID]);
 
   n_strokes = g_list_model_get_n_items (G_LIST_MODEL (handle->strokes));
   if (handle->cursor != n_strokes)
@@ -314,4 +372,118 @@ strokes_changed (GListModel                  *self,
       handle->cursor = n_strokes;
       g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_CURSOR]);
     }
+}
+
+static void
+dimensions_changed (GtkCrusaderVillageMap       *map,
+                    GParamSpec                  *pspec,
+                    GtkCrusaderVillageMapHandle *handle)
+{
+  g_clear_pointer (&handle->cache, g_hash_table_unref);
+  g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_GRID]);
+}
+
+void
+gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self)
+{
+  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP_HANDLE (self));
+  g_return_if_fail (self->map != NULL);
+
+  g_list_store_remove_all (self->memory);
+  g_list_store_remove_all (self->strokes);
+}
+
+static void
+ensure_cache (GtkCrusaderVillageMapHandle *self)
+{
+  guint start_stroke_idx = 0;
+  guint n_strokes        = 0;
+  int   map_width        = 0;
+  int   map_height       = 0;
+
+  if (self->cache != NULL && self->last_append_position == G_MAXUINT)
+    return;
+
+  if (self->cache == NULL)
+    {
+      self->cache = g_hash_table_new_full (
+          /* |------ key: tile index -------|  | val:  Item | */
+          g_direct_hash, g_direct_equal, NULL, g_object_unref);
+      start_stroke_idx = 0;
+    }
+  else
+    start_stroke_idx = self->last_append_position;
+
+  n_strokes = g_list_model_get_n_items (
+      self->insert_mode
+          ? G_LIST_MODEL (self->model)
+          : G_LIST_MODEL (self->strokes));
+
+  g_object_get (
+      self->map,
+      "width", &map_width,
+      "height", &map_height,
+      NULL);
+
+  for (guint i = start_stroke_idx; i < n_strokes; i++)
+    {
+      g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
+      g_autoptr (GtkCrusaderVillageItem) item         = NULL;
+      GtkCrusaderVillageItemKind item_kind            = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
+      int                        item_tile_width      = 0;
+      int                        item_tile_height     = 0;
+      g_autoptr (GArray) instances                    = NULL;
+
+      stroke = g_list_model_get_item (G_LIST_MODEL (self->model), i);
+      g_object_get (
+          stroke,
+          "item", &item,
+          NULL);
+
+      g_object_get (
+          item,
+          "kind", &item_kind,
+          NULL);
+
+      if (item_kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT)
+        /* Ignore units for now */
+        continue;
+
+      g_object_get (
+          item,
+          "tile-width", &item_tile_width,
+          "tile-height", &item_tile_height,
+          NULL);
+      g_assert (item_tile_width > 0 && item_tile_height > 0);
+
+      g_object_get (
+          stroke,
+          "instances", &instances,
+          NULL);
+
+      for (guint j = 0; j < instances->len; j++)
+        {
+          GtkCrusaderVillageItemStrokeInstance *instance = NULL;
+
+          instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
+          g_assert (instance->x >= 0 && instance->y >= 0);
+
+          if (instance->x + item_tile_width > map_width ||
+              instance->y + item_tile_height > map_height)
+            continue;
+
+          for (int y = 0; y < item_tile_height; y++)
+            {
+              for (int x = 0; x < item_tile_width; x++)
+                {
+                  guint idx = 0;
+
+                  idx = (instance->y + y) * map_width + (instance->x + x);
+                  g_hash_table_replace (self->cache, GUINT_TO_POINTER (idx), g_object_ref (item));
+                }
+            }
+        }
+    }
+
+  self->last_append_position = G_MAXUINT;
 }

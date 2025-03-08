@@ -174,10 +174,9 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 
   g_object_set (
       self->map_editor,
-      "map", self->map,
+      "map-handle", self->map_handle,
       "item-area", self->item_area,
       NULL);
-
   g_object_set (
       self->timeline_view,
       "map-handle", self->map_handle,

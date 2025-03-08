@@ -22,6 +22,7 @@
 
 #include "gtk-crusader-village-map-editor-status.h"
 #include "gtk-crusader-village-map-editor.h"
+#include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 
 struct _GtkCrusaderVillageMapEditorStatus
@@ -249,6 +250,8 @@ update_hover (GtkCrusaderVillageMapEditorStatus *self,
 static void
 read_map (GtkCrusaderVillageMapEditorStatus *self)
 {
+  g_autoptr (GtkCrusaderVillageMapHandle) handle = NULL;
+
   if (self->map != NULL)
     g_signal_handlers_disconnect_by_func (self->map, hover_changed, self);
   g_clear_object (&self->map);
@@ -258,8 +261,14 @@ read_map (GtkCrusaderVillageMapEditorStatus *self)
 
   g_object_get (
       self->editor,
-      "map", &self->map,
+      "map-handle", &handle,
       NULL);
+
+  if (handle != NULL)
+    g_object_get (
+        handle,
+        "map", &self->map,
+        NULL);
 
   update_name (self);
 

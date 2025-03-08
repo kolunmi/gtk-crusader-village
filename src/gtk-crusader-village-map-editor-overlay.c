@@ -22,7 +22,7 @@
 
 #include "gtk-crusader-village-map-editor-overlay.h"
 #include "gtk-crusader-village-map-editor.h"
-#include "gtk-crusader-village-map.h"
+#include "gtk-crusader-village-map-handle.h"
 
 #define TOOLBAR_HIDDEN_MAX_POINTER_DISTANCE 150.0
 #define TOOLBAR_HIDDEN_MIN_OPACITY          0.3
@@ -32,8 +32,8 @@ struct _GtkCrusaderVillageMapEditorOverlay
   GtkCrusaderVillageUtilBin parent_instance;
 
   GtkCrusaderVillageMapEditor *editor;
-  GtkCrusaderVillageMap       *map;
-  GListStore                  *strokes;
+  GtkCrusaderVillageMapHandle *handle;
+  GListStore                  *model;
 
   double   x;
   double   y;
@@ -67,16 +67,21 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-map_changed (GtkCrusaderVillageMapEditor        *editor,
-             GParamSpec                         *pspec,
-             GtkCrusaderVillageMapEditorOverlay *overlay);
+map_handle_changed (GtkCrusaderVillageMapEditor        *editor,
+                    GParamSpec                         *pspec,
+                    GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
-strokes_changed (GListModel                         *self,
-                 guint                               position,
-                 guint                               removed,
-                 guint                               added,
-                 GtkCrusaderVillageMapEditorOverlay *timeline_view);
+model_items_changed (GListModel                         *self,
+                     guint                               position,
+                     guint                               removed,
+                     guint                               added,
+                     GtkCrusaderVillageMapEditorOverlay *timeline_view);
+
+static void
+cursor_changed (GtkCrusaderVillageMapHandle        *editor,
+                GParamSpec                         *pspec,
+                GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
 drawing_changed (GtkCrusaderVillageMapEditor        *editor,
@@ -108,13 +113,17 @@ undo_clicked (GtkButton                          *self,
               GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
+redo_clicked (GtkButton                          *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
 update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
-read_map (GtkCrusaderVillageMapEditorOverlay *self);
+read_map_handle (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
-update_strokes_ui (GtkCrusaderVillageMapEditorOverlay *self);
+update_ui_for_model (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
 gtk_crusader_village_map_editor_overlay_dispose (GObject *object)
@@ -123,15 +132,18 @@ gtk_crusader_village_map_editor_overlay_dispose (GObject *object)
 
   if (self->editor != NULL)
     {
-      g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+      g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
       g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
     }
   g_clear_object (&self->editor);
 
-  g_clear_object (&self->map);
-  if (self->strokes != NULL)
-    g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
-  g_clear_object (&self->strokes);
+  if (self->handle != NULL)
+    g_signal_handlers_disconnect_by_func (self->handle, cursor_changed, self);
+  g_clear_object (&self->handle);
+
+  if (self->model != NULL)
+    g_signal_handlers_disconnect_by_func (self->model, model_items_changed, self);
+  g_clear_object (&self->model);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_overlay_parent_class)->dispose (object);
 }
@@ -168,28 +180,28 @@ gtk_crusader_village_map_editor_overlay_set_property (GObject      *object,
       {
         if (self->editor != NULL)
           {
-            g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+            g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
             g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
           }
         g_clear_object (&self->editor);
 
-        g_clear_object (&self->map);
-        if (self->strokes != NULL)
-          g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
-        g_clear_object (&self->strokes);
+        g_clear_object (&self->handle);
+        if (self->model != NULL)
+          g_signal_handlers_disconnect_by_func (self->model, model_items_changed, self);
+        g_clear_object (&self->model);
 
         self->editor = g_value_dup_object (value);
 
         if (self->editor != NULL)
           {
-            read_map (self);
-            g_signal_connect (self->editor, "notify::map",
-                              G_CALLBACK (map_changed), self);
+            read_map_handle (self);
+            g_signal_connect (self->editor, "notify::map-handle",
+                              G_CALLBACK (map_handle_changed), self);
             g_signal_connect (self->editor, "notify::drawing",
                               G_CALLBACK (drawing_changed), self);
           }
         else
-          update_strokes_ui (self);
+          update_ui_for_model (self);
 
         gtk_scrolled_window_set_child (self->scrolled_window, GTK_WIDGET (self->editor));
       }
@@ -242,6 +254,7 @@ gtk_crusader_village_map_editor_overlay_init (GtkCrusaderVillageMapEditorOverlay
 
   g_signal_connect (self->clear, "clicked", G_CALLBACK (clear_clicked), self);
   g_signal_connect (self->undo, "clicked", G_CALLBACK (undo_clicked), self);
+  g_signal_connect (self->redo, "clicked", G_CALLBACK (redo_clicked), self);
 
   motion_controller = gtk_event_controller_motion_new ();
   g_signal_connect (motion_controller, "enter", G_CALLBACK (motion_enter), self);
@@ -251,21 +264,29 @@ gtk_crusader_village_map_editor_overlay_init (GtkCrusaderVillageMapEditorOverlay
 }
 
 static void
-map_changed (GtkCrusaderVillageMapEditor        *editor,
-             GParamSpec                         *pspec,
-             GtkCrusaderVillageMapEditorOverlay *overlay)
+map_handle_changed (GtkCrusaderVillageMapEditor        *editor,
+                    GParamSpec                         *pspec,
+                    GtkCrusaderVillageMapEditorOverlay *overlay)
 {
-  read_map (overlay);
+  read_map_handle (overlay);
 }
 
 static void
-strokes_changed (GListModel                         *self,
-                 guint                               position,
-                 guint                               removed,
-                 guint                               added,
-                 GtkCrusaderVillageMapEditorOverlay *overlay)
+model_items_changed (GListModel                         *self,
+                     guint                               position,
+                     guint                               removed,
+                     guint                               added,
+                     GtkCrusaderVillageMapEditorOverlay *overlay)
 {
-  update_strokes_ui (overlay);
+  update_ui_for_model (overlay);
+}
+
+static void
+cursor_changed (GtkCrusaderVillageMapHandle        *editor,
+                GParamSpec                         *pspec,
+                GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  update_ui_for_model (overlay);
 }
 
 static void
@@ -316,20 +337,49 @@ static void
 clear_clicked (GtkButton                          *self,
                GtkCrusaderVillageMapEditorOverlay *overlay)
 {
-  g_list_store_remove_all (G_LIST_STORE (overlay->strokes));
+  if (overlay->handle == NULL)
+    return;
+
+  gtk_crusader_village_map_handle_clear_all (overlay->handle);
 }
 
 static void
 undo_clicked (GtkButton                          *self,
               GtkCrusaderVillageMapEditorOverlay *overlay)
 {
-  guint n_strokes = 0;
+  guint cursor = 0;
 
-  n_strokes = g_list_model_get_n_items (G_LIST_MODEL (overlay->strokes));
-  if (n_strokes == 0)
+  if (overlay->handle == NULL)
     return;
 
-  g_list_store_remove (G_LIST_STORE (overlay->strokes), n_strokes - 1);
+  g_object_get (
+      overlay->handle,
+      "cursor", &cursor,
+      NULL);
+  if (cursor > 0)
+    g_object_set (
+        overlay->handle,
+        "cursor", cursor - 1,
+        NULL);
+}
+
+static void
+redo_clicked (GtkButton                          *self,
+              GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  guint cursor = 0;
+
+  if (overlay->handle == NULL)
+    return;
+
+  g_object_get (
+      overlay->handle,
+      "cursor", &cursor,
+      NULL);
+  g_object_set (
+      overlay->handle,
+      "cursor", cursor + 1,
+      NULL);
 }
 
 static double
@@ -394,52 +444,63 @@ update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self)
 }
 
 static void
-read_map (GtkCrusaderVillageMapEditorOverlay *self)
+read_map_handle (GtkCrusaderVillageMapEditorOverlay *self)
 {
-  g_clear_object (&self->map);
-  if (self->strokes != NULL)
-    g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
-  g_clear_object (&self->strokes);
+  if (self->model != NULL)
+    g_signal_handlers_disconnect_by_func (self->model, model_items_changed, self);
+  g_clear_object (&self->model);
+  if (self->handle != NULL)
+    g_signal_handlers_disconnect_by_func (self->handle, cursor_changed, self);
+  g_clear_object (&self->handle);
 
   if (self->editor == NULL)
     return;
 
   g_object_get (
       self->editor,
-      "map", &self->map,
+      "map-handle", &self->handle,
       NULL);
 
-  if (self->map != NULL)
+  if (self->handle != NULL)
     {
-      g_object_get (
-          self->map,
-          "strokes", &self->strokes,
-          NULL);
-      g_assert (self->strokes != NULL);
+      g_signal_connect (self->handle, "notify::cursor",
+                        G_CALLBACK (cursor_changed), self);
 
-      g_signal_connect (self->strokes, "items-changed",
-                        G_CALLBACK (strokes_changed), self);
+      g_object_get (
+          self->handle,
+          "model", &self->model,
+          NULL);
+      g_assert (self->model != NULL);
+
+      g_signal_connect (self->model, "items-changed",
+                        G_CALLBACK (model_items_changed), self);
     }
 
-  update_strokes_ui (self);
+  update_ui_for_model (self);
 }
 
 static void
-update_strokes_ui (GtkCrusaderVillageMapEditorOverlay *self)
+update_ui_for_model (GtkCrusaderVillageMapEditorOverlay *self)
 {
-  if (self->strokes != NULL)
+  if (self->model != NULL)
     {
-      /* TEMP */
       guint n_strokes = 0;
+      guint cursor    = 0;
 
-      n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+      n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
+      g_object_get (
+          self->handle,
+          "cursor", &cursor,
+          NULL);
 
-      gtk_widget_set_sensitive (GTK_WIDGET (self->undo), n_strokes > 0);
-      gtk_widget_set_sensitive (GTK_WIDGET (self->redo), FALSE);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->undo), cursor > 0);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->redo), cursor < n_strokes);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->clear), n_strokes > 0);
     }
   else
     {
       gtk_widget_set_sensitive (GTK_WIDGET (self->undo), FALSE);
       gtk_widget_set_sensitive (GTK_WIDGET (self->redo), FALSE);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->clear), FALSE);
     }
 }

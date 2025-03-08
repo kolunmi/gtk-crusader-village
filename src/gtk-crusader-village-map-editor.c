@@ -24,6 +24,7 @@
 #include "gtk-crusader-village-item-stroke.h"
 #include "gtk-crusader-village-item.h"
 #include "gtk-crusader-village-map-editor.h"
+#include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 
 #define BASE_TILE_SIZE 16.0
@@ -40,7 +41,9 @@ struct _GtkCrusaderVillageMapEditor
   gboolean   show_gradient;
   gboolean   show_cursor_glow;
 
-  GtkCrusaderVillageMap      *map;
+  GtkCrusaderVillageMap       *map;
+  GtkCrusaderVillageMapHandle *handle;
+
   GtkCrusaderVillageItemArea *item_area;
   int                         border_gap;
 
@@ -83,7 +86,7 @@ enum
 
   PROP_SETTINGS,
 
-  PROP_MAP,
+  PROP_MAP_HANDLE,
   PROP_ITEM_AREA,
 
   PROP_BORDER_GAP,
@@ -211,14 +214,14 @@ selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
                        GParamSpec                  *pspec,
                        GtkCrusaderVillageMapEditor *editor);
 static void
-dimensions_changed (GtkCrusaderVillageMap       *map,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor);
-
-static void
-grid_changed (GtkCrusaderVillageMap       *map,
+grid_changed (GtkCrusaderVillageMapHandle *handle,
               GParamSpec                  *pspec,
               GtkCrusaderVillageMapEditor *editor);
+
+static void
+cursor_changed (GtkCrusaderVillageMapHandle *handle,
+                GParamSpec                  *pspec,
+                GtkCrusaderVillageMapEditor *editor);
 
 static void
 update_scrollable (GtkCrusaderVillageMapEditor *self,
@@ -248,13 +251,14 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
     }
   g_clear_object (&self->settings);
 
-  if (self->map != NULL)
+  if (self->handle != NULL)
     {
       g_signal_handlers_disconnect_by_func (
-          self->map, dimensions_changed, self);
+          self->handle, grid_changed, self);
       g_signal_handlers_disconnect_by_func (
-          self->map, grid_changed, self);
+          self->handle, cursor_changed, self);
     }
+  g_clear_object (&self->handle);
   g_clear_object (&self->map);
 
   g_clear_object (&self->item_area);
@@ -278,8 +282,8 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
     case PROP_SETTINGS:
       g_value_set_object (value, self->settings);
       break;
-    case PROP_MAP:
-      g_value_set_object (value, self->map);
+    case PROP_MAP_HANDLE:
+      g_value_set_object (value, self->handle);
       break;
     case PROP_ITEM_AREA:
       g_value_set_object (value, self->item_area);
@@ -359,28 +363,32 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
       gtk_widget_queue_draw (GTK_WIDGET (self));
       break;
 
-    case PROP_MAP:
-      if (self->map != NULL)
+    case PROP_MAP_HANDLE:
+      if (self->handle != NULL)
         {
           g_signal_handlers_disconnect_by_func (
-              self->map, dimensions_changed, self);
+              self->handle, grid_changed, self);
           g_signal_handlers_disconnect_by_func (
-              self->map, grid_changed, self);
+              self->handle, cursor_changed, self);
         }
+      g_clear_object (&self->handle);
       g_clear_object (&self->map);
 
-      self->map = g_value_dup_object (value);
-      if (self->map != NULL)
+      self->handle = g_value_dup_object (value);
+
+      if (self->handle != NULL)
         {
-          g_signal_connect (self->map, "notify::width",
-                            G_CALLBACK (dimensions_changed), self);
-          g_signal_connect (self->map, "notify::height",
-                            G_CALLBACK (dimensions_changed), self);
-          g_signal_connect (self->map, "notify::grid",
+          g_object_get (
+              self->handle,
+              "map", &self->map,
+              NULL);
+          g_signal_connect (self->handle, "notify::grid",
                             G_CALLBACK (grid_changed), self);
-          self->queue_center = TRUE;
+          g_signal_connect (self->handle, "notify::cursor",
+                            G_CALLBACK (cursor_changed), self);
         }
 
+      self->queue_center = TRUE;
       gtk_widget_queue_resize (GTK_WIDGET (self));
       break;
 
@@ -478,12 +486,12 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           G_TYPE_SETTINGS,
           G_PARAM_READWRITE);
 
-  props[PROP_MAP] =
+  props[PROP_MAP_HANDLE] =
       g_param_spec_object (
-          "map",
-          "Map",
-          "The map object this view is editing",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP,
+          "map-handle",
+          "Map Handle",
+          "The map handle this view is editing through",
+          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
           G_PARAM_READWRITE);
 
   props[PROP_ITEM_AREA] =
@@ -1068,10 +1076,13 @@ draw_gesture_update (GtkGestureDrag              *gesture,
     return;
 
   g_object_get (
+      editor->handle,
+      "grid", &grid,
+      NULL);
+  g_object_get (
       editor->map,
       "width", &map_tile_width,
       "height", &map_tile_height,
-      "grid", &grid,
       NULL);
   g_object_get (
       editor->current_stroke,
@@ -1237,17 +1248,29 @@ selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
 }
 
 static void
-dimensions_changed (GtkCrusaderVillageMap       *map,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor)
+grid_changed (GtkCrusaderVillageMapHandle *handle,
+              GParamSpec                  *pspec,
+              GtkCrusaderVillageMapEditor *editor)
 {
-  gtk_widget_queue_resize (GTK_WIDGET (editor));
+  g_autoptr (GtkCrusaderVillageMap) map = NULL;
+
+  g_object_get (
+      handle,
+      "map", &map,
+      NULL);
+  if (map != editor->map)
+    {
+      g_clear_object (&editor->map);
+      editor->map = g_steal_pointer (&map);
+    }
+
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-grid_changed (GtkCrusaderVillageMap       *map,
-              GParamSpec                  *pspec,
-              GtkCrusaderVillageMapEditor *editor)
+cursor_changed (GtkCrusaderVillageMapHandle *handle,
+                GParamSpec                  *pspec,
+                GtkCrusaderVillageMapEditor *editor)
 {
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
