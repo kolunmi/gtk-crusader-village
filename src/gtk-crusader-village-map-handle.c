@@ -251,6 +251,9 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
                       g_object_unref (restore[i]);
                   }
 
+                if (!self->insert_mode)
+                  g_clear_pointer (&self->cache, g_hash_table_unref);
+
                 g_object_thaw_notify (G_OBJECT (self->model));
                 g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
                 g_object_notify_by_pspec (object, props[PROP_CURSOR]);
