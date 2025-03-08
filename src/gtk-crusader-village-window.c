@@ -164,8 +164,6 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
   self->map = g_object_new (
       GTK_CRUSADER_VILLAGE_TYPE_MAP,
       "name", "Untitled",
-      "width", 32,
-      "height", 32,
       NULL);
   self->map_handle = g_object_new (
       GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
