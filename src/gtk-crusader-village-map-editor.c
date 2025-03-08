@@ -68,7 +68,6 @@ struct _GtkCrusaderVillageMapEditor
 
   GtkGesture                   *draw_gesture;
   GtkGesture                   *cancel_gesture;
-  gboolean                      draw_is_cancelled;
   GtkCrusaderVillageItemStroke *current_stroke;
 };
 
@@ -1068,12 +1067,14 @@ draw_gesture_update (GtkGestureDrag              *gesture,
                      double                       offset_y,
                      GtkCrusaderVillageMapEditor *editor)
 {
-  g_autoptr (GHashTable) grid             = NULL;
-  int map_tile_width                      = 0;
-  int map_tile_height                     = 0;
-  g_autoptr (GtkCrusaderVillageItem) item = NULL;
-  int item_tile_width                     = 0;
-  int item_tile_height                    = 0;
+  g_autoptr (GArray) instances                          = NULL;
+  g_autoptr (GHashTable) grid                           = NULL;
+  int map_tile_width                                    = 0;
+  int map_tile_height                                   = 0;
+  g_autoptr (GtkCrusaderVillageItem) item               = NULL;
+  int                                  item_tile_width  = 0;
+  int                                  item_tile_height = 0;
+  GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
 
   if (editor->current_stroke == NULL)
     return;
@@ -1092,6 +1093,7 @@ draw_gesture_update (GtkGestureDrag              *gesture,
   g_object_get (
       editor->current_stroke,
       "item", &item,
+      "instances", &instances,
       NULL);
   g_object_get (
       item,
@@ -1099,29 +1101,59 @@ draw_gesture_update (GtkGestureDrag              *gesture,
       "tile-height", &item_tile_height,
       NULL);
 
-  if (editor->hover_x + item_tile_width > map_tile_width ||
-      editor->hover_y + item_tile_height > map_tile_height)
-    return;
+  last_instance =
+      instances->len > 0
+          ? g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1)
+          : (GtkCrusaderVillageItemStrokeInstance) {
+              .x = editor->hover_x,
+              .y = editor->hover_y
+            };
 
-  for (int y = 0; y < item_tile_height; y++)
+  for (int ix = last_instance.x, iy = last_instance.y, lix = ix, liy = iy;
+       ix >= 0 || iy >= 0;
+       (ix = ix < 0 || ix == editor->hover_x ? -1 : ix + (ix > editor->hover_x ? -1 : 1)),
+           (iy = iy < 0 || iy == editor->hover_y ? -1 : iy + (iy > editor->hover_y ? -1 : 1)),
+           (lix = ix < 0 ? lix : ix),
+           (liy = iy < 0 ? liy : iy))
     {
-      for (int x = 0; x < item_tile_width; x++)
+      gboolean add = TRUE;
+      int      cx  = 0;
+      int      cy  = 0;
+
+      cx = ix < 0 ? lix : ix;
+      cy = iy < 0 ? liy : iy;
+
+      if (cx + item_tile_width > map_tile_width ||
+          cy + item_tile_height > map_tile_height)
+        continue;
+
+      for (int y = 0; y < item_tile_height; y++)
         {
-          guint tile_idx = 0;
+          for (int x = 0; x < item_tile_width; x++)
+            {
+              guint tile_idx = 0;
 
-          tile_idx = (editor->hover_y + y) * map_tile_width + (editor->hover_x + x);
-          if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
-            /* can't place that there lord! */
-            return;
+              tile_idx = (cy + y) * map_tile_width + (cx + x);
+              if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+                {
+                  /* can't place that there lord! */
+                  add = FALSE;
+                  break;
+                }
+            }
+
+          if (!add)
+            break;
         }
-    }
 
-  gtk_crusader_village_item_stroke_add_instance (
-      editor->current_stroke,
-      (GtkCrusaderVillageItemStrokeInstance) {
-          .x = editor->hover_x,
-          .y = editor->hover_y,
-      });
+      if (add)
+        gtk_crusader_village_item_stroke_add_instance (
+            editor->current_stroke,
+            (GtkCrusaderVillageItemStrokeInstance) {
+                .x = cx,
+                .y = cy,
+            });
+    }
 }
 
 static void
