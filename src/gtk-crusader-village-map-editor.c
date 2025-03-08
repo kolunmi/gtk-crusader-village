@@ -1075,6 +1075,10 @@ draw_gesture_update (GtkGestureDrag              *gesture,
   int                                  item_tile_width  = 0;
   int                                  item_tile_height = 0;
   GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
+  int                                  dx               = 0;
+  int                                  dy               = 0;
+  int                                  n_iterations     = 0;
+  int                                  divisor          = 0;
 
   if (editor->current_stroke == NULL)
     return;
@@ -1109,19 +1113,19 @@ draw_gesture_update (GtkGestureDrag              *gesture,
               .y = editor->hover_y
             };
 
-  for (int ix = last_instance.x, iy = last_instance.y, lix = ix, liy = iy;
-       ix >= 0 || iy >= 0;
-       (ix = ix < 0 || ix == editor->hover_x ? -1 : ix + (ix > editor->hover_x ? -1 : 1)),
-           (iy = iy < 0 || iy == editor->hover_y ? -1 : iy + (iy > editor->hover_y ? -1 : 1)),
-           (lix = ix < 0 ? lix : ix),
-           (liy = iy < 0 ? liy : iy))
+  dx           = editor->hover_x - last_instance.x;
+  dy           = editor->hover_y - last_instance.y;
+  n_iterations = MAX (ABS (dx), ABS (dy)) + 1;
+  divisor      = n_iterations > 1 ? n_iterations - 1 : 1;
+
+  for (int i = 0; i < n_iterations; i++)
     {
       gboolean add = TRUE;
       int      cx  = 0;
       int      cy  = 0;
 
-      cx = ix < 0 ? lix : ix;
-      cy = iy < 0 ? liy : iy;
+      cx = last_instance.x + i * dx / divisor;
+      cy = last_instance.y + i * dy / divisor;
 
       if (cx + item_tile_width > map_tile_width ||
           cy + item_tile_height > map_tile_height)
