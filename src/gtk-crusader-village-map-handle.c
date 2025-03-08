@@ -40,6 +40,7 @@ struct _GtkCrusaderVillageMapHandle
 
   guint    cursor;
   gboolean insert_mode;
+  gboolean lock_hinted;
 
   GHashTable *cache;
   guint       last_append_position;
@@ -55,6 +56,7 @@ enum
   PROP_MODEL,
   PROP_CURSOR,
   PROP_INSERT_MODE,
+  PROP_LOCK_HINTED,
   PROP_GRID,
 
   LAST_PROP
@@ -120,6 +122,9 @@ gtk_crusader_village_map_handle_get_property (GObject    *object,
       break;
     case PROP_INSERT_MODE:
       g_value_set_boolean (value, self->insert_mode);
+      break;
+    case PROP_LOCK_HINTED:
+      g_value_set_boolean (value, self->lock_hinted);
       break;
     case PROP_GRID:
       ensure_cache (self);
@@ -270,6 +275,11 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
           g_clear_pointer (&self->cache, g_hash_table_unref);
       }
       break;
+
+    case PROP_LOCK_HINTED:
+      self->lock_hinted = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -315,6 +325,15 @@ gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *kl
           "Insert Mode",
           "Whether to disable the automatic discard of memory "
           "when the underlying map's strokes are appended to",
+          FALSE,
+          G_PARAM_READWRITE);
+
+  props[PROP_LOCK_HINTED] =
+      g_param_spec_boolean (
+          "lock-hinted",
+          "Lock Hinted",
+          "Whether to hint to other reference holders that "
+          "this handle should not be modified right now",
           FALSE,
           G_PARAM_READWRITE);
 

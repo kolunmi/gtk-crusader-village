@@ -1054,6 +1054,11 @@ draw_gesture_begin (GtkGestureDrag              *self,
 
   draw_gesture_update (self, 0.0, 0.0, editor);
 
+  g_object_set (
+      editor->handle,
+      "lock-hinted", TRUE,
+      NULL);
+
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
@@ -1148,6 +1153,11 @@ draw_gesture_end (GtkGestureDrag              *gesture,
   else
     g_clear_object (&editor->current_stroke);
 
+  g_object_set (
+      editor->handle,
+      "lock-hinted", FALSE,
+      NULL);
+
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
@@ -1162,6 +1172,14 @@ cancel_gesture_pressed (GtkGestureClick             *self,
     return;
 
   g_clear_object (&editor->current_stroke);
+
+  g_object_set (
+      editor->handle,
+      "lock-hinted", FALSE,
+      NULL);
+
+  g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
+
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 

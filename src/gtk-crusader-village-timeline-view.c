@@ -77,9 +77,9 @@ listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
                          GtkListItem                 *list_item);
 
 static void
-listitem_insert_mode_changed (GtkCrusaderVillageMapHandle *handle,
-                              GParamSpec                  *pspec,
-                              GtkListItem                 *list_item);
+listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
+                            GParamSpec                  *pspec,
+                            GtkListItem                 *list_item);
 static void
 row_activated (GtkListView                    *self,
                guint                           position,
@@ -269,23 +269,28 @@ bind_listitem (GtkListItemFactory             *factory,
     {
       GtkWidget *view_item   = NULL;
       gboolean   insert_mode = FALSE;
+      gboolean   lock_hinted = FALSE;
 
       view_item = gtk_list_item_get_child (list_item);
 
       g_object_get (
           self->handle,
           "insert-mode", &insert_mode,
+          "lock-hinted", &lock_hinted,
           NULL);
       g_object_set (
           view_item,
           "stroke", stroke,
           "insert-mode", insert_mode,
+          "drawing", lock_hinted,
           NULL);
 
       g_signal_connect (self->handle, "notify::cursor",
                         G_CALLBACK (listitem_cursor_changed), list_item);
       g_signal_connect (self->handle, "notify::insert-mode",
-                        G_CALLBACK (listitem_insert_mode_changed), list_item);
+                        G_CALLBACK (listitem_mode_hint_changed), list_item);
+      g_signal_connect (self->handle, "notify::lock-hinted",
+                        G_CALLBACK (listitem_mode_hint_changed), list_item);
     }
 }
 
@@ -297,7 +302,7 @@ unbind_listitem (GtkListItemFactory             *factory,
   g_signal_handlers_disconnect_by_func (
       self->handle, listitem_cursor_changed, list_item);
   g_signal_handlers_disconnect_by_func (
-      self->handle, listitem_insert_mode_changed, list_item);
+      self->handle, listitem_mode_hint_changed, list_item);
 }
 
 static void
@@ -325,22 +330,25 @@ listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
-listitem_insert_mode_changed (GtkCrusaderVillageMapHandle *handle,
-                              GParamSpec                  *pspec,
-                              GtkListItem                 *list_item)
+listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
+                            GParamSpec                  *pspec,
+                            GtkListItem                 *list_item)
 {
   gboolean   insert_mode = FALSE;
+  gboolean   lock_hinted = FALSE;
   GtkWidget *view_item   = NULL;
 
   g_object_get (
       handle,
       "insert-mode", &insert_mode,
+      "lock-hinted", &lock_hinted,
       NULL);
 
   view_item = gtk_list_item_get_child (list_item);
   g_object_set (
       view_item,
       "insert-mode", insert_mode,
+      "drawing", lock_hinted,
       NULL);
 }
 

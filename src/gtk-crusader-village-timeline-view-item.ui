@@ -10,14 +10,21 @@
           <object class="GtkBox">
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             <child>
-              <object class="GtkImage" id="inactive_indicator">
-                <style>
-                  <class name="icon-danger"/>
-                </style>
+              <object class="GtkImage" id="overwrite_indicator">
                 <property name="margin-start">5</property>
                 <property name="margin-end">10</property>
                 <property name="visible">FALSE</property>
                 <property name="icon-name">step-over-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkImage" id="overwriting_indicator">
+                <style>
+                  <class name="icon-danger"/>
+                </style>
+                <property name="margin-end">10</property>
+                <property name="visible">FALSE</property>
+                <property name="icon-name">edit-delete-symbolic</property>
               </object>
             </child>
             <child>
@@ -26,6 +33,13 @@
                 <property name="margin-end">10</property>
                 <property name="visible">FALSE</property>
                 <property name="icon-name">arrow-turn-left-up-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkImage" id="inserting_indicator">
+                <property name="margin-end">10</property>
+                <property name="visible">FALSE</property>
+                <property name="icon-name">arrow4-down-symbolic</property>
               </object>
             </child>
             <child>
