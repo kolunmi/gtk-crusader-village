@@ -9,6 +9,8 @@
         <property name="start-widget">
           <object class="GtkBox">
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <property name="margin-top">2</property>
+            <property name="margin-bottom">2</property>
             <child>
               <object class="GtkImage" id="overwrite_indicator">
                 <property name="margin-start">5</property>
@@ -21,6 +23,7 @@
               <object class="GtkImage" id="overwriting_indicator">
                 <style>
                   <class name="icon-danger"/>
+                  <class name="icon-pulse"/>
                 </style>
                 <property name="margin-end">10</property>
                 <property name="visible">FALSE</property>
@@ -37,6 +40,9 @@
             </child>
             <child>
               <object class="GtkImage" id="inserting_indicator">
+                <style>
+                  <class name="icon-move-up-down"/>
+                </style>
                 <property name="margin-end">10</property>
                 <property name="visible">FALSE</property>
                 <property name="icon-name">arrow4-down-symbolic</property>

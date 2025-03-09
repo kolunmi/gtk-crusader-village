@@ -2,6 +2,32 @@
     color: @warning_color;
 }
 
+@keyframes move-up-down {
+    0% {transform: translate(0, -3px);}
+    100% {transform: translate(0, 3px);}
+}
+
+.icon-move-up-down {
+    animation-name: move-up-down;
+    animation-duration: 1s;
+    animation-direction: alternate;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes pulse {
+    0% {transform: scale(1.0);}
+    100% {transform: scale(0.85);}
+}
+
+.icon-pulse {
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-direction: alternate;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
 .greeting-dialog {
     background-image: linear-gradient(to right, @theme_bg_color 55%, alpha(@theme_bg_color, 0.0) 100%), var(--sketch);
     background-repeat: no-repeat;
