@@ -2,6 +2,11 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillagePreferencesWindow" parent="GtkWindow">
+    <style>
+      <class name="shc"/>
+      <class name="window-intro"/>
+      <class name="btns-1"/>
+    </style>
     <property name="title" translatable="yes">Preferences</property>
     <property name="default-width">600</property>
     <property name="default-height">200</property>

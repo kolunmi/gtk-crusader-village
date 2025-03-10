@@ -177,7 +177,6 @@ static void
 gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-  gtk_widget_add_css_class (GTK_WIDGET (self), "shc");
 
   g_signal_connect (self->theme, "notify::selected-item",
                     G_CALLBACK (ui_changed), self);

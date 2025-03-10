@@ -1653,11 +1653,47 @@ window.csd > .titlebar:not(headerbar) {
 .titlebar:not(headerbar) separator {
   background-color: rgb(27, 27, 27); }
 
+@keyframes window-intro-frames {
+    0% {
+        background: rgb(53, 53, 53) cross-fade(0% -gtk-icontheme("shc"), image(transparent)) calc(90% - max(30px, var(--num-buttons, 1) * 60px)) 0/30px 40px no-repeat, linear-gradient(to left, transparent 45%, rgba(158, 21, 37, 0.3)), linear-gradient(to top, rgb(35, 35, 35) 3px, rgb(40, 40, 40));
+    }
+    100% {
+        background: rgb(53, 53, 53) cross-fade(20% -gtk-icontheme("shc"), image(transparent)) calc(100% - max(30px, var(--num-buttons, 1) * 60px)) 0/50px 60px no-repeat, linear-gradient(to right, transparent 65%, rgba(158, 21, 37, 0.7)), linear-gradient(to top, rgb(35, 35, 35) 3px, rgb(40, 40, 40));
+    }
+}
+
+window.window-intro headerbar.titlebar {
+    animation-name: window-intro-frames;
+    animation-duration: 1.5s;
+    animation-timing-function: cubic-bezier(0.78, 0.01, 0, 0.83);
+}
+
+window.btns-0 {
+    --num-buttons: 0;
+}
+
+window.btns-1 {
+    --num-buttons: 1;
+}
+
+window.btns-2 {
+    --num-buttons: 2;
+}
+
+window.btns-3 {
+    --num-buttons: 3;
+}
+
+window.btns-4 {
+    --num-buttons: 4;
+}
+
 window.shc headerbar.titlebar {
-  background: rgb(53, 53, 53) cross-fade(20% -gtk-icontheme("shc"), image(transparent)) 90% 0/50px 60px no-repeat, linear-gradient(to right, transparent 65%, rgba(158, 21, 37, 0.7)), linear-gradient(to top, rgb(35, 35, 35) 3px, rgb(40, 40, 40)); }
-  window.shc headerbar.titlebar:backdrop {
-    background: rgb(53, 53, 53) cross-fade(20% -gtk-icontheme("shc"), image(transparent)) 90% 0/50px 60px no-repeat, image(rgb(53, 53, 53));
-    /* background-color would flash */ }
+    background: rgb(53, 53, 53) cross-fade(20% -gtk-icontheme("shc"), image(transparent)) calc(100% - max(30px, var(--num-buttons, 1) * 60px)) 0/50px 60px no-repeat, linear-gradient(to right, transparent 65%, rgba(158, 21, 37, 0.7)), linear-gradient(to top, rgb(35, 35, 35) 3px, rgb(40, 40, 40));
+}
+window.shc headerbar.titlebar:backdrop {
+    background: rgb(53, 53, 53) cross-fade(15% -gtk-icontheme("shc"), image(transparent)) calc(100% - max(30px, var(--num-buttons, 1) * 60px)) 0/50px 60px no-repeat, image(rgb(53, 53, 53));
+}
 
 /************
  * Pathbars *

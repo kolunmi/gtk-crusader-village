@@ -165,7 +165,6 @@ gtk_crusader_village_dialog_window_init (GtkCrusaderVillageDialogWindow *self)
   self->results = g_ptr_array_new_with_free_func (maybe_free_variant_pp);
 
   gtk_widget_init_template (GTK_WIDGET (self));
-  gtk_widget_add_css_class (GTK_WIDGET (self), "shc");
 
   g_signal_connect (self->ok_button, "clicked", G_CALLBACK (ok_clicked), self);
 }
