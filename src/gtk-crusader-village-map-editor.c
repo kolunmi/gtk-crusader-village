@@ -62,12 +62,15 @@ struct _GtkCrusaderVillageMapEditor
   GtkAdjustment      *hadjustment;
   GtkAdjustment      *vadjustment;
 
-  GtkGesture *drag_gesture;
-  double      last_drag_x;
-  double      last_drag_y;
+  double drag_start_hadjustment_val;
+  double drag_start_vadjustment_val;
+  double zoom_gesture_start_val;
 
-  GtkGesture                   *draw_gesture;
-  GtkGesture                   *cancel_gesture;
+  GtkGesture *drag_gesture;
+  GtkGesture *draw_gesture;
+  GtkGesture *cancel_gesture;
+  GtkGesture *zoom_gesture;
+
   GtkCrusaderVillageItemStroke *current_stroke;
 };
 
@@ -150,6 +153,17 @@ adjustment_value_changed (GtkAdjustment               *adjustment,
                           GtkCrusaderVillageMapEditor *text_view);
 
 static void
+drag_gesture_begin_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor);
+
+static void
+drag_gesture_begin (GtkGestureDrag              *self,
+                    double                       start_x,
+                    double                       start_y,
+                    GtkCrusaderVillageMapEditor *editor);
+
+static void
 drag_gesture_update (GtkGestureDrag              *gesture,
                      double                       offset_x,
                      double                       offset_y,
@@ -160,6 +174,16 @@ drag_gesture_end (GtkGestureDrag              *gesture,
                   double                       offset_x,
                   double                       offset_y,
                   GtkCrusaderVillageMapEditor *editor);
+
+static void
+drag_gesture_end_gesture (GtkGesture                  *self,
+                          GdkEventSequence            *sequence,
+                          GtkCrusaderVillageMapEditor *editor);
+
+static void
+draw_gesture_begin_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor);
 
 static void
 draw_gesture_begin (GtkGestureDrag              *self,
@@ -180,11 +204,34 @@ draw_gesture_end (GtkGestureDrag              *gesture,
                   GtkCrusaderVillageMapEditor *editor);
 
 static void
-cancel_gesture_pressed (GtkGestureClick             *self,
-                        gint                         n_press,
-                        double                       x,
-                        double                       y,
-                        GtkCrusaderVillageMapEditor *editor);
+draw_gesture_end_gesture (GtkGesture                  *self,
+                          GdkEventSequence            *sequence,
+                          GtkCrusaderVillageMapEditor *editor);
+
+static void
+cancel_gesture_begin_gesture (GtkGesture                  *self,
+                              GdkEventSequence            *sequence,
+                              GtkCrusaderVillageMapEditor *editor);
+
+static void
+cancel_gesture_end_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor);
+
+static void
+zoom_gesture_begin (GtkGesture                  *self,
+                    GdkEventSequence            *sequence,
+                    GtkCrusaderVillageMapEditor *editor);
+
+static void
+zoom_gesture_scale_changed (GtkGestureZoom              *self,
+                            double                       scale,
+                            GtkCrusaderVillageMapEditor *editor);
+
+static void
+zoom_gesture_end (GtkGesture                  *self,
+                  GdkEventSequence            *sequence,
+                  GtkCrusaderVillageMapEditor *editor);
 
 static gboolean
 scroll_event (GtkEventControllerScroll    *self,
@@ -552,10 +599,7 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   GtkEventController *motion_controller = NULL;
 
   self->border_gap = 2;
-
-  self->zoom        = 1.0;
-  self->last_drag_x = -1.0;
-  self->last_drag_y = -1.0;
+  self->zoom       = 1.0;
 
   self->pointer_x = -1.0;
   self->pointer_y = -1.0;
@@ -574,33 +618,35 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
 
   self->drag_gesture = gtk_gesture_drag_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->drag_gesture), 2);
-  g_signal_connect (self->drag_gesture, "drag-update",
-                    G_CALLBACK (drag_gesture_update),
-                    GTK_WIDGET (self));
-  g_signal_connect (self->drag_gesture, "drag-end",
-                    G_CALLBACK (drag_gesture_end),
-                    GTK_WIDGET (self));
+  g_signal_connect (self->drag_gesture, "begin", G_CALLBACK (drag_gesture_begin_gesture), self);
+  g_signal_connect (self->drag_gesture, "drag-begin", G_CALLBACK (drag_gesture_begin), self);
+  g_signal_connect (self->drag_gesture, "drag-update", G_CALLBACK (drag_gesture_update), self);
+  g_signal_connect (self->drag_gesture, "drag-end", G_CALLBACK (drag_gesture_end), self);
+  g_signal_connect (self->drag_gesture, "end", G_CALLBACK (drag_gesture_end_gesture), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drag_gesture));
 
   self->draw_gesture = gtk_gesture_drag_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->draw_gesture), 1);
-  g_signal_connect (self->draw_gesture, "drag-begin",
-                    G_CALLBACK (draw_gesture_begin),
-                    GTK_WIDGET (self));
-  g_signal_connect (self->draw_gesture, "drag-update",
-                    G_CALLBACK (draw_gesture_update),
-                    GTK_WIDGET (self));
-  g_signal_connect (self->draw_gesture, "drag-end",
-                    G_CALLBACK (draw_gesture_end),
-                    GTK_WIDGET (self));
+  g_signal_connect (self->draw_gesture, "begin", G_CALLBACK (draw_gesture_begin_gesture), self);
+  g_signal_connect (self->draw_gesture, "drag-begin", G_CALLBACK (draw_gesture_begin), self);
+  g_signal_connect (self->draw_gesture, "drag-update", G_CALLBACK (draw_gesture_update), self);
+  g_signal_connect (self->draw_gesture, "drag-end", G_CALLBACK (draw_gesture_end), self);
+  g_signal_connect (self->draw_gesture, "end", G_CALLBACK (draw_gesture_end_gesture), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->draw_gesture));
 
   self->cancel_gesture = gtk_gesture_click_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->cancel_gesture), 3);
-  g_signal_connect (self->cancel_gesture, "pressed",
-                    G_CALLBACK (cancel_gesture_pressed),
-                    GTK_WIDGET (self));
+  g_signal_connect (self->cancel_gesture, "begin", G_CALLBACK (cancel_gesture_begin_gesture), self);
+  g_signal_connect (self->cancel_gesture, "end", G_CALLBACK (cancel_gesture_end_gesture), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->cancel_gesture));
+
+  self->zoom_gesture = gtk_gesture_zoom_new ();
+  g_signal_connect (self->zoom_gesture, "begin", G_CALLBACK (zoom_gesture_begin), self);
+  g_signal_connect (self->zoom_gesture, "scale-changed", G_CALLBACK (zoom_gesture_scale_changed), self);
+  g_signal_connect (self->zoom_gesture, "end", G_CALLBACK (zoom_gesture_end), self);
+  gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->zoom_gesture));
+
+  gtk_gesture_group (self->draw_gesture, self->drag_gesture);
 
   scroll_controller = gtk_event_controller_scroll_new (GTK_EVENT_CONTROLLER_SCROLL_VERTICAL);
   g_signal_connect (scroll_controller, "scroll", G_CALLBACK (scroll_event), self);
@@ -611,6 +657,8 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   g_signal_connect (motion_controller, "motion", G_CALLBACK (motion_event), self);
   g_signal_connect (motion_controller, "leave", G_CALLBACK (motion_leave), self);
   gtk_widget_add_controller (GTK_WIDGET (self), motion_controller);
+
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (self), "crosshair");
 }
 
 static void
@@ -825,7 +873,11 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
         }
     }
 
-  if (editor->current_stroke != NULL || (editor->hover_x >= 0 && editor->hover_y >= 0))
+  if (!gtk_gesture_is_recognized (editor->drag_gesture) &&
+      !gtk_gesture_is_recognized (editor->zoom_gesture) &&
+      !gtk_gesture_is_active (editor->cancel_gesture) &&
+      (editor->current_stroke != NULL ||
+       (editor->hover_x >= 0 && editor->hover_y >= 0)))
     {
       g_autoptr (GtkCrusaderVillageItem) current_item = NULL;
       int item_tile_width                             = 0;
@@ -987,28 +1039,43 @@ adjustment_value_changed (GtkAdjustment               *adjustment,
 }
 
 static void
+drag_gesture_begin_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor)
+{
+  if (editor->hadjustment == NULL || editor->vadjustment == NULL)
+    gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_DENIED);
+}
+
+static void
+drag_gesture_begin (GtkGestureDrag              *self,
+                    double                       start_x,
+                    double                       start_y,
+                    GtkCrusaderVillageMapEditor *editor)
+{
+  editor->drag_start_hadjustment_val = gtk_adjustment_get_value (editor->hadjustment);
+  editor->drag_start_vadjustment_val = gtk_adjustment_get_value (editor->vadjustment);
+
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "move");
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
 drag_gesture_update (GtkGestureDrag              *gesture,
                      double                       offset_x,
                      double                       offset_y,
                      GtkCrusaderVillageMapEditor *editor)
 {
-  if (editor->hadjustment == NULL || editor->vadjustment == NULL)
-    return;
+  double start_x = 0.0;
+  double start_y = 0.0;
+  double dx      = 0.0;
+  double dy      = 0.0;
 
-  if (editor->last_drag_x != 0.0 && editor->last_drag_y != 0.0)
-    {
-      gtk_adjustment_set_value (
-          editor->hadjustment,
-          gtk_adjustment_get_value (editor->hadjustment) -
-              (offset_x - editor->last_drag_x));
-      gtk_adjustment_set_value (
-          editor->vadjustment,
-          gtk_adjustment_get_value (editor->vadjustment) -
-              (offset_y - editor->last_drag_y));
-    }
+  gtk_gesture_drag_get_start_point (gesture, &start_x, &start_y);
+  gtk_gesture_drag_get_offset (gesture, &dx, &dy);
 
-  editor->last_drag_x = offset_x;
-  editor->last_drag_y = offset_y;
+  gtk_adjustment_set_value (editor->hadjustment, editor->drag_start_hadjustment_val - dx);
+  gtk_adjustment_set_value (editor->vadjustment, editor->drag_start_vadjustment_val - dy);
 }
 
 static void
@@ -1017,11 +1084,25 @@ drag_gesture_end (GtkGestureDrag              *gesture,
                   double                       offset_y,
                   GtkCrusaderVillageMapEditor *editor)
 {
-  editor->last_drag_x = 0.0;
-  editor->last_drag_y = 0.0;
+  update_motion (editor, editor->pointer_x, editor->pointer_y);
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
 
-  if (editor->hadjustment == NULL || editor->vadjustment == NULL)
-    return;
+static void
+drag_gesture_end_gesture (GtkGesture                  *self,
+                          GdkEventSequence            *sequence,
+                          GtkCrusaderVillageMapEditor *editor)
+{
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
+}
+
+static void
+draw_gesture_begin_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor)
+{
+  if (editor->item_area == NULL)
+    gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_DENIED);
 }
 
 static void
@@ -1032,18 +1113,17 @@ draw_gesture_begin (GtkGestureDrag              *self,
 {
   g_autoptr (GtkCrusaderVillageItem) selected_item = NULL;
 
-  if (gtk_gesture_is_active (editor->cancel_gesture))
-    return;
-  if (editor->item_area == NULL)
-    return;
-
   g_object_get (
       editor->item_area,
       "selected-item", &selected_item,
       NULL);
-
   if (selected_item == NULL)
-    return;
+    {
+      gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_DENIED);
+      return;
+    }
+
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 
   g_clear_object (&editor->current_stroke);
   editor->current_stroke = g_object_new (
@@ -1080,10 +1160,9 @@ draw_gesture_update (GtkGestureDrag              *gesture,
   int                                  n_iterations     = 0;
   int                                  divisor          = 0;
 
-  if (editor->current_stroke == NULL)
-    return;
   if (editor->hover_x < 0 || editor->hover_y < 0)
     return;
+  g_assert (editor->current_stroke != NULL);
 
   g_object_get (
       editor->handle,
@@ -1189,34 +1268,80 @@ draw_gesture_end (GtkGestureDrag              *gesture,
   else
     g_clear_object (&editor->current_stroke);
 
-  g_object_set (
-      editor->handle,
-      "lock-hinted", FALSE,
-      NULL);
-
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
 static void
-cancel_gesture_pressed (GtkGestureClick             *self,
-                        gint                         n_press,
-                        double                       x,
-                        double                       y,
-                        GtkCrusaderVillageMapEditor *editor)
+draw_gesture_end_gesture (GtkGesture                  *self,
+                          GdkEventSequence            *sequence,
+                          GtkCrusaderVillageMapEditor *editor)
 {
-  if (editor->current_stroke == NULL)
-    return;
-
-  g_clear_object (&editor->current_stroke);
-
   g_object_set (
       editor->handle,
       "lock-hinted", FALSE,
       NULL);
 
-  g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
+  if (editor->current_stroke == NULL)
+    g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
+}
+
+static void
+cancel_gesture_begin_gesture (GtkGesture                  *self,
+                              GdkEventSequence            *sequence,
+                              GtkCrusaderVillageMapEditor *editor)
+{
+  g_clear_object (&editor->current_stroke);
+
+  gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_CLAIMED);
+  gtk_gesture_set_state (editor->draw_gesture, GTK_EVENT_SEQUENCE_DENIED);
+
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "not-allowed");
   gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
+cancel_gesture_end_gesture (GtkGesture                  *self,
+                            GdkEventSequence            *sequence,
+                            GtkCrusaderVillageMapEditor *editor)
+{
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
+zoom_gesture_begin (GtkGesture                  *self,
+                    GdkEventSequence            *sequence,
+                    GtkCrusaderVillageMapEditor *editor)
+{
+  gtk_gesture_set_state (editor->draw_gesture, GTK_EVENT_SEQUENCE_DENIED);
+
+  editor->zoom_gesture_start_val = editor->zoom;
+
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), NULL);
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
+zoom_gesture_scale_changed (GtkGestureZoom              *self,
+                            double                       scale,
+                            GtkCrusaderVillageMapEditor *editor)
+{
+  double scale_delta = 0.0;
+
+  scale_delta  = gtk_gesture_zoom_get_scale_delta (self);
+  editor->zoom = CLAMP (editor->zoom_gesture_start_val + scale_delta * editor->zoom, 0.5, 7.5);
+
+  update_motion (editor, editor->pointer_x, editor->pointer_y);
+}
+
+static void
+zoom_gesture_end (GtkGesture                  *self,
+                  GdkEventSequence            *sequence,
+                  GtkCrusaderVillageMapEditor *editor)
+{
+  gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 }
 
 static gboolean
@@ -1225,6 +1350,11 @@ scroll_event (GtkEventControllerScroll    *self,
               double                       dy,
               GtkCrusaderVillageMapEditor *editor)
 {
+  if (gtk_gesture_is_recognized (editor->drag_gesture) ||
+      gtk_gesture_is_recognized (editor->draw_gesture) ||
+      gtk_gesture_is_recognized (editor->zoom_gesture))
+    return GDK_EVENT_STOP;
+
   editor->zoom += dy * -0.06 * editor->zoom;
   editor->zoom = CLAMP (editor->zoom, 0.5, 7.5);
 
@@ -1470,15 +1600,19 @@ update_motion (GtkCrusaderVillageMapEditor *self,
   gboolean y_changed       = FALSE;
   gboolean redraw          = FALSE;
 
-  hscroll         = gtk_adjustment_get_value (self->hadjustment);
-  vscroll         = gtk_adjustment_get_value (self->vadjustment);
   self->pointer_x = x;
   self->pointer_y = y;
-  self->canvas_x  = x + hscroll;
-  self->canvas_y  = y + vscroll;
-  map_offset      = (double) self->border_gap * BASE_TILE_SIZE * self->zoom;
-  new_hover_x     = floor ((self->canvas_x - map_offset) / (BASE_TILE_SIZE * self->zoom));
-  new_hover_y     = floor ((self->canvas_y - map_offset) / (BASE_TILE_SIZE * self->zoom));
+
+  if (gtk_gesture_is_recognized (self->drag_gesture))
+    return;
+
+  hscroll        = gtk_adjustment_get_value (self->hadjustment);
+  vscroll        = gtk_adjustment_get_value (self->vadjustment);
+  self->canvas_x = x + hscroll;
+  self->canvas_y = y + vscroll;
+  map_offset     = (double) self->border_gap * BASE_TILE_SIZE * self->zoom;
+  new_hover_x    = floor ((self->canvas_x - map_offset) / (BASE_TILE_SIZE * self->zoom));
+  new_hover_y    = floor ((self->canvas_y - map_offset) / (BASE_TILE_SIZE * self->zoom));
 
   g_object_get (
       self->map,
