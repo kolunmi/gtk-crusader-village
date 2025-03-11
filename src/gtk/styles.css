@@ -29,7 +29,7 @@
 }
 
 .greeting-dialog {
-    background-image: linear-gradient(to right, @theme_bg_color 5%, alpha(@theme_bg_color, 0.0) 100%), var(--sketch);
+    background-image: linear-gradient(to right, @theme_bg_color 2%, alpha(@theme_bg_color, 0.0) 50%), linear-gradient(to bottom, @theme_bg_color 2%, alpha(@theme_bg_color, 0.0) 50%), var(--sketch);
     background-repeat: no-repeat;
     background-position: 100% 100%;
     background-size: 40% auto;

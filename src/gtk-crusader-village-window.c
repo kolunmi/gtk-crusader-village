@@ -27,6 +27,7 @@
 #include "gtk-crusader-village-map-editor.h"
 #include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
+#include "gtk-crusader-village-theme-utils.h"
 #include "gtk-crusader-village-timeline-view.h"
 #include "gtk-crusader-village-window.h"
 
@@ -151,6 +152,7 @@ static void
 gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), FALSE);
 
   self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
   gtk_crusader_village_item_store_read_resources (self->item_store);

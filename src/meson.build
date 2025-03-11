@@ -17,6 +17,7 @@ gtk_crusader_village_sources = [
   'gtk-crusader-village-item-stroke.c',
   'gtk-crusader-village-map.c',
   'gtk-crusader-village-map-handle.c',
+  'gtk-crusader-village-theme-utils.c',
 ]
 
 gtk_crusader_village_deps = [

@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "gtk-crusader-village-preferences-window.h"
+#include "gtk-crusader-village-theme-utils.h"
 
 #define KEY_THEME            "theme"
 #define KEY_SHOW_GRID        "show-grid"
@@ -177,6 +178,7 @@ static void
 gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), TRUE);
 
   g_signal_connect (self->theme, "notify::selected-item",
                     G_CALLBACK (ui_changed), self);
@@ -233,9 +235,6 @@ gtk_crusader_village_preferences_window_spawn (GSettings *settings,
   window = g_object_new (
       GTK_CRUSADER_VILLAGE_TYPE_PREFERENCES_WINDOW,
       "settings", settings,
-      "modal", TRUE,
-      "destroy-with-parent", TRUE,
-      "resizable", FALSE,
       NULL);
 
   gtk_window_set_transient_for (window, parent);

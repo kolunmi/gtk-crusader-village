@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "gtk-crusader-village-dialog-window.h"
+#include "gtk-crusader-village-theme-utils.h"
 
 struct _GtkCrusaderVillageDialogWindow
 {
@@ -162,9 +163,10 @@ gtk_crusader_village_dialog_window_class_init (GtkCrusaderVillageDialogWindowCla
 static void
 gtk_crusader_village_dialog_window_init (GtkCrusaderVillageDialogWindow *self)
 {
-  self->results = g_ptr_array_new_with_free_func (maybe_free_variant_pp);
-
   gtk_widget_init_template (GTK_WIDGET (self));
+  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), TRUE);
+
+  self->results = g_ptr_array_new_with_free_func (maybe_free_variant_pp);
 
   g_signal_connect (self->ok_button, "clicked", G_CALLBACK (ok_clicked), self);
 }
