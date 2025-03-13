@@ -1,9 +1,9 @@
 {
-    "name": <"Drawbridge">,
+    "name": <"Low Wall">,
     "description": <"">,
     "thumbnail-resource": <"">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">,
-    "tile-width": <5>,
-    "tile-height": <5>
+    "kind": <"wall">,
+    "tile-width": <1>,
+    "tile-height": <1>
 }

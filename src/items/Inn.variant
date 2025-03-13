@@ -1,8 +1,8 @@
 {
-    "name": <"Drawbridge">,
+    "name": <"Inn">,
     "description": <"">,
     "thumbnail-resource": <"">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/sickle.png">,
     "kind": <"building">,
     "tile-width": <5>,
     "tile-height": <5>

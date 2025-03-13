@@ -2,7 +2,7 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillageTimelineView" parent="GtkCrusaderVillageUtilBin">
-    <property name="width-request">250</property>
+    <property name="width-request">275</property>
     <property name="child">
       <object class="GtkBox">
         <property name="orientation">GTK_ORIENTATION_VERTICAL</property>

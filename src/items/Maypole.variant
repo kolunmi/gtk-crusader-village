@@ -1,0 +1,9 @@
+{
+    "name": <"Maypole">,
+    "description": <"">,
+    "thumbnail-resource": <"">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
+    "kind": <"building">,
+    "tile-width": <3>,
+    "tile-height": <3>
+}

@@ -1,7 +1,9 @@
 {
-    "name": <"Tanners Workshop">,
+    "name": <"Tanner's Workshop">,
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/TannersWorkshop.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
+    "kind": <"building">,
+    "tile-width": <4>,
+    "tile-height": <4>
 }

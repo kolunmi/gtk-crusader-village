@@ -1,7 +1,0 @@
-{
-    "name": <"Armourers Workshop">,
-    "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArmourersWorkshop.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
-}

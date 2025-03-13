@@ -1,7 +1,9 @@
 {
-    "name": <"Poleturners Workshop">,
+    "name": <"Poleturner's Workshop">,
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/PoleturnersWorkshop.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
+    "kind": <"building">,
+    "tile-width": <4>,
+    "tile-height": <4>
 }

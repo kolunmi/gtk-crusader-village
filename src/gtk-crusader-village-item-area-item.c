@@ -121,6 +121,9 @@ gtk_crusader_village_item_area_item_set_property (GObject      *object,
               case GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL:
                 kind_string = "Wall";
                 break;
+              case GTK_CRUSADER_VILLAGE_ITEM_KIND_MOAT:
+                kind_string = "Moat";
+                break;
               default:
                 break;
               }

@@ -1,7 +1,9 @@
 {
-    "name": <"Blacksmiths Workshop">,
+    "name": <"Blacksmith's Workshop">,
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/BlacksmithsWorkshop.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/shield.png">,
+    "kind": <"building">,
+    "tile-width": <4>,
+    "tile-height": <4>
 }

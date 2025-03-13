@@ -1,7 +1,9 @@
 {
-    "name": <"Dog Cage">,
+    "name": <"Caged War Dogs">,
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/DogCage.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
+    "kind": <"building">,
+    "tile-width": <3>,
+    "tile-height": <3>
 }

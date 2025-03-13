@@ -25,6 +25,9 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
 
     <!-- items -->
+    <file>items/AmorersWorkshop.variant</file>
+    <file>items/Apothecary.variant</file>
+    <file>items/AppleOrchard.variant</file>
     <file>items/ArabArcher.variant</file>
     <file>items/ArabAssassin.variant</file>
     <file>items/ArabFireThrower.variant</file>
@@ -32,10 +35,31 @@
     <file>items/ArabSlave.variant</file>
     <file>items/ArabSlinger.variant</file>
     <file>items/ArabSwordsman.variant</file>
+    <file>items/Armory.variant</file>
+    <file>items/Bakery.variant</file>
     <file>items/Ballista.variant</file>
+    <file>items/Barracks.variant</file>
     <file>items/BatteringRam.variant</file>
+    <file>items/BlacksmithsWorkshop.variant</file>
+    <file>items/Brazier.variant</file>
+    <file>items/Brewery.variant</file>
+    <file>items/Burningstake.variant</file>
+    <file>items/CagedWarDogs.variant</file>
     <file>items/Catapult.variant</file>
+    <file>items/Cathedral.variant</file>
+    <file>items/Cesspit.variant</file>
+    <file>items/Chapel.variant</file>
+    <file>items/ChoppingBlock.variant</file>
+    <file>items/Church.variant</file>
+    <file>items/CommunalGarden.variant</file>
+    <file>items/CrenulatedWall.variant</file>
+    <file>items/DancingBear.variant</file>
+    <file>items/DairyFarm.variant</file>
+    <file>items/Drawbridge.variant</file>
+    <file>items/Dungeon.variant</file>
+    <file>items/DunkingStool.variant</file>
     <file>items/Engineer.variant</file>
+    <file>items/EngineersGuild.variant</file>
     <file>items/EuroArcher.variant</file>
     <file>items/EuroCrossbowman.variant</file>
     <file>items/EuroKnight.variant</file>
@@ -45,37 +69,62 @@
     <file>items/EuroSpearman.variant</file>
     <file>items/EuroSwordsman.variant</file>
     <file>items/FireBallista.variant</file>
-    <file>items/Ladderman.variant</file>
-    <file>items/Mangonel.variant</file>
-    <file>items/PortableShield.variant</file>
-    <file>items/SiegeTower.variant</file>
-    <file>items/Trebuchet.variant</file>
-    <file>items/Tunneler.variant</file>
-
-    <file>items/ArmourersWorkshop.variant</file>
-    <file>items/Armoury.variant</file>
-    <file>items/Barracks.variant</file>
-    <file>items/BlacksmithsWorkshop.variant</file>
-    <file>items/DogCage.variant</file>
-    <file>items/Drawbridge.variant</file>
-    <file>items/EngineersGuild.variant</file>
+    <file>items/Flag1.variant</file>
+    <file>items/Flag2.variant</file>
+    <file>items/Flag3.variant</file>
+    <file>items/Flag4.variant</file>
     <file>items/FletchersWorkshop.variant</file>
-    <file>items/LargeGatehouse.variant</file>
+    <file>items/Gallows.variant</file>
+    <file>items/Gibbet.variant</file>
+    <file>items/Granary.variant</file>
+    <file>items/HeadonSpikes.variant</file>
+    <file>items/HopsFarm.variant</file>
+    <file>items/Hovel.variant</file>
+    <file>items/HuntersPost.variant</file>
+    <file>items/Inn.variant</file>
+    <file>items/IronMine.variant</file>
+    <file>items/KillingPits.variant</file>
+    <file>items/Ladderman.variant</file>
+    <file>items/LargeCommunalGarden.variant</file>
+    <file>items/LargeStoneGatehouse.variant</file>
+    <file>items/LowWall.variant</file>
+    <file>items/Mangonel.variant</file>
+    <file>items/Marketplace.variant</file>
+    <file>items/Maypole.variant</file>
     <file>items/MercenaryPost.variant</file>
+    <file>items/Mill.variant</file>
+    <file>items/Moat.variant</file>
     <file>items/OilSmelter.variant</file>
+    <file>items/OxTether.variant</file>
+    <file>items/PitchDitch.variant</file>
+    <file>items/PitchRig.variant</file>
     <file>items/PoleturnersWorkshop.variant</file>
-    <file>items/SmallGatehouse.variant</file>
+    <file>items/PortableShield.variant</file>
+    <file>items/Quarry.variant</file>
+    <file>items/Shrine.variant</file>
+    <file>items/ShrubGarden.variant</file>
+    <file>items/SiegeTower.variant</file>
+    <file>items/SmallStoneGatehouse.variant</file>
     <file>items/Stables.variant</file>
+    <file>items/Statue.variant</file>
+    <file>items/Stockpile.variant</file>
+    <file>items/Stocks.variant</file>
+    <file>items/StoneWall.variant</file>
+    <file>items/StretchingRack.variant</file>
     <file>items/TannersWorkshop.variant</file>
     <file>items/Tower1.variant</file>
     <file>items/Tower2.variant</file>
     <file>items/Tower3.variant</file>
     <file>items/Tower4.variant</file>
     <file>items/Tower5.variant</file>
+    <file>items/TownGarden.variant</file>
+    <file>items/Trebuchet.variant</file>
+    <file>items/Tunneler.variant</file>
     <file>items/TunnellersGuild.variant</file>
-
-    <file>items/Granary.variant</file>
-    <file>items/Hovel.variant</file>
+    <file>items/WallStairs.variant</file>
+    <file>items/WaterPot.variant</file>
+    <file>items/Well.variant</file>
+    <file>items/WheatFarm.variant</file>
     <file>items/WoodcuttersHut.variant</file>
 
     <!-- assets -->
@@ -106,8 +155,8 @@
     <file>shc-data/Trebuchet.png</file>
     <file>shc-data/Tunneler.png</file>
 
-    <file>shc-data/ArmourersWorkshop.png</file>
-    <file>shc-data/Armoury.png</file>
+    <file>shc-data/ArmorersWorkshop.png</file>
+    <file>shc-data/Armory.png</file>
     <file>shc-data/Barracks.png</file>
     <file>shc-data/BlacksmithsWorkshop.png</file>
     <file>shc-data/DogCage.png</file>
@@ -128,15 +177,16 @@
     <file>shc-data/Tower5.png</file>
     <file>shc-data/TunnellersGuild.png</file>
 
+    <file>shc-data/icons/apple.png</file>
     <file>shc-data/icons/arab_sword.png</file>
-    <file>shc-data/icons/euro_sword.png</file>
-    <file>shc-data/icons/house.png</file>
-    <file>shc-data/icons/shield.png</file>
-    <file>shc-data/icons/tower.png</file>
     <file>shc-data/icons/crown.png</file>
+    <file>shc-data/icons/euro_sword.png</file>
     <file>shc-data/icons/hammer.png</file>
+    <file>shc-data/icons/house.png</file>
     <file>shc-data/icons/ruins.png</file>
+    <file>shc-data/icons/shield.png</file>
     <file>shc-data/icons/sickle.png</file>
+    <file>shc-data/icons/tower.png</file>
     <file>shc-data/icons/trumpet.png</file>
     
     <file>shc-data/sketches/armourer_sketch.tgx.png</file>

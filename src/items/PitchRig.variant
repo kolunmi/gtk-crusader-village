@@ -1,0 +1,9 @@
+{
+    "name": <"Pitch Rig">,
+    "description": <"">,
+    "thumbnail-resource": <"">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
+    "kind": <"building">,
+    "tile-width": <4>,
+    "tile-height": <4>
+}

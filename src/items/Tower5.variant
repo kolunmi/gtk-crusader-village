@@ -3,5 +3,7 @@
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Tower5.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">
+    "kind": <"building">,
+    "tile-width": <6>,
+    "tile-height": <6>
 }

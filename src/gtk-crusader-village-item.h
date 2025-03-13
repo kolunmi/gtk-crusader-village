@@ -33,6 +33,7 @@ typedef enum
   GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING,
   GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT,
   GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL,
+  GTK_CRUSADER_VILLAGE_ITEM_KIND_MOAT,
 } GtkCrusaderVillageItemKind;
 
 GType gtk_crusader_village_item_kind_get_type (void);

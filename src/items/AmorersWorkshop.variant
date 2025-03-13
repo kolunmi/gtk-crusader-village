@@ -1,9 +1,9 @@
 {
-    "name": <"Oil Smelter">,
+    "name": <"Armorer's Workshop">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArmorersWorkshop.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"building">,
     "tile-width": <4>,
-    "tile-height": <8>
+    "tile-height": <4>
 }

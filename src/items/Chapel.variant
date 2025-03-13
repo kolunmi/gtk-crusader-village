@@ -1,0 +1,9 @@
+{
+    "name": <"Chapel">,
+    "description": <"">,
+    "thumbnail-resource": <"">,
+    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
+    "kind": <"building">,
+    "tile-width": <6>,
+    "tile-height": <6>
+}
