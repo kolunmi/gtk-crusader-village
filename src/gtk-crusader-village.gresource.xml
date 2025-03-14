@@ -25,7 +25,7 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
 
     <!-- items -->
-    <file>items/AmorersWorkshop.variant</file>
+    <file>items/ArmorersWorkshop.variant</file>
     <file>items/Apothecary.variant</file>
     <file>items/AppleOrchard.variant</file>
     <file>items/ArabArcher.variant</file>
@@ -128,6 +128,8 @@
     <file>items/WoodcuttersHut.variant</file>
 
     <!-- assets -->
+    <file>shc-data/Apothecary.png</file>
+    <file>shc-data/AppleOrchard.png</file>
     <file>shc-data/ArabArcher.png</file>
     <file>shc-data/ArabAssassin.png</file>
     <file>shc-data/ArabFireThrower.png</file>
@@ -135,10 +137,32 @@
     <file>shc-data/ArabSlave.png</file>
     <file>shc-data/ArabSlinger.png</file>
     <file>shc-data/ArabSwordsman.png</file>
+    <file>shc-data/ArmorersWorkshop.png</file>
+    <file>shc-data/Armory.png</file>
+    <file>shc-data/Bakery.png</file>
     <file>shc-data/Ballista.png</file>
+    <file>shc-data/Barracks.png</file>
     <file>shc-data/BatteringRam.png</file>
+    <file>shc-data/BlacksmithsWorkshop.png</file>
+    <file>shc-data/Brazier.png</file>
+    <file>shc-data/Brewery.png</file>
+    <file>shc-data/Burningstake.png</file>
+    <file>shc-data/CagedWarDogs.png</file>
     <file>shc-data/Catapult.png</file>
+    <file>shc-data/Cathedral.png</file>
+    <file>shc-data/Cesspit.png</file>
+    <file>shc-data/Chapel.png</file>
+    <file>shc-data/ChoppingBlock.png</file>
+    <file>shc-data/Church.png</file>
+    <file>shc-data/CommunalGarden.png</file>
+    <file>shc-data/CrenulatedWall.png</file>
+    <file>shc-data/DairyFarm.png</file>
+    <file>shc-data/DancingBear.png</file>
+    <file>shc-data/Drawbridge.png</file>
+    <file>shc-data/Dungeon.png</file>
+    <file>shc-data/DunkingStool.png</file>
     <file>shc-data/Engineer.png</file>
+    <file>shc-data/EngineersGuild.png</file>
     <file>shc-data/EuroArcher.png</file>
     <file>shc-data/EuroCrossbowman.png</file>
     <file>shc-data/EuroKnight.png</file>
@@ -148,34 +172,63 @@
     <file>shc-data/EuroSpearman.png</file>
     <file>shc-data/EuroSwordsman.png</file>
     <file>shc-data/FireBallista.png</file>
-    <file>shc-data/Ladderman.png</file>
-    <file>shc-data/Mangonel.png</file>
-    <file>shc-data/PortableShield.png</file>
-    <file>shc-data/SiegeTower.png</file>
-    <file>shc-data/Trebuchet.png</file>
-    <file>shc-data/Tunneler.png</file>
-
-    <file>shc-data/ArmorersWorkshop.png</file>
-    <file>shc-data/Armory.png</file>
-    <file>shc-data/Barracks.png</file>
-    <file>shc-data/BlacksmithsWorkshop.png</file>
-    <file>shc-data/DogCage.png</file>
-    <file>shc-data/Drawbridge.png</file>
-    <file>shc-data/EngineersGuild.png</file>
+    <file>shc-data/Flag1.png</file>
+    <file>shc-data/Flag2.png</file>
+    <file>shc-data/Flag3.png</file>
+    <file>shc-data/Flag4.png</file>
     <file>shc-data/FletchersWorkshop.png</file>
-    <file>shc-data/LargeGatehouse.png</file>
+    <file>shc-data/Gallows.png</file>
+    <file>shc-data/Gibbet.png</file>
+    <file>shc-data/Granary.png</file>
+    <file>shc-data/HeadOnSpikes.png</file>
+    <file>shc-data/HopsFarm.png</file>
+    <file>shc-data/Hovel.png</file>
+    <file>shc-data/HuntersPost.png</file>
+    <file>shc-data/Inn.png</file>
+    <file>shc-data/IronMine.png</file>
+    <file>shc-data/KillingPits.png</file>
+    <file>shc-data/Ladderman.png</file>
+    <file>shc-data/LargeCommunalGarden.png</file>
+    <file>shc-data/LargeStoneGatehouse.png</file>
+    <file>shc-data/LowWall.png</file>
+    <file>shc-data/Mangonel.png</file>
+    <file>shc-data/Marketplace.png</file>
+    <file>shc-data/Maypole.png</file>
     <file>shc-data/MercenaryPost.png</file>
+    <file>shc-data/Mill.png</file>
+    <file>shc-data/Moat.png</file>
     <file>shc-data/OilSmelter.png</file>
+    <file>shc-data/OxTether.png</file>
+    <file>shc-data/PitchDitch.png</file>
+    <file>shc-data/PitchRig.png</file>
     <file>shc-data/PoleturnersWorkshop.png</file>
-    <file>shc-data/SmallGatehouse.png</file>
+    <file>shc-data/PortableShield.png</file>
+    <file>shc-data/Quarry.png</file>
+    <file>shc-data/Shrine.png</file>
+    <file>shc-data/ShrubGarden.png</file>
+    <file>shc-data/SiegeTower.png</file>
+    <file>shc-data/SmallStoneGatehouse.png</file>
     <file>shc-data/Stables.png</file>
+    <file>shc-data/Statue.png</file>
+    <file>shc-data/Stockpile.png</file>
+    <file>shc-data/Stocks.png</file>
+    <file>shc-data/StoneWall.png</file>
+    <file>shc-data/StretchingRack.png</file>
     <file>shc-data/TannersWorkshop.png</file>
     <file>shc-data/Tower1.png</file>
     <file>shc-data/Tower2.png</file>
     <file>shc-data/Tower3.png</file>
     <file>shc-data/Tower4.png</file>
     <file>shc-data/Tower5.png</file>
+    <file>shc-data/TownGarden.png</file>
+    <file>shc-data/Trebuchet.png</file>
+    <file>shc-data/Tunneler.png</file>
     <file>shc-data/TunnellersGuild.png</file>
+    <file>shc-data/WallStairs.png</file>
+    <file>shc-data/WaterPot.png</file>
+    <file>shc-data/Well.png</file>
+    <file>shc-data/WheatFarm.png</file>
+    <file>shc-data/WoodcuttersHut.png</file>
 
     <file>shc-data/icons/apple.png</file>
     <file>shc-data/icons/arab_sword.png</file>

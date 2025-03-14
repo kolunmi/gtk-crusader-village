@@ -1,7 +1,7 @@
 {
     "name": <"Moat">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Moat.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"moat">,
     "tile-width": <3>,

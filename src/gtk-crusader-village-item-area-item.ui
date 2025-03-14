@@ -6,6 +6,7 @@
     <property name="child">
       <object class="GtkCenterBox">
         <property name="orientation">horizontal</property>
+        <property name="margin-end">20</property>
 
         <property name="start-widget">
           <object class="GtkBox">

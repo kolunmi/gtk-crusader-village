@@ -1,7 +1,7 @@
 {
     "name": <"Hops Farm">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/HopsFarm.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
     "kind": <"building">,
     "tile-width": <9>,

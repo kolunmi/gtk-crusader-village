@@ -1,7 +1,7 @@
 {
     "name": <"Ox Tether">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/OxTether.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
     "kind": <"building">,
     "tile-width": <2>,

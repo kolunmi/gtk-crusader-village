@@ -1,7 +1,7 @@
 {
     "name": <"Bakery">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Bakery.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/sickle.png">,
     "kind": <"building">,
     "tile-width": <4>,

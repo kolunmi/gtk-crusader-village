@@ -1,7 +1,7 @@
 {
     "name": <"Large Stone Gatehouse">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/LargeGatehouse.png">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/LargeStoneGatehouse.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"building">,
     "tile-width": <7>,

@@ -1,7 +1,7 @@
 {
     "name": <"Wall Stairs">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/WallStairs.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"wall">,
     "tile-width": <1>,

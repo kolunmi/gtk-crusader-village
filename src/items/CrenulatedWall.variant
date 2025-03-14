@@ -1,7 +1,7 @@
 {
     "name": <"Crenulated Wall">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/CrenulatedWall.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"wall">,
     "tile-width": <1>,

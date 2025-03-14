@@ -1,7 +1,7 @@
 {
     "name": <"Mill">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Mill.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/sickle.png">,
     "kind": <"building">,
     "tile-width": <3>,

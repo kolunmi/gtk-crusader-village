@@ -1,7 +1,7 @@
 {
     "name": <"Hunter's Post">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/HuntersPost.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
     "kind": <"building">,
     "tile-width": <3>,

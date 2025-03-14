@@ -1,7 +1,7 @@
 {
     "name": <"Gallows">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Gallows.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
     "kind": <"building">,
     "tile-width": <2>,

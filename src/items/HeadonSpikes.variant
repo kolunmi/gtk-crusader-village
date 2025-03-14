@@ -1,7 +1,7 @@
 {
     "name": <"Head on Spikes">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/HeadOnSpikes.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
     "kind": <"building">,
     "tile-width": <1>,

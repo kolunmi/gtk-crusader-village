@@ -1,7 +1,7 @@
 {
     "name": <"Dairy Farm">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/DairyFarm.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
     "kind": <"building">,
     "tile-width": <10>,

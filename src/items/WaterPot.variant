@@ -1,7 +1,7 @@
 {
     "name": <"Water Pot">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/WaterPot.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
     "kind": <"building">,
     "tile-width": <4>,

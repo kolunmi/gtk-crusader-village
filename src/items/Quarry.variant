@@ -1,7 +1,7 @@
 {
     "name": <"Quarry">,
     "description": <"">,
-    "thumbnail-resource": <"">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Quarry.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
     "kind": <"building">,
     "tile-width": <6>,
