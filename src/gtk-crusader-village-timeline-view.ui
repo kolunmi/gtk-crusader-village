@@ -25,6 +25,7 @@
             <property name="child">
               <object class="GtkListView" id="list_view">
                 <property name="show-separators">TRUE</property>
+                <property name="single-click-activate">TRUE</property>
               </object>
             </property>
           </object>
