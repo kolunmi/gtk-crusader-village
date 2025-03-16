@@ -406,6 +406,26 @@ dimensions_changed (GtkCrusaderVillageMap       *map,
 }
 
 void
+gtk_crusader_village_map_handle_delete_idx (GtkCrusaderVillageMapHandle *self,
+                                            guint                        idx)
+{
+  guint memory_n_items  = 0;
+  guint strokes_n_items = 0;
+
+  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP_HANDLE (self));
+  g_return_if_fail (self->map != NULL);
+
+  memory_n_items  = g_list_model_get_n_items (G_LIST_MODEL (self->memory));
+  strokes_n_items = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+  g_return_if_fail (idx < memory_n_items + strokes_n_items);
+
+  if (idx < strokes_n_items)
+    g_list_store_remove (self->strokes, idx);
+  else
+    g_list_store_remove (self->memory, idx - strokes_n_items);
+}
+
+void
 gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self)
 {
   g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP_HANDLE (self));

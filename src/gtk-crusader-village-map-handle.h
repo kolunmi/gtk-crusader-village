@@ -29,6 +29,10 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMapHandle, gtk_crusader_village_map_handle, GTK_CRUSADER_VILLAGE, MAP_HANDLE, GObject)
 
 void
+gtk_crusader_village_map_handle_delete_idx (GtkCrusaderVillageMapHandle *self,
+                                            guint                        idx);
+
+void
 gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self);
 
 G_END_DECLS

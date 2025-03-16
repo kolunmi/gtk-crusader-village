@@ -41,6 +41,7 @@ struct _GtkCrusaderVillageTimelineView
   GtkLabel       *stats;
   GtkListView    *list_view;
   GtkCheckButton *insert_mode;
+  GtkButton      *delete_stroke;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageTimelineView, gtk_crusader_village_timeline_view, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
@@ -84,6 +85,10 @@ static void
 row_activated (GtkListView                    *self,
                guint                           position,
                GtkCrusaderVillageTimelineView *timeline_view);
+
+static void
+delete_stroke_clicked (GtkButton                      *self,
+                       GtkCrusaderVillageTimelineView *timeline_view);
 
 static void
 cursor_changed (GtkCrusaderVillageMapHandle    *handle,
@@ -219,6 +224,7 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, stats);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, list_view);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, insert_mode);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, delete_stroke);
 }
 
 static void
@@ -254,6 +260,8 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
 
   g_signal_connect (self->list_view, "activate",
                     G_CALLBACK (row_activated), self);
+  g_signal_connect (self->delete_stroke, "clicked",
+                    G_CALLBACK (delete_stroke_clicked), self);
 }
 
 static void
@@ -375,6 +383,26 @@ row_activated (GtkListView                    *self,
 }
 
 static void
+delete_stroke_clicked (GtkButton                      *self,
+                       GtkCrusaderVillageTimelineView *timeline_view)
+{
+  guint cursor = 0;
+
+  if (timeline_view->handle == NULL)
+    return;
+
+  g_object_get (
+      timeline_view->handle,
+      "cursor", &cursor,
+      NULL);
+  if (cursor == 0)
+    return;
+
+  gtk_crusader_village_map_handle_delete_idx (
+      timeline_view->handle, cursor - 1);
+}
+
+static void
 cursor_changed (GtkCrusaderVillageMapHandle    *handle,
                 GParamSpec                     *pspec,
                 GtkCrusaderVillageTimelineView *timeline_view)
@@ -397,6 +425,8 @@ lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
 
   if (lock_hinted)
     update_selected (timeline_view);
+
+  update_ui (timeline_view);
 }
 
 static void
@@ -416,9 +446,10 @@ update_selected (GtkCrusaderVillageTimelineView *self)
 static void
 update_ui (GtkCrusaderVillageTimelineView *self)
 {
-  guint selected  = 0;
-  guint n_strokes = 0;
-  char  buf[128]  = { 0 };
+  guint    selected    = 0;
+  guint    n_strokes   = 0;
+  char     buf[128]    = { 0 };
+  gboolean lock_hinted = FALSE;
 
   if (self->handle == NULL)
     return;
@@ -437,4 +468,12 @@ update_ui (GtkCrusaderVillageTimelineView *self)
     g_snprintf (buf, sizeof (buf), "cursor: %d", selected);
 
   gtk_label_set_label (self->stats, buf);
+
+  g_object_get (
+      self->handle,
+      "lock-hinted", &lock_hinted,
+      NULL);
+
+  gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && selected > 0);
 }
