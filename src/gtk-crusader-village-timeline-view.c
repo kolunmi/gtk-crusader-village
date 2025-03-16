@@ -91,6 +91,11 @@ cursor_changed (GtkCrusaderVillageMapHandle    *handle,
                 GtkCrusaderVillageTimelineView *timeline_view);
 
 static void
+lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
+                   GParamSpec                     *pspec,
+                   GtkCrusaderVillageTimelineView *timeline_view);
+
+static void
 update_selected (GtkCrusaderVillageTimelineView *self);
 
 static void
@@ -109,6 +114,8 @@ gtk_crusader_village_timeline_view_dispose (GObject *object)
     {
       g_signal_handlers_disconnect_by_func (
           self->handle, cursor_changed, self);
+      g_signal_handlers_disconnect_by_func (
+          self->handle, lock_hint_changed, self);
       g_binding_unbind (self->insert_mode_binding);
     }
   g_clear_object (&self->handle);
@@ -153,6 +160,8 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
           {
             g_signal_handlers_disconnect_by_func (
                 self->handle, cursor_changed, self);
+            g_signal_handlers_disconnect_by_func (
+                self->handle, lock_hint_changed, self);
             g_binding_unbind (self->insert_mode_binding);
           }
         g_clear_object (&self->handle);
@@ -170,6 +179,8 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
 
             g_signal_connect (self->handle, "notify::cursor",
                               G_CALLBACK (cursor_changed), self);
+            g_signal_connect (self->handle, "notify::lock-hinted",
+                              G_CALLBACK (lock_hint_changed), self);
             self->insert_mode_binding = g_object_bind_property (
                 self->handle, "insert-mode",
                 self->insert_mode, "active",
@@ -373,6 +384,22 @@ cursor_changed (GtkCrusaderVillageMapHandle    *handle,
 }
 
 static void
+lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
+                   GParamSpec                     *pspec,
+                   GtkCrusaderVillageTimelineView *timeline_view)
+{
+  gboolean lock_hinted = FALSE;
+
+  g_object_get (
+      handle,
+      "lock-hinted", &lock_hinted,
+      NULL);
+
+  if (lock_hinted)
+    update_selected (timeline_view);
+}
+
+static void
 update_selected (GtkCrusaderVillageTimelineView *self)
 {
   guint cursor = 0;
@@ -382,8 +409,8 @@ update_selected (GtkCrusaderVillageTimelineView *self)
       "cursor", &cursor,
       NULL);
 
-  gtk_list_view_scroll_to (
-      self->list_view, cursor, GTK_LIST_SCROLL_SELECT, NULL);
+  gtk_list_view_scroll_to (self->list_view, cursor, GTK_LIST_SCROLL_FOCUS, NULL);
+  gtk_single_selection_set_selected (self->selection, cursor);
 }
 
 static void
