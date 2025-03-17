@@ -3,6 +3,7 @@
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Quarry.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
+    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <6>,
     "tile-height": <6>

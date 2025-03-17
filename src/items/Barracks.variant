@@ -3,6 +3,7 @@
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Barracks.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <10>,
     "tile-height": <10>

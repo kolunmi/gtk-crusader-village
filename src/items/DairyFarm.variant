@@ -3,6 +3,7 @@
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/DairyFarm.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
+    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <10>,
     "tile-height": <10>

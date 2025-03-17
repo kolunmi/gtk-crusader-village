@@ -48,6 +48,8 @@ struct _GtkCrusaderVillageMapEditor
   int                         border_gap;
   gboolean                    line_mode;
 
+  GHashTable *tile_textures;
+
   double   zoom;
   gboolean queue_center;
 
@@ -314,6 +316,8 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
   g_clear_object (&self->hadjustment);
   g_clear_object (&self->vadjustment);
   g_clear_object (&self->current_stroke);
+
+  g_clear_pointer (&self->tile_textures, g_hash_table_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
 }
@@ -634,6 +638,8 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
       "gtk-application-prefer-dark-theme", &self->dark_theme,
       NULL);
 
+  self->tile_textures = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_object_unref);
+
   self->drag_gesture = gtk_gesture_drag_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (self->drag_gesture), 2);
   g_signal_connect (self->drag_gesture, "begin", G_CALLBACK (drag_gesture_begin_gesture), self);
@@ -750,9 +756,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
   int                          map_tile_width  = 0;
   int                          map_tile_height = 0;
   g_autoptr (GListStore) strokes               = NULL;
-  double map_width                             = 0.0;
-  double map_height                            = 0.0;
-  guint  n_strokes                             = 0;
+  double  map_width                            = 0.0;
+  double  map_height                           = 0.0;
+  guint   n_strokes                            = 0;
+  GdkRGBA widget_rgba                          = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -846,17 +853,20 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       BASE_TILE_SIZE / 2.0 * editor->zoom,
       BASE_TILE_SIZE * 2.0 * editor->zoom);
 
+  gtk_widget_get_color (GTK_WIDGET (editor), &widget_rgba);
+
   n_strokes = g_list_model_get_n_items (G_LIST_MODEL (strokes));
   for (guint i = 0; i < n_strokes; i++)
     {
       g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
       g_autoptr (GtkCrusaderVillageItem) item         = NULL;
       g_autoptr (GArray) instances                    = NULL;
-      int   item_tile_width                           = 0;
-      int   item_tile_height                          = 0;
-      float r                                         = 0.0;
-      float g                                         = 0.0;
-      float b                                         = 0.0;
+      int         item_tile_width                     = 0;
+      int         item_tile_height                    = 0;
+      gpointer    tile_hash                           = NULL;
+      GdkTexture *tile_texture                        = NULL;
+      g_autoptr (PangoLayout) tile_layout             = NULL;
+      PangoRectangle tile_layout_rect                 = { 0 };
 
       stroke = g_list_model_get_item (G_LIST_MODEL (strokes), i);
       g_object_get (
@@ -869,7 +879,49 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           "tile-width", &item_tile_width,
           "tile-height", &item_tile_height,
           NULL);
-      gtk_crusader_village_item_get_name_color (item, &r, &g, &b);
+
+      if (editor->zoom >= 3.5 ||
+          item_tile_width > 1 || item_tile_height > 1)
+        {
+          const char *item_name = NULL;
+          char        buf[256]  = { 0 };
+          const char *ptr       = NULL;
+
+          item_name = gtk_crusader_village_item_get_name (item);
+
+          if (editor->zoom >= 4.5)
+            {
+              g_snprintf (buf, sizeof (buf), "%s (stroke %d)", item_name, i);
+              ptr = buf;
+            }
+          else
+            ptr = item_name;
+
+          tile_layout = gtk_widget_create_pango_layout (GTK_WIDGET (editor), ptr);
+          pango_layout_set_single_paragraph_mode (tile_layout, TRUE);
+          pango_layout_set_alignment (tile_layout, PANGO_ALIGN_CENTER);
+          pango_layout_set_width (tile_layout, pango_units_from_double ((double) item_tile_width * tile_size));
+
+          pango_layout_get_extents (tile_layout, NULL, &tile_layout_rect);
+        }
+
+      tile_hash = gtk_crusader_village_item_get_tile_resource_hash (item);
+      if (tile_hash != NULL)
+        {
+          tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
+          if (tile_texture == NULL)
+            {
+              g_autofree char *tile_resource = NULL;
+
+              g_object_get (
+                  item,
+                  "tile-resource", &tile_resource,
+                  NULL);
+
+              tile_texture = gdk_texture_new_from_resource (tile_resource);
+              g_hash_table_replace (editor->tile_textures, tile_hash, tile_texture);
+            }
+        }
 
       for (guint j = 0; j < instances->len; j++)
         {
@@ -884,10 +936,38 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
               item_tile_height * tile_size);
 
           if (graphene_rect_intersection (&viewport, &rect, NULL))
-            gtk_snapshot_append_color (
-                snapshot,
-                &(GdkRGBA) { r, g, b, 1.0 },
-                &rect);
+            {
+              tile_hash = gtk_crusader_village_item_get_tile_resource_hash (item);
+
+              if (tile_texture != NULL)
+                {
+                  gtk_snapshot_push_repeat (
+                      snapshot, &rect,
+                      &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
+                  gtk_snapshot_append_texture (
+                      snapshot, tile_texture,
+                      &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
+                  gtk_snapshot_pop (snapshot);
+                }
+              else
+                gtk_snapshot_append_color (
+                    snapshot,
+                    &(GdkRGBA) { 0.5, 0.6, 0.75, 1.0 },
+                    &rect);
+
+              if (tile_layout != NULL)
+                {
+                  gtk_snapshot_save (snapshot);
+                  gtk_snapshot_translate (
+                      snapshot,
+                      &GRAPHENE_POINT_INIT (
+                          rect.origin.x,
+                          rect.origin.y + rect.size.height / 2.0 -
+                              PANGO_PIXELS ((float) tile_layout_rect.height / 2.0)));
+                  gtk_snapshot_append_layout (snapshot, tile_layout, &widget_rgba);
+                  gtk_snapshot_restore (snapshot);
+                }
+            }
         }
     }
 

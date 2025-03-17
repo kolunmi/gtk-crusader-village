@@ -40,17 +40,12 @@ struct _GtkCrusaderVillageItem
   char                      *description;
   char                      *thumbnail_resource;
   char                      *section_icon_resource;
+  char                      *tile_resource;
   GtkCrusaderVillageItemKind kind;
   int                        tile_width;
   int                        tile_height;
 
-  struct
-  {
-    gboolean needs_regen;
-    float    r;
-    float    g;
-    float    b;
-  } name_color_cache;
+  guint tile_resource_hash;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItem, gtk_crusader_village_item, G_TYPE_OBJECT)
@@ -63,6 +58,7 @@ enum
   PROP_DESCRIPTION,
   PROP_THUMBNAIL_RESOURCE,
   PROP_SECTION_ICON_RESOURCE,
+  PROP_TILE_RESOURCE,
   PROP_KIND,
   PROP_TILE_WIDTH,
   PROP_TILE_HEIGHT,
@@ -81,6 +77,7 @@ gtk_crusader_village_item_dispose (GObject *object)
   g_clear_pointer (&self->description, g_free);
   g_clear_pointer (&self->thumbnail_resource, g_free);
   g_clear_pointer (&self->section_icon_resource, g_free);
+  g_clear_pointer (&self->tile_resource, g_free);
 
   G_OBJECT_CLASS (gtk_crusader_village_item_parent_class)->dispose (object);
 }
@@ -106,6 +103,9 @@ gtk_crusader_village_item_get_property (GObject    *object,
       break;
     case PROP_SECTION_ICON_RESOURCE:
       g_value_set_string (value, self->section_icon_resource);
+      break;
+    case PROP_TILE_RESOURCE:
+      g_value_set_string (value, self->tile_resource);
       break;
     case PROP_KIND:
       g_value_set_enum (value, self->kind);
@@ -133,8 +133,7 @@ gtk_crusader_village_item_set_property (GObject      *object,
     {
     case PROP_NAME:
       g_clear_pointer (&self->name, g_free);
-      self->name                         = g_value_dup_string (value);
-      self->name_color_cache.needs_regen = TRUE;
+      self->name = g_value_dup_string (value);
       break;
     case PROP_DESCRIPTION:
       g_clear_pointer (&self->description, g_free);
@@ -147,6 +146,14 @@ gtk_crusader_village_item_set_property (GObject      *object,
     case PROP_SECTION_ICON_RESOURCE:
       g_clear_pointer (&self->section_icon_resource, g_free);
       self->section_icon_resource = g_value_dup_string (value);
+      break;
+    case PROP_TILE_RESOURCE:
+      g_clear_pointer (&self->tile_resource, g_free);
+      self->tile_resource = g_value_dup_string (value);
+      if (self->tile_resource != NULL)
+        self->tile_resource_hash = g_str_hash (self->tile_resource);
+      else
+        self->tile_resource_hash = 0;
       break;
     case PROP_KIND:
       self->kind = g_value_get_enum (value);
@@ -200,6 +207,14 @@ gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
           "section-icon-resource",
           "Section Icon Resource",
           "The resource path for a displayable section icon image",
+          NULL,
+          G_PARAM_READWRITE);
+
+  props[PROP_TILE_RESOURCE] =
+      g_param_spec_string (
+          "tile-resource",
+          "Tile Resource",
+          "The resource path for a repeatable tile image to be used in the map view",
           NULL,
           G_PARAM_READWRITE);
 
@@ -264,6 +279,7 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
     case PROP_DESCRIPTION:
     case PROP_THUMBNAIL_RESOURCE:
     case PROP_SECTION_ICON_RESOURCE:
+    case PROP_TILE_RESOURCE:
       RECEIVE_BASIC_VARIANT (string, G_VARIANT_TYPE_STRING, variant, NULL);
       break;
     case PROP_TILE_WIDTH:
@@ -376,27 +392,18 @@ gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *sel
     g_critical ("%s: property '%s' not found", G_STRFUNC, property);
 }
 
-void
-gtk_crusader_village_item_get_name_color (GtkCrusaderVillageItem *self,
-                                          float                  *r,
-                                          float                  *g,
-                                          float                  *b)
+const char *
+gtk_crusader_village_item_get_name (GtkCrusaderVillageItem *self)
 {
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self));
-  g_return_if_fail (self->name != NULL);
-  g_return_if_fail (r != NULL && g != NULL && b != NULL);
+  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self), NULL);
 
-  if (self->name_color_cache.needs_regen)
-    {
-      guint hash = 0;
+  return GUINT_TO_POINTER (self->name);
+}
 
-      hash                     = g_str_hash (self->name);
-      self->name_color_cache.r = (float) ((hash & 0xff0000) >> 16) / 256.0;
-      self->name_color_cache.g = (float) ((hash & 0x00ff00) >> 8) / 256.0;
-      self->name_color_cache.b = (float) (hash & 0x0000ff) / 256.0;
-    }
+gpointer
+gtk_crusader_village_item_get_tile_resource_hash (GtkCrusaderVillageItem *self)
+{
+  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self), NULL);
 
-  *r = self->name_color_cache.r;
-  *g = self->name_color_cache.g;
-  *b = self->name_color_cache.b;
+  return GUINT_TO_POINTER (self->tile_resource_hash);
 }

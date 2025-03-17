@@ -243,6 +243,13 @@
     <file>shc-data/icons/sickle.png</file>
     <file>shc-data/icons/tower.png</file>
     <file>shc-data/icons/trumpet.png</file>
+
+    <file>shc-data/tiles/cwall.png</file>
+    <file>shc-data/tiles/dirt.png</file>
+    <file>shc-data/tiles/shop.png</file>
+    <file>shc-data/tiles/stone.png</file>
+    <file>shc-data/tiles/wall.png</file>
+    <file>shc-data/tiles/wood.png</file>
     
     <file>shc-data/sketches/armourer_sketch.tgx.png</file>
     <file>shc-data/sketches/army_sketch.tgx.png</file>
