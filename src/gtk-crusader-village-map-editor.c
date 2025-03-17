@@ -760,6 +760,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
   double  map_height                           = 0.0;
   guint   n_strokes                            = 0;
   GdkRGBA widget_rgba                          = { 0 };
+  GdkRGBA bg_rgba                              = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -854,6 +855,12 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       BASE_TILE_SIZE * 2.0 * editor->zoom);
 
   gtk_widget_get_color (GTK_WIDGET (editor), &widget_rgba);
+  bg_rgba = (GdkRGBA) {
+    .red   = 1.0 - widget_rgba.red,
+    .green = 1.0 - widget_rgba.green,
+    .blue  = 1.0 - widget_rgba.blue,
+    .alpha = 0.75,
+  };
 
   n_strokes = g_list_model_get_n_items (G_LIST_MODEL (strokes));
   for (guint i = 0; i < n_strokes; i++)
@@ -892,6 +899,13 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           if (editor->zoom >= 4.5)
             {
               g_snprintf (buf, sizeof (buf), "%s (stroke %d)", item_name, i);
+              ptr = buf;
+            }
+          else if (item_name != NULL &&
+                   editor->zoom <= 0.5 &&
+                   (item_tile_width <= 5 || item_tile_height <= 5))
+            {
+              g_snprintf (buf, sizeof (buf), "%c", item_name[0]);
               ptr = buf;
             }
           else
@@ -963,8 +977,17 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                       &GRAPHENE_POINT_INIT (
                           rect.origin.x,
                           rect.origin.y + rect.size.height / 2.0 -
-                              PANGO_PIXELS ((float) tile_layout_rect.height / 2.0)));
+                              (float) PANGO_PIXELS ((float) tile_layout_rect.height / 2.0)));
+
+                  gtk_snapshot_append_color (
+                      snapshot, &bg_rgba,
+                      &GRAPHENE_RECT_INIT (
+                          (rect.size.width - (float) PANGO_PIXELS (tile_layout_rect.width)) / 2.0,
+                          0.0,
+                          (float) PANGO_PIXELS (tile_layout_rect.width),
+                          (float) PANGO_PIXELS (tile_layout_rect.height)));
                   gtk_snapshot_append_layout (snapshot, tile_layout, &widget_rgba);
+
                   gtk_snapshot_restore (snapshot);
                 }
             }
