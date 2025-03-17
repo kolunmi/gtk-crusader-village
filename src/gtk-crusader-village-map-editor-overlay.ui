@@ -26,45 +26,25 @@
                 <property name="spacing">5</property>
 
                 <child>
-                  <object class="GtkButton" id="select">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Select</property>
-                    <property name="icon-name">edit-select-symbolic</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="select_all">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Select All</property>
-                    <property name="icon-name">edit-select-all-symbolic</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="GtkSeparator">
-                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
-                  </object>
-                </child>
-                
-                <child>
-                  <object class="GtkButton" id="copy">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Copy</property>
-                    <property name="icon-name">edit-copy-symbolic</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="cut">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Cut</property>
-                    <property name="icon-name">edit-cut-symbolic</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="paste">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Paste</property>
-                    <property name="icon-name">edit-paste-symbolic</property>
+                  <object class="GtkBox">
+                    <style>
+                      <class name="linked"/>
+                    </style>
+                    <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                    <child>
+                      <object class="GtkToggleButton" id="pencil">
+                        <property name="has-tooltip">TRUE</property>
+                        <property name="tooltip-text">Pencil Tool</property>
+                        <property name="icon-name">pencil-symbolic</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="draw_line">
+                        <property name="has-tooltip">TRUE</property>
+                        <property name="tooltip-text">Line Tool</property>
+                        <property name="icon-name">draw-line-symbolic</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
 

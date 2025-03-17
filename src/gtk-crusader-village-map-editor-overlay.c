@@ -43,11 +43,8 @@ struct _GtkCrusaderVillageMapEditorOverlay
   GtkOverlay        *overlay;
   GtkScrolledWindow *scrolled_window;
   GtkFrame          *frame;
-  GtkButton         *select;
-  GtkButton         *select_all;
-  GtkButton         *copy;
-  GtkButton         *cut;
-  GtkButton         *paste;
+  GtkToggleButton   *pencil;
+  GtkToggleButton   *draw_line;
   GtkButton         *clear;
   GtkButton         *undo;
   GtkButton         *redo;
@@ -89,6 +86,11 @@ drawing_changed (GtkCrusaderVillageMapEditor        *editor,
                  GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
+line_mode_changed (GtkCrusaderVillageMapEditor        *editor,
+                   GParamSpec                         *pspec,
+                   GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
 motion_enter (GtkEventControllerMotion           *self,
               gdouble                             x,
               gdouble                             y,
@@ -117,6 +119,11 @@ redo_clicked (GtkButton                          *self,
               GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
+draw_line_active_changed (GtkToggleButton                    *button,
+                          GParamSpec                         *pspec,
+                          GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
 update_ui_opacity (GtkCrusaderVillageMapEditorOverlay *self);
 
 static void
@@ -134,6 +141,7 @@ gtk_crusader_village_map_editor_overlay_dispose (GObject *object)
     {
       g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
       g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
+      g_signal_handlers_disconnect_by_func (self->editor, line_mode_changed, self);
     }
   g_clear_object (&self->editor);
 
@@ -182,6 +190,7 @@ gtk_crusader_village_map_editor_overlay_set_property (GObject      *object,
           {
             g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
             g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
+            g_signal_handlers_disconnect_by_func (self->editor, line_mode_changed, self);
           }
         g_clear_object (&self->editor);
 
@@ -199,6 +208,8 @@ gtk_crusader_village_map_editor_overlay_set_property (GObject      *object,
                               G_CALLBACK (map_handle_changed), self);
             g_signal_connect (self->editor, "notify::drawing",
                               G_CALLBACK (drawing_changed), self);
+            g_signal_connect (self->editor, "notify::line-mode",
+                              G_CALLBACK (line_mode_changed), self);
           }
         else
           update_ui_for_model (self);
@@ -235,11 +246,8 @@ gtk_crusader_village_map_editor_overlay_class_init (GtkCrusaderVillageMapEditorO
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, overlay);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, scrolled_window);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, frame);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, select);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, select_all);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, copy);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, cut);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, paste);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, pencil);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, draw_line);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, clear);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, undo);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageMapEditorOverlay, redo);
@@ -252,9 +260,14 @@ gtk_crusader_village_map_editor_overlay_init (GtkCrusaderVillageMapEditorOverlay
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  gtk_toggle_button_set_group (self->draw_line, self->pencil);
+  gtk_toggle_button_set_active (self->pencil, TRUE);
+
   g_signal_connect (self->clear, "clicked", G_CALLBACK (clear_clicked), self);
   g_signal_connect (self->undo, "clicked", G_CALLBACK (undo_clicked), self);
   g_signal_connect (self->redo, "clicked", G_CALLBACK (redo_clicked), self);
+
+  g_signal_connect (self->draw_line, "notify::active", G_CALLBACK (draw_line_active_changed), self);
 
   motion_controller = gtk_event_controller_motion_new ();
   g_signal_connect (motion_controller, "enter", G_CALLBACK (motion_enter), self);
@@ -300,6 +313,24 @@ drawing_changed (GtkCrusaderVillageMapEditor        *editor,
       NULL);
 
   update_ui_opacity (overlay);
+}
+
+static void
+line_mode_changed (GtkCrusaderVillageMapEditor        *editor,
+                   GParamSpec                         *pspec,
+                   GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  gboolean line_mode = FALSE;
+
+  g_object_get (
+      editor,
+      "line-mode", &line_mode,
+      NULL);
+
+  if (line_mode)
+    gtk_toggle_button_set_active (overlay->draw_line, TRUE);
+  else
+    gtk_toggle_button_set_active (overlay->pencil, TRUE);
 }
 
 static void
@@ -379,6 +410,23 @@ redo_clicked (GtkButton                          *self,
   g_object_set (
       overlay->handle,
       "cursor", cursor + 1,
+      NULL);
+}
+
+static void
+draw_line_active_changed (GtkToggleButton                    *button,
+                          GParamSpec                         *pspec,
+                          GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  gboolean line_mode = FALSE;
+
+  if (overlay->editor == NULL)
+    return;
+
+  line_mode = gtk_toggle_button_get_active (button);
+  g_object_set (
+      overlay->editor,
+      "line-mode", line_mode,
       NULL);
 }
 

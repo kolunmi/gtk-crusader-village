@@ -46,6 +46,7 @@ struct _GtkCrusaderVillageMapEditor
 
   GtkCrusaderVillageItemArea *item_area;
   int                         border_gap;
+  gboolean                    line_mode;
 
   double   zoom;
   gboolean queue_center;
@@ -96,6 +97,8 @@ enum
   PROP_HOVER_X,
   PROP_HOVER_Y,
   PROP_DRAWING,
+
+  PROP_LINE_MODE,
 
   LAST_NATIVE_PROP,
 
@@ -346,6 +349,9 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
     case PROP_DRAWING:
       g_value_set_boolean (value, self->current_stroke != NULL);
       break;
+    case PROP_LINE_MODE:
+      g_value_set_boolean (value, self->line_mode);
+      break;
     case PROP_HADJUSTMENT:
       g_value_set_object (value, self->hadjustment);
       break;
@@ -453,6 +459,10 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
     case PROP_BORDER_GAP:
       self->border_gap = g_value_get_int (value);
       gtk_widget_queue_allocate (GTK_WIDGET (self));
+      break;
+
+    case PROP_LINE_MODE:
+      self->line_mode = g_value_get_boolean (value);
       break;
 
     case PROP_HADJUSTMENT:
@@ -579,6 +589,14 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "Whether a drawing operation is currently taking place",
           FALSE,
           G_PARAM_READABLE);
+
+  props[PROP_LINE_MODE] =
+      g_param_spec_boolean (
+          "line-mode",
+          "Line Mode",
+          "Whether this widget draws lines instead of freehand",
+          FALSE,
+          G_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, LAST_NATIVE_PROP, props);
 
@@ -1157,7 +1175,6 @@ draw_gesture_update (GtkGestureDrag              *gesture,
   GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
   int                                  dx               = 0;
   int                                  dy               = 0;
-  int                                  n_iterations     = 0;
   int                                  divisor          = 0;
 
   if (editor->hover_x < 0 || editor->hover_y < 0)
@@ -1184,20 +1201,28 @@ draw_gesture_update (GtkGestureDrag              *gesture,
       "tile-height", &item_tile_height,
       NULL);
 
-  last_instance =
-      instances->len > 0
-          ? g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1)
-          : (GtkCrusaderVillageItemStrokeInstance) {
-              .x = editor->hover_x,
-              .y = editor->hover_y
-            };
+  if (instances->len == 0)
+    last_instance = (GtkCrusaderVillageItemStrokeInstance) {
+      .x = editor->hover_x,
+      .y = editor->hover_y
+    };
+  else if (editor->line_mode)
+    last_instance = g_array_index (
+        instances, GtkCrusaderVillageItemStrokeInstance, 0);
+  else
+    last_instance = g_array_index (
+        instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1);
 
-  dx           = editor->hover_x - last_instance.x;
-  dy           = editor->hover_y - last_instance.y;
-  n_iterations = MAX (ABS (dx), ABS (dy)) + 1;
-  divisor      = n_iterations > 1 ? n_iterations - 1 : 1;
+  if (editor->line_mode)
+    g_array_set_size (instances, 0);
 
-  for (int i = 0; i < n_iterations; i++)
+  dx = editor->hover_x - last_instance.x;
+  dy = editor->hover_y - last_instance.y;
+  dx += CLAMP (dx, -1, 1);
+  dy += CLAMP (dy, -1, 1);
+  divisor = MAX (MAX (ABS (dx), ABS (dy)), 1);
+
+  for (int i = 0; i < divisor; i++)
     {
       gboolean add = TRUE;
       int      cx  = 0;
