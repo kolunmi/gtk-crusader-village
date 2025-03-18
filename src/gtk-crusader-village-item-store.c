@@ -122,6 +122,6 @@ gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *sel
           continue;
         }
 
-      g_list_store_append (self->list_store, g_steal_pointer (&item));
+      g_list_store_append (self->list_store, item);
     }
 }

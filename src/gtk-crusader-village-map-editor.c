@@ -1391,10 +1391,10 @@ draw_gesture_end (GtkGestureDrag              *gesture,
           editor->map,
           "strokes", &strokes,
           NULL);
-      g_list_store_append (strokes, g_steal_pointer (&editor->current_stroke));
+      g_list_store_append (strokes, editor->current_stroke);
     }
-  else
-    g_clear_object (&editor->current_stroke);
+
+  g_clear_object (&editor->current_stroke);
 
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }

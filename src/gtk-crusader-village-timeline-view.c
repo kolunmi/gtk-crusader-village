@@ -180,7 +180,7 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
                 "model", &self->model,
                 NULL);
 
-            g_list_store_append (self->wrapper_store, g_object_ref (self->model));
+            g_list_store_append (self->wrapper_store, self->model);
 
             g_signal_connect (self->handle, "notify::cursor",
                               G_CALLBACK (cursor_changed), self);
@@ -230,11 +230,11 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
 static void
 gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
 {
-  GtkListItemFactory  *factory       = NULL;
-  GListStore          *left_model    = NULL;
-  GtkFlattenListModel *right_model   = NULL;
-  GListStore          *main_store    = NULL;
-  GtkFlattenListModel *flatten_model = NULL;
+  g_autoptr (GtkListItemFactory) factory      = NULL;
+  g_autoptr (GListStore) left_model           = NULL;
+  g_autoptr (GtkFlattenListModel) right_model = NULL;
+  GListStore          *main_store             = NULL;
+  GtkFlattenListModel *flatten_model          = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 

@@ -225,7 +225,7 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
 
                     withdraw = g_malloc0_n (range_length, sizeof (*withdraw));
                     for (guint i = 0; i < range_length; i++)
-                      withdraw[i] = g_object_ref (g_list_model_get_item (G_LIST_MODEL (self->strokes), new_cursor + i));
+                      withdraw[i] = g_list_model_get_item (G_LIST_MODEL (self->strokes), new_cursor + i);
 
                     g_list_store_splice (self->strokes, new_cursor, range_length, NULL, 0);
                     g_list_store_splice (self->memory, 0, 0, (gpointer *) withdraw, range_length);
@@ -242,7 +242,7 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
 
                     restore = g_malloc0_n (range_length, sizeof (*restore));
                     for (guint i = 0; i < range_length; i++)
-                      restore[i] = g_object_ref (g_list_model_get_item (G_LIST_MODEL (self->memory), i));
+                      restore[i] = g_list_model_get_item (G_LIST_MODEL (self->memory), i);
 
                     g_list_store_splice (self->memory, 0, range_length, NULL, 0);
                     g_list_store_splice (self->strokes, n_strokes, 0, (gpointer *) restore, range_length);
@@ -359,7 +359,7 @@ gtk_crusader_village_map_handle_init (GtkCrusaderVillageMapHandle *self)
   self->backing_model = g_list_store_new (G_TYPE_LIST_MODEL);
   self->model         = gtk_flatten_list_model_new (G_LIST_MODEL (g_object_ref (self->backing_model)));
 
-  g_list_store_append (self->backing_model, g_object_ref (self->memory));
+  g_list_store_append (self->backing_model, self->memory);
 
   self->last_append_position = G_MAXUINT;
 }
