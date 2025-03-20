@@ -147,20 +147,20 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
     {
     case PROP_MAP:
       {
-        g_clear_object (&self->map);
-
         if (self->strokes != NULL)
           {
             gboolean result   = FALSE;
             guint    position = 0;
 
             g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
-
             result = g_list_store_find (self->backing_model, self->strokes, &position);
             if (result)
               g_list_store_remove (self->backing_model, position);
+
+            g_signal_handlers_disconnect_by_func (self->map, dimensions_changed, self);
           }
         g_clear_object (&self->strokes);
+        g_clear_object (&self->map);
 
         self->map = g_value_dup_object (value);
 

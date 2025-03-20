@@ -1,5 +1,6 @@
 {
-    "name": <"Large Stone Gatehouse">,
+    "id": <147>,
+    "name": <"Large Stone Gatehouse NS">,
     "description": <"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/LargeStoneGatehouse.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,

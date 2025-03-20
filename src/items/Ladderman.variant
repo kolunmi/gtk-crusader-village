@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Ladderman">,
     "description": <"[English Manual] \"If you can't bring a wall down then these units will allow you to go over the top. Laddermen are cheap to produce but very vulnerable so need to be deployed quickly.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Ladderman.png">,

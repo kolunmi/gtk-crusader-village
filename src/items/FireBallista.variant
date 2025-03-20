@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Fire Ballista">,
     "description": <"[English Manual] \"The Arabian Fire Ballista is similar in design to the European fixed ballista, but is mobile. They are exceptionally accurate and superb against enemy units, taking many of them out in a single shot. The flaming javelins they fire can also be devastating to the enemy's buildings but do no damage to defensive structures.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/FireBallista.png">,

@@ -23,13 +23,13 @@
 #include <gio/gio.h>
 
 #include "gtk-crusader-village-item-store.h"
-#include "gtk-crusader-village-item.h"
 
 struct _GtkCrusaderVillageItemStore
 {
   GObject parent_instance;
 
   GListStore *list_store;
+  GHashTable *id_map;
 };
 
 static void list_model_iface_init (GListModelInterface *iface);
@@ -46,6 +46,7 @@ gtk_crusader_village_item_store_dispose (GObject *object)
   GtkCrusaderVillageItemStore *self = GTK_CRUSADER_VILLAGE_ITEM_STORE (object);
 
   g_clear_object (&self->list_store);
+  g_clear_pointer (&self->id_map, g_hash_table_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_item_store_parent_class)->dispose (object);
 }
@@ -62,6 +63,7 @@ static void
 gtk_crusader_village_item_store_init (GtkCrusaderVillageItemStore *self)
 {
   self->list_store = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM);
+  self->id_map     = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static GType
@@ -102,6 +104,8 @@ gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *sel
 {
   g_auto (GStrv) children = NULL;
 
+  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STORE (self));
+
 #define ITEMS_PATH "/am/kolunmi/GtkCrusaderVillage/items/"
   children = g_resources_enumerate_children (ITEMS_PATH, G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
   if (children == NULL)
@@ -112,6 +116,8 @@ gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *sel
       g_autofree char *full_path              = NULL;
       g_autoptr (GError) local_error          = NULL;
       g_autoptr (GtkCrusaderVillageItem) item = NULL;
+      GtkCrusaderVillageItemKind kind         = 0;
+      int                        id           = 0;
 
       full_path = g_strdup_printf (ITEMS_PATH "%s", *path);
 
@@ -123,5 +129,63 @@ gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *sel
         }
 
       g_list_store_append (self->list_store, item);
+
+      g_object_get (
+          item,
+          "kind", &kind,
+          "id", &id,
+          NULL);
+
+      if (kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING ||
+          kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL)
+        g_hash_table_replace (self->id_map, GINT_TO_POINTER (id), item);
     }
+}
+
+GtkCrusaderVillageItem *
+gtk_crusader_village_item_store_query_id (GtkCrusaderVillageItemStore *self,
+                                          int                          id)
+{
+  GtkCrusaderVillageItem *item = NULL;
+
+  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STORE (self), NULL);
+  g_return_val_if_fail (id > 0, NULL);
+
+  item = g_hash_table_lookup (self->id_map, GINT_TO_POINTER (id));
+
+  return item != NULL ? g_object_ref (item) : NULL;
+}
+
+GtkCrusaderVillageItemStore *
+gtk_crusader_village_item_store_dup (GtkCrusaderVillageItemStore *self)
+{
+  GtkCrusaderVillageItemStore *dup     = NULL;
+  guint                        n_items = 0;
+
+  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STORE (self), NULL);
+
+  dup     = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
+  n_items = g_list_model_get_n_items (G_LIST_MODEL (self));
+
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr (GtkCrusaderVillageItem) item = NULL;
+      GtkCrusaderVillageItemKind kind         = 0;
+      int                        id           = 0;
+
+      item = g_list_model_get_item (G_LIST_MODEL (self), i);
+      g_list_store_append (dup->list_store, item);
+
+      g_object_get (
+          item,
+          "kind", &kind,
+          "id", &id,
+          NULL);
+
+      if (kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING ||
+          kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL)
+        g_hash_table_replace (dup->id_map, GINT_TO_POINTER (id), item);
+    }
+
+  return dup;
 }

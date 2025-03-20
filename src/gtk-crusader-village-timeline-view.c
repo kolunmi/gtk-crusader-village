@@ -192,6 +192,7 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
                 G_BINDING_BIDIRECTIONAL);
           }
 
+        update_selected (self);
         update_ui (self);
       }
       break;
@@ -235,6 +236,7 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
   g_autoptr (GtkFlattenListModel) right_model = NULL;
   GListStore          *main_store             = NULL;
   GtkFlattenListModel *flatten_model          = NULL;
+  g_autoptr (GtkStringObject) dummy           = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -252,7 +254,8 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
   flatten_model       = gtk_flatten_list_model_new (G_LIST_MODEL (main_store));
   self->selection     = gtk_single_selection_new (G_LIST_MODEL (flatten_model));
 
-  g_list_store_append (left_model, gtk_string_object_new ("Start!"));
+  dummy = gtk_string_object_new ("Start!");
+  g_list_store_append (left_model, dummy);
   g_list_store_append (main_store, left_model);
   g_list_store_append (main_store, right_model);
 

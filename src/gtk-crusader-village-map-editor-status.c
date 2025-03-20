@@ -82,7 +82,10 @@ gtk_crusader_village_map_editor_status_dispose (GObject *object)
   GtkCrusaderVillageMapEditorStatus *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR_STATUS (object);
 
   if (self->editor != NULL)
-    g_signal_handlers_disconnect_by_func (self->editor, hover_changed, self);
+    {
+      g_signal_handlers_disconnect_by_func (self->editor, hover_changed, self);
+      g_signal_handlers_disconnect_by_func (self->editor, map_changed, self);
+    }
   g_clear_object (&self->editor);
 
   if (self->map != NULL)
@@ -153,7 +156,7 @@ gtk_crusader_village_map_editor_status_set_property (GObject      *object,
                               G_CALLBACK (hover_changed), self);
 
             read_map (self);
-            g_signal_connect (self->editor, "notify::map",
+            g_signal_connect (self->editor, "notify::map-handle",
                               G_CALLBACK (map_changed), self);
           }
         else

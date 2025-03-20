@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Arabian Archer">,
     "description": <"[English Manual] \"These units are similar to their European counterparts and are relatively cheap to hire.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabArcher.png">,

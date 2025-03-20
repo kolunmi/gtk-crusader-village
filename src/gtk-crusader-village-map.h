@@ -20,12 +20,34 @@
 
 #pragma once
 
-#include <glib-object.h>
+#include <gio/gio.h>
+
+#include "gtk-crusader-village-item-store.h"
 
 G_BEGIN_DECLS
+
+#define GTK_CRUSADER_VILLAGE_MAP_ERROR (gtk_crusader_village_map_error_quark ())
+GQuark gtk_crusader_village_map_error_quark (void);
+
+typedef enum
+{
+  GTK_CRUSADER_VILLAGE_ERROR_INVALID_JSON_STRUCTURE = 0,
+} GtkCrusaderVillageMapError;
 
 #define GTK_CRUSADER_VILLAGE_TYPE_MAP (gtk_crusader_village_map_get_type ())
 
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMap, gtk_crusader_village_map, GTK_CRUSADER_VILLAGE, MAP, GObject)
+
+void
+gtk_crusader_village_map_new_from_json_file_async (GFile                       *file,
+                                                   GtkCrusaderVillageItemStore *store,
+                                                   int                          io_priority,
+                                                   GCancellable                *cancellable,
+                                                   GAsyncReadyCallback          callback,
+                                                   gpointer                     user_data);
+
+GtkCrusaderVillageMap *
+gtk_crusader_village_map_new_from_json_file_finish (GAsyncResult *result,
+                                                    GError      **error);
 
 G_END_DECLS

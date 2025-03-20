@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Slinger">,
     "description": <"[English Manual] \"These units fire small rocks at their attackers and deal out some hefty damage but they only have a short range.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabSlinger.png">,

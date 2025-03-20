@@ -1,11 +1,11 @@
 {
-    "id": <105>,
-    "name": <"Drawbridge">,
+    "id": <146>,
+    "name": <"Large Stone Gatehouse EW">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Drawbridge.png">,
+    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/LargeStoneGatehouse.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
     "kind": <"building">,
-    "tile-width": <5>,
-    "tile-height": <5>
+    "tile-width": <7>,
+    "tile-height": <7>
 }

@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Ballista">,
     "description": <"[English Manual] \"Ballistae are more accurate, shooting a single bolt at one time and are very effective against enemy siege engines.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Ballista.png">,

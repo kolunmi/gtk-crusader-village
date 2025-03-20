@@ -54,6 +54,8 @@ enum
 {
   PROP_0,
 
+  PROP_ITEM_STORE,
+  PROP_MAP,
   PROP_SETTINGS,
 
   LAST_PROP
@@ -84,6 +86,12 @@ gtk_crusader_village_window_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_ITEM_STORE:
+      g_value_set_object (value, self->item_store);
+      break;
+    case PROP_MAP:
+      g_value_set_object (value, self->map);
+      break;
     case PROP_SETTINGS:
       g_value_set_object (value, self->settings);
       break;
@@ -102,6 +110,31 @@ gtk_crusader_village_window_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_ITEM_STORE:
+      g_clear_object (&self->item_store);
+      self->item_store = g_value_dup_object (value);
+      g_object_set (
+          self->item_area,
+          "item-store", self->item_store,
+          NULL);
+      break;
+    case PROP_MAP:
+      g_clear_object (&self->map);
+      g_clear_object (&self->map_handle);
+      self->map        = g_value_dup_object (value);
+      self->map_handle = g_object_new (
+          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+          "map", self->map,
+          NULL);
+      g_object_set (
+          self->map_editor,
+          "map-handle", self->map_handle,
+          NULL);
+      g_object_set (
+          self->timeline_view,
+          "map-handle", self->map_handle,
+          NULL);
+      break;
     case PROP_SETTINGS:
       g_clear_object (&self->settings);
       self->settings = g_value_dup_object (value);
@@ -124,6 +157,22 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
   object_class->dispose      = gtk_crusader_village_window_dispose;
   object_class->get_property = gtk_crusader_village_window_get_property;
   object_class->set_property = gtk_crusader_village_window_set_property;
+
+  props[PROP_ITEM_STORE] =
+      g_param_spec_object (
+          "item-store",
+          "Item Store",
+          "The item store object for this window",
+          GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE,
+          G_PARAM_READWRITE);
+
+  props[PROP_MAP] =
+      g_param_spec_object (
+          "map",
+          "Map",
+          "The main map this window is handling",
+          GTK_CRUSADER_VILLAGE_TYPE_MAP,
+          G_PARAM_READWRITE);
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -153,14 +202,6 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
   gtk_crusader_village_register_themed_window (GTK_WINDOW (self), FALSE);
-
-  self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
-  gtk_crusader_village_item_store_read_resources (self->item_store);
-
-  g_object_set (
-      self->item_area,
-      "item-store", self->item_store,
-      NULL);
 
   self->map = g_object_new (
       GTK_CRUSADER_VILLAGE_TYPE_MAP,

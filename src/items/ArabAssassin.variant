@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Assassin">,
     "description": <"[English Manual] \"These units can use a grappling hook to climb up enemy walls and are useful for capturing enemy gatehouses. The assassins are now invisible to your enemies and can be seen when they have been spotted by the enemy’s troops. An ‘!’ will appear above the assasins head to show you they have been seen.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabAssassin.png">,

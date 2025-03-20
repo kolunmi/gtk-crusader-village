@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <glib-object.h>
+#include "gtk-crusader-village-item.h"
 
 G_BEGIN_DECLS
 
@@ -30,5 +30,12 @@ G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemStore, gtk_crusader_village_item_sto
 
 void
 gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *self);
+
+GtkCrusaderVillageItem *
+gtk_crusader_village_item_store_query_id (GtkCrusaderVillageItemStore *self,
+                                          int                          id);
+
+GtkCrusaderVillageItemStore *
+gtk_crusader_village_item_store_dup (GtkCrusaderVillageItemStore *self);
 
 G_END_DECLS

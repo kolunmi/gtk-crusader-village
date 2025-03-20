@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Arabian Swordsman">,
     "description": <"[English Manual] \"These units are not as well armored as their European counterparts but they are a little quicker.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabSwordsman.png">,

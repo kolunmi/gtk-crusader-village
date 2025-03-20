@@ -27,7 +27,6 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
 
     <!-- items -->
-    <file>items/ArmorersWorkshop.variant</file>
     <file>items/Apothecary.variant</file>
     <file>items/AppleOrchard.variant</file>
     <file>items/ArabArcher.variant</file>
@@ -37,6 +36,7 @@
     <file>items/ArabSlave.variant</file>
     <file>items/ArabSlinger.variant</file>
     <file>items/ArabSwordsman.variant</file>
+    <file>items/ArmorersWorkshop.variant</file>
     <file>items/Armory.variant</file>
     <file>items/Bakery.variant</file>
     <file>items/Ballista.variant</file>
@@ -55,13 +55,13 @@
     <file>items/Church.variant</file>
     <file>items/CommunalGarden.variant</file>
     <file>items/CrenulatedWall.variant</file>
-    <file>items/DancingBear.variant</file>
     <file>items/DairyFarm.variant</file>
+    <file>items/DancingBear.variant</file>
     <file>items/Drawbridge.variant</file>
     <file>items/Dungeon.variant</file>
     <file>items/DunkingStool.variant</file>
-    <file>items/Engineer.variant</file>
     <file>items/EngineersGuild.variant</file>
+    <file>items/Engineer.variant</file>
     <file>items/EuroArcher.variant</file>
     <file>items/EuroCrossbowman.variant</file>
     <file>items/EuroKnight.variant</file>
@@ -88,7 +88,9 @@
     <file>items/KillingPits.variant</file>
     <file>items/Ladderman.variant</file>
     <file>items/LargeCommunalGarden.variant</file>
-    <file>items/LargeStoneGatehouse.variant</file>
+    <file>items/LargeStoneGatehouseEW.variant</file>
+    <file>items/LargeStoneGatehouseNS.variant</file>
+    <file>items/LowCrenulatedWall.variant</file>
     <file>items/LowWall.variant</file>
     <file>items/Mangonel.variant</file>
     <file>items/Marketplace.variant</file>
@@ -106,7 +108,8 @@
     <file>items/Shrine.variant</file>
     <file>items/ShrubGarden.variant</file>
     <file>items/SiegeTower.variant</file>
-    <file>items/SmallStoneGatehouse.variant</file>
+    <file>items/SmallStoneGatehouseEW.variant</file>
+    <file>items/SmallStoneGatehouseNS.variant</file>
     <file>items/Stables.variant</file>
     <file>items/Statue.variant</file>
     <file>items/Stockpile.variant</file>

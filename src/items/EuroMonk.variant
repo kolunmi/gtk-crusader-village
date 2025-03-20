@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Black Monk">,
     "description": <"[English Manual] \"These are mysterious individuals to say the least. They are slow and cumbersome and fight with a quarterstaff. These can be trained in the cathedral.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroMonk.png">,

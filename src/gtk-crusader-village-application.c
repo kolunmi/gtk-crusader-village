@@ -25,6 +25,7 @@
 
 #include "gtk-crusader-village-application.h"
 #include "gtk-crusader-village-dialog-window.h"
+#include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-window.h"
 
@@ -47,6 +48,8 @@ struct _GtkCrusaderVillageApplication
 
   GSettings *settings;
   int        theme_setting;
+
+  GtkCrusaderVillageItemStore *item_store;
 
   GtkCssProvider *shc_theme_light_css;
   GtkCssProvider *shc_theme_dark_css;
@@ -146,6 +149,8 @@ gtk_crusader_village_application_dispose (GObject *object)
         self->settings, theme_changed, self);
   g_clear_object (&self->settings);
 
+  g_clear_object (&self->item_store);
+
   g_clear_object (&self->shc_theme_light_css);
   g_clear_object (&self->shc_theme_dark_css);
 
@@ -183,6 +188,7 @@ gtk_crusader_village_application_activate (GApplication *app)
     window = g_object_new (
         GTK_CRUSADER_VILLAGE_TYPE_WINDOW,
         "application", app,
+        "item-store", self->item_store,
         "settings", self->settings,
         NULL);
 
@@ -213,6 +219,87 @@ gtk_crusader_village_application_class_init (GtkCrusaderVillageApplicationClass 
           G_PARAM_READABLE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
+}
+
+static void
+load_map_finish_cb (GObject      *source_object,
+                    GAsyncResult *res,
+                    gpointer      data)
+{
+  GtkCrusaderVillageApplication *self   = data;
+  g_autoptr (GError) error              = NULL;
+  g_autoptr (GtkCrusaderVillageMap) map = NULL;
+  GtkWindow *window                     = NULL;
+
+  map    = gtk_crusader_village_map_new_from_json_file_finish (res, &error);
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (map != NULL)
+    {
+      g_object_set (
+          window,
+          "map", map,
+          NULL);
+    }
+  else
+    {
+      gtk_crusader_village_dialog (
+          "An Error Occurred",
+          "Could not parse file from disk.",
+          error->message,
+          window, NULL);
+    }
+}
+
+static void
+load_dialog_finish_cb (GObject      *source_object,
+                       GAsyncResult *res,
+                       gpointer      data)
+{
+  GtkCrusaderVillageApplication *self = data;
+  g_autoptr (GError) error            = NULL;
+  g_autoptr (GFile) file              = NULL;
+
+  file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &error);
+
+  if (file != NULL)
+    {
+      gtk_crusader_village_map_new_from_json_file_async (
+          file, self->item_store, G_PRIORITY_DEFAULT,
+          NULL, load_map_finish_cb, self);
+    }
+  else
+    {
+      GtkWindow *window = NULL;
+
+      window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+      gtk_crusader_village_dialog (
+          "An Error Occurred",
+          "Could not load file from disk.",
+          error->message,
+          window, NULL);
+    }
+}
+
+static void
+gtk_crusader_village_application_load (GSimpleAction *action,
+                                       GVariant      *parameter,
+                                       gpointer       user_data)
+{
+  GtkCrusaderVillageApplication *self   = user_data;
+  g_autoptr (GtkFileDialog) file_dialog = NULL;
+  g_autoptr (GtkFileFilter) filter      = NULL;
+  GtkWindow *window                     = NULL;
+
+  file_dialog = gtk_file_dialog_new ();
+  filter      = gtk_file_filter_new ();
+
+  gtk_file_filter_add_pattern (filter, "*.json");
+  gtk_file_dialog_set_default_filter (file_dialog, filter);
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+  gtk_file_dialog_open (file_dialog, window, NULL, load_dialog_finish_cb, self);
 }
 
 static void
@@ -373,12 +460,16 @@ static const GActionEntry app_actions[] = {
   {       "about",    gtk_crusader_village_application_about_action },
   {    "greeting", gtk_crusader_village_application_greeting_action },
   { "preferences",     gtk_crusader_village_application_preferences },
+  {        "load",            gtk_crusader_village_application_load },
 };
 
 static void
 gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 {
   self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
+
+  self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
+  gtk_crusader_village_item_store_read_resources (self->item_store);
 
   g_action_map_add_action_entries (
       G_ACTION_MAP (self),

@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Trebuchet">,
     "description": <"[English Manual] \"Trebuchets are awesome siege machines for knocking down castle structures. Trebuchets are huge machines and once built, stay in a fixed position. They lack the accuracy of catapults but have a very long range and do a large amount of damage when they hit enemy structures. Trebuchets fire with a high arc, so are ideal for firing over castle walls. As with catapults you can fire diseased cattle into enemy castles to spead disease. Each trebuchet requires 3 siege engineers to man in before they become operational.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Trebuchet.png">,

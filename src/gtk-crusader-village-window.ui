@@ -3,8 +3,8 @@
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillageWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">GTK Crusader Village</property>
-    <property name="default-width">1200</property>
-    <property name="default-height">800</property>
+    <property name="default-width">1800</property>
+    <property name="default-height">1200</property>
     <property name="titlebar">
       <object class="GtkHeaderBar">
         <child type="end">
@@ -69,6 +69,10 @@
   </template>
   <menu id="primary_menu">
     <section>
+      <item>
+        <attribute name="label" translatable="yes">_Load From File</attribute>
+        <attribute name="action">app.load</attribute>
+      </item>
       <item>
         <attribute name="label" translatable="yes">_Preferences</attribute>
         <attribute name="action">app.preferences</attribute>

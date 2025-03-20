@@ -36,6 +36,7 @@ struct _GtkCrusaderVillageItem
 {
   GObject parent_instance;
 
+  int                        id;
   char                      *name;
   char                      *description;
   char                      *thumbnail_resource;
@@ -44,6 +45,8 @@ struct _GtkCrusaderVillageItem
   GtkCrusaderVillageItemKind kind;
   int                        tile_width;
   int                        tile_height;
+  int                        tile_offset_x;
+  int                        tile_offset_y;
 
   guint tile_resource_hash;
 };
@@ -54,6 +57,7 @@ enum
 {
   PROP_0,
 
+  PROP_ID,
   PROP_NAME,
   PROP_DESCRIPTION,
   PROP_THUMBNAIL_RESOURCE,
@@ -62,6 +66,8 @@ enum
   PROP_KIND,
   PROP_TILE_WIDTH,
   PROP_TILE_HEIGHT,
+  PROP_TILE_OFFSET_X,
+  PROP_TILE_OFFSET_Y,
 
   LAST_PROP
 };
@@ -92,6 +98,9 @@ gtk_crusader_village_item_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_ID:
+      g_value_set_int (value, self->id);
+      break;
     case PROP_NAME:
       g_value_set_string (value, self->name);
       break;
@@ -116,6 +125,12 @@ gtk_crusader_village_item_get_property (GObject    *object,
     case PROP_TILE_HEIGHT:
       g_value_set_int (value, self->tile_height);
       break;
+    case PROP_TILE_OFFSET_X:
+      g_value_set_int (value, self->tile_offset_x);
+      break;
+    case PROP_TILE_OFFSET_Y:
+      g_value_set_int (value, self->tile_offset_y);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -131,6 +146,9 @@ gtk_crusader_village_item_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_ID:
+      self->id = g_value_get_int (value);
+      break;
     case PROP_NAME:
       g_clear_pointer (&self->name, g_free);
       self->name = g_value_dup_string (value);
@@ -164,6 +182,12 @@ gtk_crusader_village_item_set_property (GObject      *object,
     case PROP_TILE_HEIGHT:
       self->tile_height = g_value_get_int (value);
       break;
+    case PROP_TILE_OFFSET_X:
+      self->tile_offset_x = g_value_get_int (value);
+      break;
+    case PROP_TILE_OFFSET_Y:
+      self->tile_offset_y = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -177,6 +201,14 @@ gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
   object_class->dispose      = gtk_crusader_village_item_dispose;
   object_class->get_property = gtk_crusader_village_item_get_property;
   object_class->set_property = gtk_crusader_village_item_set_property;
+
+  props[PROP_ID] =
+      g_param_spec_int (
+          "id",
+          "ID",
+          "The ID of this item",
+          0, G_MAXINT, 0,
+          G_PARAM_READWRITE);
 
   props[PROP_NAME] =
       g_param_spec_string (
@@ -243,6 +275,22 @@ gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
           1, G_MAXINT, 1,
           G_PARAM_READWRITE);
 
+  props[PROP_TILE_OFFSET_X] =
+      g_param_spec_int (
+          "tile-offset-x",
+          "Tile Offset X",
+          "A x offset to applied to this item when loading and exporting",
+          G_MININT, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
+  props[PROP_TILE_OFFSET_Y] =
+      g_param_spec_int (
+          "tile-offset-y",
+          "Tile Offset Y",
+          "A y offset to applied to this item when loading and exporting",
+          G_MININT, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
@@ -275,16 +323,19 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
 
   switch (prop_id)
     {
+    case PROP_ID:
+    case PROP_TILE_WIDTH:
+    case PROP_TILE_HEIGHT:
+    case PROP_TILE_OFFSET_X:
+    case PROP_TILE_OFFSET_Y:
+      RECEIVE_BASIC_VARIANT (int32, G_VARIANT_TYPE_INT32, variant);
+      break;
     case PROP_NAME:
     case PROP_DESCRIPTION:
     case PROP_THUMBNAIL_RESOURCE:
     case PROP_SECTION_ICON_RESOURCE:
     case PROP_TILE_RESOURCE:
       RECEIVE_BASIC_VARIANT (string, G_VARIANT_TYPE_STRING, variant, NULL);
-      break;
-    case PROP_TILE_WIDTH:
-    case PROP_TILE_HEIGHT:
-      RECEIVE_BASIC_VARIANT (int32, G_VARIANT_TYPE_INT32, variant);
       break;
     case PROP_KIND:
       if (g_variant_is_of_type (variant, G_VARIANT_TYPE_STRING))

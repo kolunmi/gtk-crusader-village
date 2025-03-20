@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Fire Thrower">,
     "description": <"[English Manual] \"These units throw fiery grenades of Greek fire at the enemy and are devastating to both buildings and troops.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabFireThrower.png">,

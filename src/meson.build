@@ -23,6 +23,7 @@ gtk_crusader_village_sources = [
 gtk_crusader_village_deps = [
   cc.find_library('m', required: true),
   dependency('gtk4'),
+  dependency('json-glib-1.0', version: '>= 1.2.0'),
 ]
 
 gtk_crusader_village_sources += gnome.compile_resources('gtk-crusader-village-resources',

@@ -1,4 +1,5 @@
 {
+    "id": <0x5d>,
     "name": <"Catapult">,
     "description": <"[English Manual] \"These siege machines allow you to demolish enemy structures from a distance. Catapults are mobile, fairly accurate, have a medium range and do a medium amount of damage. They fire with a low trajetory so are good for precision attacks to take out enemy structures. Catapults can also fire diseased cattle into an enemy castle to spread the plague. To do this select the fire cow button from the catapult menu then select a target. Each catapult requires 2 siege engineers to man before they become operational.\"">,
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Catapult.png">,
