@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="am.kolunmi.GtkCrusaderVillage" path="/am/kolunmi/GtkCrusaderVillage/" gettext-domain="gtk-crusader-village">
+    <key name="sourcehold-python-installation" type="s">
+      <default>""</default>
+      <summary>Sourcehold Python Installation</summary>
+      <description>The location of the python executable whose installation includes the sourcehold module</description>
+    </key>
     <key name="show-startup-greeting" type="b">
       <default>true</default>
       <summary>Show Startup Greeting</summary>
@@ -25,12 +30,12 @@
       <description>Whether to show a grid in the map editor</description>
     </key>
     <key name="show-gradient" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Show Gradient</summary>
       <description>Whether to show a radial gradient in the map editor, visually indicating how far a tile is from the center</description>
     </key>
     <key name="show-cursor-glow" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Show Cursor Glow</summary>
       <description>Whether to show a glow around the currently hovered tile in the map editor</description>
     </key>

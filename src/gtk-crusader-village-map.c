@@ -56,11 +56,20 @@ enum
 
 static GParamSpec *props[LAST_PROP] = { 0 };
 
+typedef struct
+{
+  GtkCrusaderVillageItemStore *store;
+  char                        *python_exe;
+} LoadData;
+
 static void
-new_from_json_file_async_thread (GTask        *task,
-                                 gpointer      object,
-                                 gpointer      task_data,
-                                 GCancellable *cancellable);
+destroy_load_data (gpointer data);
+
+static void
+new_from_aiv_file_async_thread (GTask        *task,
+                                gpointer      object,
+                                gpointer      task_data,
+                                GCancellable *cancellable);
 
 static void
 gtk_crusader_village_map_dispose (GObject *object)
@@ -178,57 +187,76 @@ gtk_crusader_village_map_init (GtkCrusaderVillageMap *self)
 }
 
 void
-gtk_crusader_village_map_new_from_json_file_async (GFile                       *file,
-                                                   GtkCrusaderVillageItemStore *store,
-                                                   int                          io_priority,
-                                                   GCancellable                *cancellable,
-                                                   GAsyncReadyCallback          callback,
-                                                   gpointer                     user_data)
+gtk_crusader_village_map_new_from_aiv_file_async (GFile                       *file,
+                                                  GtkCrusaderVillageItemStore *store,
+                                                  const char                  *python_exe,
+                                                  int                          io_priority,
+                                                  GCancellable                *cancellable,
+                                                  GAsyncReadyCallback          callback,
+                                                  gpointer                     user_data)
 {
-  g_autoptr (GTask) task                            = NULL;
-  g_autoptr (GtkCrusaderVillageItemStore) dup_store = NULL;
+  g_autoptr (GTask) task = NULL;
+  LoadData *data         = NULL;
 
   g_return_if_fail (G_IS_FILE (file));
   g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STORE (store));
+  g_return_if_fail (python_exe != NULL);
 
-  dup_store = gtk_crusader_village_item_store_dup (store);
+  data             = g_new0 (typeof (*data), 1);
+  data->store      = gtk_crusader_village_item_store_dup (store);
+  data->python_exe = g_strdup (python_exe);
 
   task = g_task_new (file, cancellable, callback, user_data);
-  g_task_set_source_tag (task, gtk_crusader_village_map_new_from_json_file_async);
-  g_task_set_task_data (task, g_steal_pointer (&dup_store), g_object_unref);
+  g_task_set_source_tag (task, gtk_crusader_village_map_new_from_aiv_file_async);
+  g_task_set_task_data (task, data, destroy_load_data);
   g_task_set_priority (task, io_priority);
   g_task_set_check_cancellable (task, TRUE);
-  g_task_run_in_thread (task, new_from_json_file_async_thread);
+  g_task_run_in_thread (task, new_from_aiv_file_async_thread);
 }
 
 GtkCrusaderVillageMap *
-gtk_crusader_village_map_new_from_json_file_finish (GAsyncResult *result,
-                                                    GError      **error)
+gtk_crusader_village_map_new_from_aiv_file_finish (GAsyncResult *result,
+                                                   GError      **error)
 {
   g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
-                            gtk_crusader_village_map_new_from_json_file_async,
+                            gtk_crusader_village_map_new_from_aiv_file_async,
                         NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
-new_from_json_file_async_thread (GTask        *task,
-                                 gpointer      object,
-                                 gpointer      task_data,
-                                 GCancellable *cancellable)
+destroy_load_data (gpointer data)
 {
-  GFile                       *file     = object;
-  GtkCrusaderVillageItemStore *store    = task_data;
-  g_autoptr (GtkCrusaderVillageMap) map = NULL;
-  g_autoptr (GError) local_error        = NULL;
-  g_autoptr (GFileInputStream) stream   = NULL;
-  g_autoptr (JsonParser) parser         = NULL;
-  gboolean  parse_result                = FALSE;
-  JsonNode *root                        = NULL;
-  g_autoptr (GVariant) variant          = NULL;
-  g_autoptr (GVariantIter) frames_iter  = NULL;
-  gint64 pause_delay_amount             = 0;
+  LoadData *self = data;
+
+  g_clear_object (&self->store);
+  g_clear_pointer (&self->python_exe, g_free);
+  g_free (self);
+}
+
+static void
+new_from_aiv_file_async_thread (GTask        *task,
+                                gpointer      object,
+                                gpointer      task_data,
+                                GCancellable *cancellable)
+{
+  GFile    *file                              = object;
+  LoadData *data                              = task_data;
+  g_autoptr (GtkCrusaderVillageMap) map       = NULL;
+  g_autoptr (GError) local_error              = NULL;
+  g_autoptr (GFile) tmp_file                  = NULL;
+  g_autoptr (GFileIOStream) tmp_file_iostream = NULL;
+  g_autofree char *aiv_file_path              = NULL;
+  g_autofree char *tmp_file_path              = NULL;
+  g_autoptr (GSubprocess) sourcehold          = NULL;
+  g_autoptr (GFileInputStream) stream         = NULL;
+  g_autoptr (JsonParser) parser               = NULL;
+  gboolean  parse_result                      = FALSE;
+  JsonNode *root                              = NULL;
+  g_autoptr (GVariant) variant                = NULL;
+  g_autoptr (GVariantIter) frames_iter        = NULL;
+  gint64 pause_delay_amount                   = 0;
 
   if (g_task_return_error_if_cancelled (task))
     return;
@@ -236,7 +264,28 @@ new_from_json_file_async_thread (GTask        *task,
   map       = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_MAP, NULL);
   map->name = g_file_get_basename (file);
 
-  stream = g_file_read (file, cancellable, &local_error);
+  tmp_file = g_file_new_tmp (NULL, &tmp_file_iostream, &local_error);
+  if (tmp_file == NULL)
+    goto err;
+  if (!g_io_stream_close (G_IO_STREAM (tmp_file_iostream), cancellable, &local_error))
+    goto err;
+
+  aiv_file_path = g_file_get_path (file);
+  tmp_file_path = g_file_get_path (tmp_file);
+
+  sourcehold = g_subprocess_new (
+      G_SUBPROCESS_FLAGS_NONE,
+      &local_error,
+      data->python_exe, "-m", "sourcehold", "convert", "aiv", "--input", aiv_file_path, "--output", tmp_file_path,
+      NULL);
+  if (sourcehold == NULL)
+    goto err;
+  if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
+    goto err;
+  if (!g_subprocess_get_successful (sourcehold))
+    goto err_sourcehold;
+
+  stream = g_file_read (tmp_file, cancellable, &local_error);
   if (stream == NULL)
     goto err;
 
@@ -275,7 +324,7 @@ new_from_json_file_async_thread (GTask        *task,
 
       if (!g_variant_lookup (frame, "itemType", "x", &id))
         goto err_inval;
-      item = gtk_crusader_village_item_store_query_id (store, id);
+      item = gtk_crusader_village_item_store_query_id (data->store, id);
       if (item == NULL)
         continue;
       g_object_get (
@@ -320,6 +369,14 @@ new_from_json_file_async_thread (GTask        *task,
 
 err:
   g_task_return_error (task, g_steal_pointer (&local_error));
+  return;
+
+err_sourcehold:
+  g_task_return_new_error_literal (
+      task,
+      GTK_CRUSADER_VILLAGE_MAP_ERROR,
+      GTK_CRUSADER_VILLAGE_ERROR_SOURCEHOLD_FAILED,
+      "The Sourcehold process terminated abnormally");
   return;
 
 err_inval:

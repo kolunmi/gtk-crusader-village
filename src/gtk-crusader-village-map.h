@@ -31,7 +31,8 @@ GQuark gtk_crusader_village_map_error_quark (void);
 
 typedef enum
 {
-  GTK_CRUSADER_VILLAGE_ERROR_INVALID_JSON_STRUCTURE = 0,
+  GTK_CRUSADER_VILLAGE_ERROR_SOURCEHOLD_FAILED = 0,
+  GTK_CRUSADER_VILLAGE_ERROR_INVALID_JSON_STRUCTURE,
 } GtkCrusaderVillageMapError;
 
 #define GTK_CRUSADER_VILLAGE_TYPE_MAP (gtk_crusader_village_map_get_type ())
@@ -39,15 +40,16 @@ typedef enum
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMap, gtk_crusader_village_map, GTK_CRUSADER_VILLAGE, MAP, GObject)
 
 void
-gtk_crusader_village_map_new_from_json_file_async (GFile                       *file,
-                                                   GtkCrusaderVillageItemStore *store,
-                                                   int                          io_priority,
-                                                   GCancellable                *cancellable,
-                                                   GAsyncReadyCallback          callback,
-                                                   gpointer                     user_data);
+gtk_crusader_village_map_new_from_aiv_file_async (GFile                       *file,
+                                                  GtkCrusaderVillageItemStore *store,
+                                                  const char                  *python_exe,
+                                                  int                          io_priority,
+                                                  GCancellable                *cancellable,
+                                                  GAsyncReadyCallback          callback,
+                                                  gpointer                     user_data);
 
 GtkCrusaderVillageMap *
-gtk_crusader_village_map_new_from_json_file_finish (GAsyncResult *result,
-                                                    GError      **error);
+gtk_crusader_village_map_new_from_aiv_file_finish (GAsyncResult *result,
+                                                   GError      **error);
 
 G_END_DECLS

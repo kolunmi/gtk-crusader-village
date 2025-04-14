@@ -46,6 +46,7 @@ struct _GtkCrusaderVillageWindow
   GtkCrusaderVillageMapEditorStatus *map_editor_status;
   GtkCrusaderVillageItemArea        *item_area;
   GtkCrusaderVillageTimelineView    *timeline_view;
+  GtkWidget                         *busy;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageWindow, gtk_crusader_village_window, GTK_TYPE_APPLICATION_WINDOW)
@@ -57,6 +58,7 @@ enum
   PROP_ITEM_STORE,
   PROP_MAP,
   PROP_SETTINGS,
+  PROP_BUSY,
 
   LAST_PROP
 };
@@ -94,6 +96,9 @@ gtk_crusader_village_window_get_property (GObject    *object,
       break;
     case PROP_SETTINGS:
       g_value_set_object (value, self->settings);
+      break;
+    case PROP_BUSY:
+      g_value_set_boolean (value, gtk_widget_get_visible (self->busy));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -143,6 +148,9 @@ gtk_crusader_village_window_set_property (GObject      *object,
           "settings", self->settings,
           NULL);
       break;
+    case PROP_BUSY:
+      gtk_widget_set_visible (self->busy, g_value_get_boolean (value));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -182,6 +190,14 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
           G_TYPE_SETTINGS,
           G_PARAM_READWRITE);
 
+  props[PROP_BUSY] =
+      g_param_spec_boolean (
+          "busy",
+          "Busy",
+          "Whether to indicate that the application is busy",
+          FALSE,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR);
@@ -195,6 +211,7 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, map_editor_status);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, item_area);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, timeline_view);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, busy);
 }
 
 static void

@@ -3,8 +3,8 @@
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillagePreferencesWindow" parent="GtkWindow">
     <property name="title" translatable="yes">Preferences</property>
-    <property name="default-width">600</property>
-    <property name="default-height">200</property>
+    <property name="default-width">500</property>
+    <property name="default-height">300</property>
     <property name="modal">TRUE</property>
     <property name="destroy-with-parent">TRUE</property>
     <property name="resizable">FALSE</property>
@@ -14,81 +14,116 @@
     </property>
     
     <property name="child">
-      <object class="GtkScrolledWindow">
-        <property name="hscrollbar-policy">GTK_POLICY_NEVER</property>
-        <property name="child">
-          <!-- maybe improve this with a list view? -->
-          <!-- also read description from schema? -->
-          <object class="GtkListBox">
-            <property name="selection-mode">GTK_SELECTION_NONE</property>
+      <!-- maybe improve this with a list view? -->
+      <!-- also read description from schema? -->
+      <object class="GtkListBox">
+        <property name="selection-mode">GTK_SELECTION_NONE</property>
 
-            <child>
-              <object class="GtkCenterBox">
-                <property name="start-widget">
-                  <object class="GtkLabel">
-                    <property name="label">Application theme</property>
-                  </object>
-                </property>
-                <property name="end-widget">
-                  <object class="GtkDropDown" id="theme">
-                    <property name="model">
-                      <object class="GtkStringList">
-                        <items>
-                          <item>shc-default</item>
-                          <item>shc-light</item>
-                          <item>shc-dark</item>
-                          <item>default</item>
-                          <item>light</item>
-                          <item>dark</item>
-                        </items>
-                      </object>
-                    </property>
-                  </object>
-                </property>
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Absolute path to a python executable with &lt;a href="https://github.com/sourcehold/sourcehold-maps"&gt;Sourcehold&lt;/a&gt; installed</property>
+                <property name="use-markup">TRUE</property>
               </object>
-            </child>
-            
-            <child>
-              <object class="GtkCenterBox">
-                <property name="start-widget">
-                  <object class="GtkLabel">
-                    <property name="label">Show a visual grid in the map editor</property>
-                  </object>
-                </property>
-                <property name="end-widget">
-                  <object class="GtkSwitch" id="show_grid"/>
-                </property>
+            </property>
+            <property name="end-widget">
+              <object class="GtkEntry" id="python_install">
+                <property name="margin-start">20</property>
+                <property name="width-request">150</property>
               </object>
-            </child>
-
-            <child>
-              <object class="GtkCenterBox">
-                <property name="start-widget">
-                  <object class="GtkLabel">
-                    <property name="label">Show a radial gradient in the map editor</property>
-                  </object>
-                </property>
-                <property name="end-widget">
-                  <object class="GtkSwitch" id="show_gradient"/>
-                </property>
-              </object>
-            </child>
-            
-            <child>
-              <object class="GtkCenterBox">
-                <property name="start-widget">
-                  <object class="GtkLabel">
-                    <property name="label">Add a glow around the currently hovered tile</property>
-                  </object>
-                </property>
-                <property name="end-widget">
-                  <object class="GtkSwitch" id="show_cursor_glow"/>
-                </property>
-              </object>
-            </child>
-            
+            </property>
           </object>
-        </property>
+        </child>
+
+        <child>
+          <object class="GtkSeparator">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Application theme</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkDropDown" id="theme">
+                <property name="model">
+                  <object class="GtkStringList">
+                    <items>
+                      <item>shc-default</item>
+                      <item>shc-light</item>
+                      <item>shc-dark</item>
+                      <item>default</item>
+                      <item>light</item>
+                      <item>dark</item>
+                    </items>
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Show a visual grid in the map editor</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkSwitch" id="show_grid"/>
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkSeparator">
+            <property name="margin-top">20</property>
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <style>
+              <class name="dim-label"/>
+            </style>
+            <property name="label">The options below this point originate from when I had just started writing this application. They aren't very useful.</property>
+            <property name="wrap">TRUE</property>
+            <property name="wrap-mode">PANGO_WRAP_WORD_CHAR</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Show a radial gradient in the map editor</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkSwitch" id="show_gradient"/>
+            </property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Add a glow around the currently hovered tile</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkSwitch" id="show_cursor_glow"/>
+            </property>
+          </object>
+        </child>
+        
       </object>
     </property>
   </template>

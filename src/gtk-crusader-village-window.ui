@@ -7,6 +7,23 @@
     <property name="default-height">1200</property>
     <property name="titlebar">
       <object class="GtkHeaderBar">
+        <child type="start">
+          <object class="GtkBox" id="busy">
+            <property name="visible">FALSE</property>
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkSpinner">
+                <property name="spinning">TRUE</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Busy...</property>
+              </object>
+            </child>
+          </object>
+        </child>
         <child type="end">
           <object class="GtkMenuButton">
             <property name="primary">True</property>
@@ -70,8 +87,12 @@
   <menu id="primary_menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">_Load From File</attribute>
+        <attribute name="label" translatable="yes">_Load From AIV File</attribute>
         <attribute name="action">app.load</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Export to AIV</attribute>
+        <attribute name="action">app.export</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">_Preferences</attribute>

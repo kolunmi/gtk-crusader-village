@@ -221,6 +221,29 @@ gtk_crusader_village_application_class_init (GtkCrusaderVillageApplicationClass 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
+static char *
+get_python_install (GtkCrusaderVillageApplication *self)
+{
+  g_autofree char *python_install = NULL;
+
+  python_install = g_settings_get_string (self->settings, "sourcehold-python-installation");
+  if (python_install[0] != '\0')
+    return g_steal_pointer (&python_install);
+  else
+    return NULL;
+}
+
+#define INSTALLATION_WARNING_TEXT                                                              \
+  "In order to perform import/export of AIV files, this application "                          \
+  "needs a functional python installation with the \"sourcehold\" "                            \
+  "module installed.\n\nTo enable AIV import/export, "                                         \
+  "<a href=\"https://github.com/sourcehold/sourcehold-maps?tab=readme-ov-file#installation\">" \
+  "follow Sourcehold's instructions</a> to install the module, then "                          \
+  "open this application's preferences window and paste the ABSOLUTE "                         \
+  "PATH of your python binary into the corresponding field. If you "                           \
+  "don't have python installed yet, <a href=\"https://www.python.org/downloads/\">"            \
+  "download it here</a> or install it via your package manager of choice."
+
 static void
 load_map_finish_cb (GObject      *source_object,
                     GAsyncResult *res,
@@ -231,7 +254,7 @@ load_map_finish_cb (GObject      *source_object,
   g_autoptr (GtkCrusaderVillageMap) map = NULL;
   GtkWindow *window                     = NULL;
 
-  map    = gtk_crusader_village_map_new_from_json_file_finish (res, &error);
+  map    = gtk_crusader_village_map_new_from_aiv_file_finish (res, &error);
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
   if (map != NULL)
@@ -249,6 +272,11 @@ load_map_finish_cb (GObject      *source_object,
           error->message,
           window, NULL);
     }
+
+  g_object_set (
+      window,
+      "busy", FALSE,
+      NULL);
 }
 
 static void
@@ -257,28 +285,41 @@ load_dialog_finish_cb (GObject      *source_object,
                        gpointer      data)
 {
   GtkCrusaderVillageApplication *self = data;
-  g_autoptr (GError) error            = NULL;
+  g_autoptr (GError) local_error      = NULL;
+  GtkWindow *window                   = NULL;
   g_autoptr (GFile) file              = NULL;
 
-  file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &error);
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+  file   = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
 
   if (file != NULL)
     {
-      gtk_crusader_village_map_new_from_json_file_async (
-          file, self->item_store, G_PRIORITY_DEFAULT,
-          NULL, load_map_finish_cb, self);
+      g_autofree char *python_exe = NULL;
+
+      python_exe = get_python_install (self);
+
+      if (python_exe != NULL)
+        gtk_crusader_village_map_new_from_aiv_file_async (
+            file, self->item_store, python_exe, G_PRIORITY_DEFAULT,
+            NULL, load_map_finish_cb, self);
+      else
+        gtk_crusader_village_dialog (
+            "Cannot Proceed",
+            "Sourcehold Python Installation Not Configured",
+            INSTALLATION_WARNING_TEXT,
+            window, NULL);
     }
   else
     {
-      GtkWindow *window = NULL;
-
-      window = gtk_application_get_active_window (GTK_APPLICATION (self));
-
       gtk_crusader_village_dialog (
           "An Error Occurred",
           "Could not load file from disk.",
-          error->message,
+          local_error->message,
           window, NULL);
+      g_object_set (
+          window,
+          "busy", FALSE,
+          NULL);
     }
 }
 
@@ -287,19 +328,77 @@ gtk_crusader_village_application_load (GSimpleAction *action,
                                        GVariant      *parameter,
                                        gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self   = user_data;
-  g_autoptr (GtkFileDialog) file_dialog = NULL;
-  g_autoptr (GtkFileFilter) filter      = NULL;
-  GtkWindow *window                     = NULL;
-
-  file_dialog = gtk_file_dialog_new ();
-  filter      = gtk_file_filter_new ();
-
-  gtk_file_filter_add_pattern (filter, "*.json");
-  gtk_file_dialog_set_default_filter (file_dialog, filter);
+  GtkCrusaderVillageApplication *self       = user_data;
+  GtkWindow                     *window     = NULL;
+  gboolean                       busy       = FALSE;
+  g_autofree char               *python_exe = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
-  gtk_file_dialog_open (file_dialog, window, NULL, load_dialog_finish_cb, self);
+
+  g_object_get (
+      window,
+      "busy", &busy,
+      NULL);
+  if (busy)
+    return;
+
+  python_exe = get_python_install (self);
+
+  if (python_exe != NULL)
+    {
+      g_autoptr (GtkFileDialog) file_dialog = NULL;
+      g_autoptr (GtkFileFilter) filter      = NULL;
+
+      file_dialog = gtk_file_dialog_new ();
+      filter      = gtk_file_filter_new ();
+
+      gtk_file_filter_add_pattern (filter, "*.aiv");
+      gtk_file_dialog_set_default_filter (file_dialog, filter);
+
+      gtk_file_dialog_open (file_dialog, window, NULL, load_dialog_finish_cb, self);
+
+      g_object_set (
+          window,
+          "busy", TRUE,
+          NULL);
+    }
+  else
+    gtk_crusader_village_dialog (
+        "Import Error",
+        "Sourcehold Python Installation Not Configured",
+        INSTALLATION_WARNING_TEXT,
+        window, NULL);
+}
+
+static void
+gtk_crusader_village_application_export (GSimpleAction *action,
+                                         GVariant      *parameter,
+                                         gpointer       user_data)
+{
+  GtkCrusaderVillageApplication *self       = user_data;
+  GtkWindow                     *window     = NULL;
+  gboolean                       busy       = FALSE;
+  g_autofree char               *python_exe = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  g_object_get (
+      window,
+      "busy", &busy,
+      NULL);
+  if (busy)
+    return;
+
+  python_exe = get_python_install (self);
+
+  if (python_exe != NULL)
+    gtk_crusader_village_dialog ("Notice", "Implement Me!", NULL, window, NULL);
+  else
+    gtk_crusader_village_dialog (
+        "Export Error",
+        "Sourcehold Python Installation Not Configured",
+        INSTALLATION_WARNING_TEXT,
+        window, NULL);
 }
 
 static void
@@ -363,12 +462,9 @@ static const char *sketches[] = {
   "🏰 <a href=\"https://fireflyworlds.com/\">Support Firefly Studios!</a>"
 
 static void
-gtk_crusader_village_application_greeting_action (GSimpleAction *action,
-                                                  GVariant      *parameter,
-                                                  gpointer       user_data)
+do_greeting (GtkCrusaderVillageApplication *self)
 {
-  GtkCrusaderVillageApplication *self    = user_data;
-  GtkWindow                     *window  = NULL;
+  GtkWindow *window                      = NULL;
   g_autoptr (GVariant) dialog_structure  = NULL;
   GtkCrusaderVillageDialogWindow *dialog = NULL;
 
@@ -391,6 +487,42 @@ gtk_crusader_village_application_greeting_action (GSimpleAction *action,
   g_signal_connect (dialog, "notify::final-submission", G_CALLBACK (greeting_submission), self);
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "greeting-dialog");
   gtk_widget_add_css_class (GTK_WIDGET (dialog), sketches[g_random_int_range (0, G_N_ELEMENTS (sketches))]);
+}
+
+static void
+installation_warning_submission (GtkCrusaderVillageDialogWindow *dialog,
+                                 GParamSpec                     *pspec,
+                                 GtkCrusaderVillageApplication  *application)
+{
+  do_greeting (application);
+}
+
+static void
+gtk_crusader_village_application_greeting_action (GSimpleAction *action,
+                                                  GVariant      *parameter,
+                                                  gpointer       user_data)
+{
+  GtkCrusaderVillageApplication *self       = user_data;
+  g_autofree char               *python_exe = NULL;
+
+  python_exe = get_python_install (self);
+  if (python_exe != NULL)
+    do_greeting (self);
+  else
+    {
+      GtkWindow                      *window = NULL;
+      GtkCrusaderVillageDialogWindow *dialog = NULL;
+
+      window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+      dialog = gtk_crusader_village_dialog (
+          "Warning",
+          "Sourcehold Python Installation Not Configured",
+          INSTALLATION_WARNING_TEXT,
+          window, NULL);
+      g_signal_connect (dialog, "notify::final-submission",
+                        G_CALLBACK (installation_warning_submission), self);
+    }
 }
 
 #define ABOUT_TEXT_FMT                                                             \
@@ -460,6 +592,7 @@ static const GActionEntry app_actions[] = {
   {       "about",    gtk_crusader_village_application_about_action },
   {    "greeting", gtk_crusader_village_application_greeting_action },
   { "preferences",     gtk_crusader_village_application_preferences },
+  {      "export",          gtk_crusader_village_application_export },
   {        "load",            gtk_crusader_village_application_load },
 };
 
@@ -481,6 +614,14 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
       GTK_APPLICATION (self),
       "app.quit",
       (const char *[]) { "<primary>q", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.load",
+      (const char *[]) { "<primary>o", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.export",
+      (const char *[]) { "<primary>s", NULL });
   gtk_application_set_accels_for_action (
       GTK_APPLICATION (self),
       "app.about",

@@ -256,7 +256,7 @@ read_map (GtkCrusaderVillageMapEditorStatus *self)
   g_autoptr (GtkCrusaderVillageMapHandle) handle = NULL;
 
   if (self->map != NULL)
-    g_signal_handlers_disconnect_by_func (self->map, hover_changed, self);
+    g_signal_handlers_disconnect_by_func (self->map, name_changed, self);
   g_clear_object (&self->map);
 
   if (self->editor == NULL)

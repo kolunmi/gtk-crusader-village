@@ -23,6 +23,7 @@
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-theme-utils.h"
 
+#define KEY_PYTHON_INSTALL   "sourcehold-python-installation"
 #define KEY_THEME            "theme"
 #define KEY_SHOW_GRID        "show-grid"
 #define KEY_SHOW_GRADIENT    "show-gradient"
@@ -45,6 +46,7 @@ struct _GtkCrusaderVillagePreferencesWindow
   GSettings *settings;
 
   /* Template widgets */
+  GtkEntry    *python_install;
   GtkDropDown *theme;
   GtkSwitch   *show_grid;
   GtkSwitch   *show_gradient;
@@ -83,6 +85,11 @@ static void
 write_theme (GtkCrusaderVillagePreferencesWindow *self,
              GSettings                           *settings,
              const char                          *key);
+
+static void
+read_python_install (GtkCrusaderVillagePreferencesWindow *self,
+                     GSettings                           *settings,
+                     const char                          *key);
 
 static void
 gtk_crusader_village_preferences_window_dispose (GObject *object)
@@ -140,6 +147,7 @@ gtk_crusader_village_preferences_window_set_property (GObject      *object,
           gtk_switch_set_active (self->show_grid, g_settings_get_boolean (self->settings, KEY_SHOW_GRID));
           gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, KEY_SHOW_GRADIENT));
           gtk_switch_set_active (self->show_cursor_glow, g_settings_get_boolean (self->settings, KEY_SHOW_CURSOR_GLOW));
+          read_python_install (self, self->settings, KEY_PYTHON_INSTALL);
         }
       break;
     default:
@@ -172,6 +180,7 @@ gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreference
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_grid);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_gradient);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_cursor_glow);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, python_install);
 }
 
 static void
@@ -188,6 +197,8 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->show_cursor_glow, "notify::active",
                     G_CALLBACK (ui_changed), self);
+  g_signal_connect (self->python_install, "notify::text",
+                    G_CALLBACK (ui_changed), self);
 }
 
 static void
@@ -203,6 +214,8 @@ setting_changed (GSettings                           *self,
     gtk_switch_set_active (window->show_gradient, g_settings_get_boolean (self, KEY_SHOW_GRADIENT));
   else if (g_strcmp0 (key, KEY_SHOW_CURSOR_GLOW) == 0)
     gtk_switch_set_active (window->show_cursor_glow, g_settings_get_boolean (self, KEY_SHOW_CURSOR_GLOW));
+  else if (g_strcmp0 (key, KEY_PYTHON_INSTALL) == 0)
+    read_python_install (window, self, key);
 }
 
 static void
@@ -213,6 +226,8 @@ ui_changed (GtkWidget                           *widget,
   if (window->settings == NULL)
     return;
 
+  g_signal_handlers_block_by_func (window->settings, setting_changed, window);
+
   if (widget == (GtkWidget *) window->theme)
     write_theme (window, window->settings, KEY_THEME);
   else if (widget == (GtkWidget *) window->show_grid)
@@ -221,6 +236,10 @@ ui_changed (GtkWidget                           *widget,
     g_settings_set_boolean (window->settings, KEY_SHOW_GRADIENT, gtk_switch_get_active (window->show_gradient));
   else if (widget == (GtkWidget *) window->show_cursor_glow)
     g_settings_set_boolean (window->settings, KEY_SHOW_CURSOR_GLOW, gtk_switch_get_active (window->show_cursor_glow));
+  else if (widget == (GtkWidget *) window->python_install)
+    g_settings_set_string (window->settings, KEY_PYTHON_INSTALL, gtk_editable_get_text (GTK_EDITABLE (window->python_install)));
+
+  g_signal_handlers_unblock_by_func (window->settings, setting_changed, window);
 }
 
 void
@@ -266,6 +285,17 @@ write_theme (GtkCrusaderVillagePreferencesWindow *self,
   g_assert (idx < G_N_ELEMENTS (theme_choices));
 
   g_settings_set_string (settings, key, theme_choices[idx]);
+}
+
+static void
+read_python_install (GtkCrusaderVillagePreferencesWindow *self,
+                     GSettings                           *settings,
+                     const char                          *key)
+{
+  g_autofree char *path = NULL;
+
+  path = g_settings_get_string (settings, KEY_PYTHON_INSTALL);
+  gtk_editable_set_text (GTK_EDITABLE (self->python_install), path);
 }
 
 /* I don't like this whole setup */
