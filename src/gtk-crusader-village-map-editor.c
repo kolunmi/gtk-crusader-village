@@ -868,13 +868,16 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
   if (editor->render_cache == NULL)
     {
-      g_autoptr (GtkSnapshot) regen          = NULL;
-      g_autoptr (GtkSnapshot) layouts        = NULL;
-      g_autoptr (GHashTable) texture_to_mask = NULL;
-      guint          n_strokes               = 0;
-      GdkRGBA        bg_rgba                 = { 0 };
-      GHashTableIter iter                    = { 0 };
-      g_autoptr (GskRenderNode) layouts_node = NULL;
+      g_autoptr (GtkSnapshot) regen                = NULL;
+      g_autoptr (GtkSnapshot) layouts              = NULL;
+      g_autoptr (GHashTable) texture_to_mask       = NULL;
+      guint          n_strokes                     = 0;
+      GdkRGBA        bg_rgba                       = { 0 };
+      GHashTableIter iter                          = { 0 };
+      g_autoptr (GskRenderNode) layouts_node       = NULL;
+      g_autoptr (GskPathBuilder) keep_path_builder = NULL;
+      g_autoptr (GskPath) keep_path                = NULL;
+      g_autoptr (GskStroke) keep_stroke            = NULL;
 
       regen           = gtk_snapshot_new ();
       layouts         = gtk_snapshot_new ();
@@ -1056,6 +1059,39 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           if (mask_node != NULL)
             gtk_snapshot_append_node (regen, mask_node);
         }
+
+      keep_path_builder = gsk_path_builder_new ();
+      /* Stone Keep outline */
+      gsk_path_builder_move_to (keep_path_builder, map_width / 2.0 - 7.0 * tile_size, map_height / 2.0 - 7.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, 7.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, 2.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, 5.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, 5.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, -7.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, 1.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, 2.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, 7.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, -7.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, -7.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, 2.0 * tile_size, 0.0);
+      gsk_path_builder_rel_line_to (keep_path_builder, 0.0, -1.0 * tile_size);
+      gsk_path_builder_rel_line_to (keep_path_builder, -2.0 * tile_size, 0.0);
+      gsk_path_builder_close (keep_path_builder);
+      gsk_path_builder_add_circle (
+          keep_path_builder,
+          &GRAPHENE_POINT_INIT (map_width / 2.0 - 3.5 * tile_size, map_height / 2.0 + 4.5 * tile_size),
+          1.5 * tile_size);
+      keep_path = gsk_path_builder_free_to_path (g_steal_pointer (&keep_path_builder));
+
+      keep_stroke = gsk_stroke_new (tile_size * 0.25);
+      gsk_stroke_set_dash (keep_stroke, (const float[]) { tile_size * 0.25, tile_size * 0.5 }, 2);
+      gsk_stroke_set_line_cap (keep_stroke, GSK_LINE_CAP_SQUARE);
+
+      gtk_snapshot_append_stroke (
+          regen, keep_path, keep_stroke,
+          editor->dark_theme
+              ? &(const GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
+              : &(const GdkRGBA) { 0.0, 0.0, 0.0, 1.0 });
 
       layouts_node = gtk_snapshot_to_node (layouts);
       if (layouts_node != NULL)
