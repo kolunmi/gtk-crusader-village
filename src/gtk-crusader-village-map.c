@@ -443,7 +443,7 @@ err_sourcehold:
   g_task_return_new_error_literal (
       task,
       GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_ERROR_SOURCEHOLD_FAILED,
+      GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED,
       "The Sourcehold process terminated abnormally");
   goto done;
 
@@ -451,7 +451,7 @@ err_inval:
   g_task_return_new_error_literal (
       task,
       GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_ERROR_INVALID_JSON_STRUCTURE,
+      GTK_CRUSADER_VILLAGE_MAP_ERROR_INVALID_JSON_STRUCTURE,
       "JSON structure is invalid");
   goto done;
 
@@ -529,7 +529,7 @@ save_to_aiv_file_async_thread (GTask        *task,
           WRITE (i < data->strokes->len - 1 ? "],\"shouldPause\":false}," : "],\"shouldPause\":false}");
         }
     }
-  WRITE ("],\"miscItems\":[],\"pauseDelayAmount\": 100}");
+  WRITE ("],\"miscItems\":[],\"pauseDelayAmount\":100}");
 
   WRITE ("\n");
 #undef WRITE
@@ -571,7 +571,7 @@ err_sourcehold:
   g_task_return_new_error_literal (
       task,
       GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_ERROR_SOURCEHOLD_FAILED,
+      GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED,
       "The Sourcehold process terminated abnormally");
   goto done;
 

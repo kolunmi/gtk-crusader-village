@@ -31,8 +31,8 @@ GQuark gtk_crusader_village_map_error_quark (void);
 
 typedef enum
 {
-  GTK_CRUSADER_VILLAGE_ERROR_SOURCEHOLD_FAILED = 0,
-  GTK_CRUSADER_VILLAGE_ERROR_INVALID_JSON_STRUCTURE,
+  GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED = 0,
+  GTK_CRUSADER_VILLAGE_MAP_ERROR_INVALID_JSON_STRUCTURE,
 } GtkCrusaderVillageMapError;
 
 #define GTK_CRUSADER_VILLAGE_TYPE_MAP (gtk_crusader_village_map_get_type ())
