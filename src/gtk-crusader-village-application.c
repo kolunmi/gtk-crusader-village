@@ -258,20 +258,16 @@ load_map_finish_cb (GObject      *source_object,
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
   if (map != NULL)
-    {
-      g_object_set (
-          window,
-          "map", map,
-          NULL);
-    }
+    g_object_set (
+        window,
+        "map", map,
+        NULL);
   else
-    {
-      gtk_crusader_village_dialog (
-          "An Error Occurred",
-          "Could not parse file from disk.",
-          error->message,
-          window, NULL);
-    }
+    gtk_crusader_village_dialog (
+        "An Error Occurred",
+        "Could not parse file from disk.",
+        error->message,
+        window, NULL);
 
   g_object_set (
       window,
@@ -343,7 +339,6 @@ gtk_crusader_village_application_load (GSimpleAction *action,
     return;
 
   python_exe = get_python_install (self);
-
   if (python_exe != NULL)
     {
       g_autoptr (GtkFileDialog) file_dialog = NULL;
@@ -371,6 +366,85 @@ gtk_crusader_village_application_load (GSimpleAction *action,
 }
 
 static void
+save_map_finish_cb (GObject      *source_object,
+                    GAsyncResult *res,
+                    gpointer      data)
+{
+  GtkCrusaderVillageApplication *self = data;
+  g_autoptr (GError) error            = NULL;
+  gboolean   result                   = FALSE;
+  GtkWindow *window                   = NULL;
+
+  result = gtk_crusader_village_map_save_to_aiv_file_finish (res, &error);
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (!result)
+    gtk_crusader_village_dialog (
+        "An Error Occurred",
+        "Could not save AIV to disk.",
+        error->message,
+        window, NULL);
+
+  g_object_set (
+      window,
+      "busy", FALSE,
+      NULL);
+}
+
+static void
+save_dialog_finish_cb (GObject      *source_object,
+                       GAsyncResult *res,
+                       gpointer      data)
+{
+  GtkCrusaderVillageApplication *self = data;
+  g_autoptr (GError) local_error      = NULL;
+  GtkWindow *window                   = NULL;
+  g_autoptr (GFile) file              = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+  file   = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
+
+  if (file != NULL)
+    {
+      g_autofree char *python_exe = NULL;
+
+      python_exe = get_python_install (self);
+
+      if (python_exe != NULL)
+        {
+          g_autoptr (GtkCrusaderVillageMap) map = NULL;
+
+          g_object_get (
+              window,
+              "map", &map,
+              NULL);
+
+          gtk_crusader_village_map_save_to_aiv_file_async (
+              map, file, python_exe, G_PRIORITY_DEFAULT,
+              NULL, save_map_finish_cb, self);
+        }
+      else
+        gtk_crusader_village_dialog (
+            "Cannot Proceed",
+            "Sourcehold Python Installation Not Configured",
+            INSTALLATION_WARNING_TEXT,
+            window, NULL);
+    }
+  else
+    {
+      gtk_crusader_village_dialog (
+          "An Error Occurred",
+          "Could not save file to disk.",
+          local_error->message,
+          window, NULL);
+      g_object_set (
+          window,
+          "busy", FALSE,
+          NULL);
+    }
+}
+
+static void
 gtk_crusader_village_application_export (GSimpleAction *action,
                                          GVariant      *parameter,
                                          gpointer       user_data)
@@ -390,9 +464,24 @@ gtk_crusader_village_application_export (GSimpleAction *action,
     return;
 
   python_exe = get_python_install (self);
-
   if (python_exe != NULL)
-    gtk_crusader_village_dialog ("Notice", "Implement Me!", NULL, window, NULL);
+    {
+      g_autoptr (GtkFileDialog) file_dialog = NULL;
+      g_autoptr (GtkFileFilter) filter      = NULL;
+
+      file_dialog = gtk_file_dialog_new ();
+      filter      = gtk_file_filter_new ();
+
+      gtk_file_filter_add_pattern (filter, "*.aiv");
+      gtk_file_dialog_set_default_filter (file_dialog, filter);
+
+      gtk_file_dialog_save (file_dialog, window, NULL, save_dialog_finish_cb, self);
+
+      g_object_set (
+          window,
+          "busy", TRUE,
+          NULL);
+    }
   else
     gtk_crusader_village_dialog (
         "Export Error",

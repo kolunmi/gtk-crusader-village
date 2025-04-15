@@ -52,4 +52,17 @@ GtkCrusaderVillageMap *
 gtk_crusader_village_map_new_from_aiv_file_finish (GAsyncResult *result,
                                                    GError      **error);
 
+void
+gtk_crusader_village_map_save_to_aiv_file_async (GtkCrusaderVillageMap *self,
+                                                 GFile                 *file,
+                                                 const char            *python_exe,
+                                                 int                    io_priority,
+                                                 GCancellable          *cancellable,
+                                                 GAsyncReadyCallback    callback,
+                                                 gpointer               user_data);
+
+gboolean
+gtk_crusader_village_map_save_to_aiv_file_finish (GAsyncResult *result,
+                                                  GError      **error);
+
 G_END_DECLS
