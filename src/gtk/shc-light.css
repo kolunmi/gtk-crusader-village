@@ -1679,7 +1679,7 @@ window.csd > .titlebar:not(headerbar) {
 
 window.window-intro headerbar.titlebar {
     animation-name: window-intro-frames;
-    animation-duration: 1.5s;
+    animation-duration: 0.75s;
     animation-timing-function: cubic-bezier(0.78, 0.01, 0, 0.83);
 }
 
