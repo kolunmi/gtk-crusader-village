@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-map-editor-overlay.h"
 #include "gtk-crusader-village-map-editor.h"
 #include "gtk-crusader-village-map-handle.h"
@@ -89,6 +90,11 @@ static void
 line_mode_changed (GtkCrusaderVillageMapEditor        *editor,
                    GParamSpec                         *pspec,
                    GtkCrusaderVillageMapEditorOverlay *overlay);
+
+static void
+clear_final_submission (GtkCrusaderVillageDialogWindow     *dialog,
+                        GParamSpec                         *pspec,
+                        GtkCrusaderVillageMapEditorOverlay *overlay);
 
 static void
 motion_enter (GtkEventControllerMotion           *self,
@@ -334,6 +340,24 @@ line_mode_changed (GtkCrusaderVillageMapEditor        *editor,
 }
 
 static void
+clear_final_submission (GtkCrusaderVillageDialogWindow     *dialog,
+                        GParamSpec                         *pspec,
+                        GtkCrusaderVillageMapEditorOverlay *overlay)
+{
+  g_autoptr (GVariant) submission = NULL;
+  gboolean clear                  = FALSE;
+
+  g_object_get (
+      dialog,
+      "final-submission", &submission,
+      NULL);
+  g_variant_get (submission, "(b)", &clear);
+
+  if (clear)
+    gtk_crusader_village_map_handle_clear_all (overlay->handle);
+}
+
+static void
 motion_enter (GtkEventControllerMotion           *self,
               gdouble                             x,
               gdouble                             y,
@@ -368,10 +392,42 @@ static void
 clear_clicked (GtkButton                          *self,
                GtkCrusaderVillageMapEditorOverlay *overlay)
 {
+  g_autoptr (GListModel) model = NULL;
+  guint n_strokes              = 0;
+
   if (overlay->handle == NULL)
     return;
 
-  gtk_crusader_village_map_handle_clear_all (overlay->handle);
+  g_object_get (
+      overlay->handle,
+      "model", &model,
+      NULL);
+  n_strokes = g_list_model_get_n_items (model);
+
+  if (n_strokes <= 5)
+    gtk_crusader_village_map_handle_clear_all (overlay->handle);
+  else
+    {
+      GtkWidget       *window                = NULL;
+      g_autofree char *body                  = NULL;
+      g_autoptr (GVariant) dialog_structure  = NULL;
+      GtkCrusaderVillageDialogWindow *dialog = NULL;
+
+      window = gtk_widget_get_ancestor (GTK_WIDGET (self), GTK_TYPE_WINDOW);
+      g_assert (window != NULL);
+
+      body             = g_strdup_printf ("You will clear all %d strokes. This action is irreversible.", n_strokes);
+      dialog_structure = g_variant_new_parsed ("{\"I want to clear the map\":<%b>}", TRUE);
+
+      dialog = gtk_crusader_village_dialog (
+          "Confirmation",
+          "Clear the Map?",
+          body,
+          GTK_WINDOW (window),
+          dialog_structure);
+
+      g_signal_connect (dialog, "notify::final-submission", G_CALLBACK (clear_final_submission), overlay);
+    }
 }
 
 static void
