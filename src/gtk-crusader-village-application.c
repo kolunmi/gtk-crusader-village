@@ -51,6 +51,7 @@ struct _GtkCrusaderVillageApplication
 
   GtkCrusaderVillageItemStore *item_store;
 
+  GtkCssProvider *custom_css;
   GtkCssProvider *shc_theme_light_css;
   GtkCssProvider *shc_theme_dark_css;
 
@@ -151,6 +152,7 @@ gtk_crusader_village_application_dispose (GObject *object)
 
   g_clear_object (&self->item_store);
 
+  g_clear_object (&self->custom_css);
   g_clear_object (&self->shc_theme_light_css);
   g_clear_object (&self->shc_theme_dark_css);
 
@@ -160,15 +162,14 @@ gtk_crusader_village_application_dispose (GObject *object)
 static void
 gtk_crusader_village_application_activate (GApplication *app)
 {
-  GtkCrusaderVillageApplication *self     = GTK_CRUSADER_VILLAGE_APPLICATION (app);
-  g_autoptr (GtkCssProvider) css_provider = NULL;
-  GtkWindow *window                       = NULL;
+  GtkCrusaderVillageApplication *self   = GTK_CRUSADER_VILLAGE_APPLICATION (app);
+  GtkWindow                     *window = NULL;
 
-  css_provider = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css_provider, "/am/kolunmi/GtkCrusaderVillage/gtk/styles.css");
+  self->custom_css = gtk_css_provider_new ();
+  gtk_css_provider_load_from_resource (self->custom_css, "/am/kolunmi/GtkCrusaderVillage/gtk/styles.css");
   gtk_style_context_add_provider_for_display (
       gdk_display_get_default (),
-      GTK_STYLE_PROVIDER (css_provider),
+      GTK_STYLE_PROVIDER (self->custom_css),
       GTK_STYLE_PROVIDER_PRIORITY_USER);
 
   self->shc_theme_light_css = gtk_css_provider_new ();
@@ -767,6 +768,7 @@ apply_gtk_theme (GtkCrusaderVillageApplication *self)
       NULL);
 
   display = gdk_display_get_default ();
+  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->custom_css));
   gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_light_css));
   gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_dark_css));
 
@@ -782,6 +784,10 @@ apply_gtk_theme (GtkCrusaderVillageApplication *self)
                   : self->shc_theme_light_css),
           GTK_STYLE_PROVIDER_PRIORITY_USER);
     }
+  gtk_style_context_add_provider_for_display (
+      display,
+      GTK_STYLE_PROVIDER (self->custom_css),
+      GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 static void

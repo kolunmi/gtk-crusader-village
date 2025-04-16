@@ -34,6 +34,16 @@ struct _GtkCrusaderVillageItemArea
   /* Template widgets */
   GtkEntry    *entry;
   GtkListView *list_view;
+
+  GtkToggleButton *all;
+  GtkToggleButton *castle;
+  GtkToggleButton *industry;
+  GtkToggleButton *farm;
+  GtkToggleButton *town;
+  GtkToggleButton *weapons;
+  GtkToggleButton *food;
+  GtkToggleButton *euro;
+  GtkToggleButton *arab;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItemArea, gtk_crusader_village_item_area, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
@@ -50,22 +60,36 @@ enum
 
 static GParamSpec *props[LAST_PROP] = { 0 };
 
-static void setup_listitem (GtkListItemFactory *factory,
-                            GtkListItem        *list_item,
-                            gpointer            user_data);
-static void bind_listitem (GtkListItemFactory *factory,
-                           GtkListItem        *list_item,
-                           gpointer            user_data);
-static void search_changed (GtkEditable *self,
-                            gpointer     user_data);
+static void
+setup_listitem (GtkListItemFactory         *factory,
+                GtkListItem                *list_item,
+                GtkCrusaderVillageItemArea *item_area);
 
-static int match (GtkCrusaderVillageItem     *item,
-                  GtkCrusaderVillageItemArea *item_area);
+static void
+bind_listitem (GtkListItemFactory         *factory,
+               GtkListItem                *list_item,
+               GtkCrusaderVillageItemArea *item_area);
+
+static void
+search_changed (GtkEditable                *self,
+                GtkCrusaderVillageItemArea *item_area);
+
+static int
+match (GtkCrusaderVillageItem     *item,
+       GtkCrusaderVillageItemArea *item_area);
+
+static void
+active_group_changed (GtkToggleButton            *toggle_button,
+                      GParamSpec                 *pspec,
+                      GtkCrusaderVillageItemArea *item_area);
 
 static void
 selected_item_changed (GtkSingleSelection         *selection,
                        GParamSpec                 *pspec,
                        GtkCrusaderVillageItemArea *item_area);
+
+static void
+update_filter (GtkCrusaderVillageItemArea *self);
 
 static void
 gtk_crusader_village_item_area_dispose (GObject *object)
@@ -168,6 +192,16 @@ gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klas
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-item-area.ui");
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, entry);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, list_view);
+
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, all);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, castle);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, industry);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, farm);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, town);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, weapons);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, food);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, euro);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, arab);
 }
 
 static void
@@ -194,12 +228,33 @@ gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
 
   g_signal_connect (selection_model, "notify::selected-item",
                     G_CALLBACK (selected_item_changed), self);
+
+  gtk_toggle_button_set_group (self->castle, self->all);
+  gtk_toggle_button_set_group (self->industry, self->all);
+  gtk_toggle_button_set_group (self->farm, self->all);
+  gtk_toggle_button_set_group (self->town, self->all);
+  gtk_toggle_button_set_group (self->weapons, self->all);
+  gtk_toggle_button_set_group (self->food, self->all);
+  gtk_toggle_button_set_group (self->euro, self->all);
+  gtk_toggle_button_set_group (self->arab, self->all);
+
+  gtk_toggle_button_set_active (self->all, TRUE);
+
+  g_signal_connect (self->all, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->castle, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->industry, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->farm, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->town, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->weapons, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->food, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->euro, "notify::active", G_CALLBACK (active_group_changed), self);
+  g_signal_connect (self->arab, "notify::active", G_CALLBACK (active_group_changed), self);
 }
 
 static void
-setup_listitem (GtkListItemFactory *factory,
-                GtkListItem        *list_item,
-                gpointer            user_data)
+setup_listitem (GtkListItemFactory         *factory,
+                GtkListItem                *list_item,
+                GtkCrusaderVillageItemArea *item_area)
 {
   GtkCrusaderVillageItemAreaItem *area_item = NULL;
 
@@ -208,11 +263,10 @@ setup_listitem (GtkListItemFactory *factory,
 }
 
 static void
-bind_listitem (GtkListItemFactory *factory,
-               GtkListItem        *list_item,
-               gpointer            user_data)
+bind_listitem (GtkListItemFactory         *factory,
+               GtkListItem                *list_item,
+               GtkCrusaderVillageItemArea *item_area)
 {
-  GtkCrusaderVillageItemArea     *self      = user_data;
   GtkCrusaderVillageItem         *item      = NULL;
   GtkCrusaderVillageItemAreaItem *area_item = NULL;
 
@@ -226,27 +280,19 @@ bind_listitem (GtkListItemFactory *factory,
 }
 
 static void
-search_changed (GtkEditable *editable,
-                gpointer     user_data)
+search_changed (GtkEditable                *editable,
+                GtkCrusaderVillageItemArea *item_area)
 {
-  GtkCrusaderVillageItemArea *self              = user_data;
-  GtkSingleSelection         *selection_model   = NULL;
-  GtkFilterListModel         *filter_list_model = NULL;
-  GtkFilter                  *filter            = NULL;
-
-  selection_model   = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-  filter_list_model = GTK_FILTER_LIST_MODEL (gtk_single_selection_get_model (selection_model));
-  filter            = gtk_filter_list_model_get_filter (filter_list_model);
-
-  gtk_filter_changed (filter, GTK_FILTER_CHANGE_DIFFERENT);
+  update_filter (item_area);
 }
 
 static int
 match (GtkCrusaderVillageItem     *item,
        GtkCrusaderVillageItemArea *item_area)
 {
-  const char      *search_text = NULL;
-  g_autofree char *name        = NULL;
+  const char      *search_text           = NULL;
+  g_autofree char *name                  = NULL;
+  g_autofree char *section_icon_resource = NULL;
 
   search_text = gtk_editable_get_text (GTK_EDITABLE (item_area->entry));
   if (search_text == NULL)
@@ -255,9 +301,29 @@ match (GtkCrusaderVillageItem     *item,
   g_object_get (
       item,
       "name", &name,
+      "section-icon-resource", &section_icon_resource,
       NULL);
 
-  return strcasestr (name, search_text) != NULL ? 1 : 0;
+  if (!gtk_toggle_button_get_active (item_area->all) &&
+      ((!gtk_toggle_button_get_active (item_area->castle) &&
+        strstr (section_icon_resource, "tower.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->industry) &&
+        strstr (section_icon_resource, "hammer.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->farm) &&
+        strstr (section_icon_resource, "apple.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->food) &&
+        strstr (section_icon_resource, "sickle.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->town) &&
+        strstr (section_icon_resource, "house.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->weapons) &&
+        strstr (section_icon_resource, "shield.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->euro) &&
+        strstr (section_icon_resource, "euro_sword.png") != NULL) ||
+       (!gtk_toggle_button_get_active (item_area->arab) &&
+        strstr (section_icon_resource, "arab_sword.png") != NULL)))
+    return 0;
+
+  return g_str_match_string (search_text, name, TRUE) ? 1 : 0;
 }
 
 static void
@@ -266,4 +332,27 @@ selected_item_changed (GtkSingleSelection         *selection,
                        GtkCrusaderVillageItemArea *item_area)
 {
   g_object_notify_by_pspec (G_OBJECT (item_area), props[PROP_SELECTED_ITEM]);
+}
+
+static void
+active_group_changed (GtkToggleButton            *toggle_button,
+                      GParamSpec                 *pspec,
+                      GtkCrusaderVillageItemArea *item_area)
+{
+  if (gtk_toggle_button_get_active (toggle_button))
+    update_filter (item_area);
+}
+
+static void
+update_filter (GtkCrusaderVillageItemArea *self)
+{
+  GtkSingleSelection *selection_model   = NULL;
+  GtkFilterListModel *filter_list_model = NULL;
+  GtkFilter          *filter            = NULL;
+
+  selection_model   = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
+  filter_list_model = GTK_FILTER_LIST_MODEL (gtk_single_selection_get_model (selection_model));
+  filter            = gtk_filter_list_model_get_filter (filter_list_model);
+
+  gtk_filter_changed (filter, GTK_FILTER_CHANGE_DIFFERENT);
 }

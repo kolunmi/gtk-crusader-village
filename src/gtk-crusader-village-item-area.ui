@@ -2,17 +2,77 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <template class="GtkCrusaderVillageItemArea" parent="GtkCrusaderVillageUtilBin">
-    <property name="width-request">300</property>
+    <property name="width-request">350</property>
     <property name="child">
       <object class="GtkBox">
         <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
 
         <child>
           <object class="GtkEntry" id="entry">
-            <style>
-              <class name="flat"/>
-            </style>
+            <property name="margin-start">4</property>
+            <property name="margin-end">4</property>
+            <property name="margin-top">4</property>
+            <property name="margin-bottom">4</property>
             <property name="placeholder-text">Search for an item...</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkFlowBox">
+            <style>
+              <class name="custom-flowbox"/>
+            </style>
+            <property name="margin-start">4</property>
+            <property name="margin-end">4</property>
+            <property name="margin-bottom">4</property>
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <property name="max-children-per-line">32</property>
+            <property name="selection-mode">GTK_SELECTION_NONE</property>
+            <child>
+              <object class="GtkToggleButton" id="all">
+                <property name="label">All</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="castle">
+                <property name="label">Castle</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="industry">
+                <property name="label">Industry</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="farm">
+                <property name="label">Farm</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="town">
+                <property name="label">Town</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="weapons">
+                <property name="label">Weapons</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="food">
+                <property name="label">Food</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="euro">
+                <property name="label">Euro Units</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="arab">
+                <property name="label">Arab Units</property>
+              </object>
+            </child>
           </object>
         </child>
         

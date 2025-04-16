@@ -28,6 +28,17 @@
     animation-iteration-count: infinite;
 }
 
+flowbox.custom-flowbox flowboxchild {
+    padding: 2px;
+}
+flowbox.custom-flowbox flowboxchild > button {
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 0px;
+}
+
 .greeting-dialog {
     background-image: linear-gradient(to right, @theme_bg_color 2%, alpha(@theme_bg_color, 0.0) 50%), linear-gradient(to bottom, @theme_bg_color 2%, alpha(@theme_bg_color, 0.0) 50%), var(--sketch);
     background-repeat: no-repeat;
