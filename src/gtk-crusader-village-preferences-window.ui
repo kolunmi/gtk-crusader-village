@@ -82,11 +82,47 @@
         </child>
 
         <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Background image</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkBox">
+                <property name="margin-start">10</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkLabel" id="background_label">
+                    <property name="ellipsize">PANGO_ELLIPSIZE_MIDDLE</property>
+                    <style>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="background_button">
+                    <property name="icon-name">folder-open-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="background_clear">
+                    <property name="label">Clear</property>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <child>
           <object class="GtkSeparator">
-            <property name="margin-top">20</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
           </object>
         </child>
+        
         <child>
           <object class="GtkLabel">
             <style>

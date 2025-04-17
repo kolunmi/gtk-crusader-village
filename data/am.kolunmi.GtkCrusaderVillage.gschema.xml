@@ -29,6 +29,11 @@
       <summary>Show Grid</summary>
       <description>Whether to show a grid in the map editor</description>
     </key>
+    <key name="background-image" type="s">
+      <default>""</default>
+      <summary>Background Image</summary>
+      <description>A path to an image file to use as a background texture.</description>
+    </key>
     <key name="show-gradient" type="b">
       <default>false</default>
       <summary>Show Gradient</summary>

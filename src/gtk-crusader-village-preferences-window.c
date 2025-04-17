@@ -20,12 +20,14 @@
 
 #include "config.h"
 
+#include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-theme-utils.h"
 
 #define KEY_PYTHON_INSTALL   "sourcehold-python-installation"
 #define KEY_THEME            "theme"
 #define KEY_SHOW_GRID        "show-grid"
+#define KEY_BACKGROUND_IMAGE "background-image"
 #define KEY_SHOW_GRADIENT    "show-gradient"
 #define KEY_SHOW_CURSOR_GLOW "show-cursor-glow"
 
@@ -51,6 +53,10 @@ struct _GtkCrusaderVillagePreferencesWindow
   GtkSwitch   *show_grid;
   GtkSwitch   *show_gradient;
   GtkSwitch   *show_cursor_glow;
+
+  GtkLabel  *background_label;
+  GtkButton *background_button;
+  GtkButton *background_clear;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_TYPE_WINDOW)
@@ -77,6 +83,19 @@ ui_changed (GtkWidget                           *widget,
             GtkCrusaderVillagePreferencesWindow *window);
 
 static void
+background_button_clicked (GtkButton                           *self,
+                           GtkCrusaderVillagePreferencesWindow *window);
+
+static void
+background_clear_clicked (GtkButton                           *self,
+                          GtkCrusaderVillagePreferencesWindow *window);
+
+static void
+image_dialog_finish_cb (GObject      *source_object,
+                        GAsyncResult *res,
+                        gpointer      data);
+
+static void
 read_theme (GtkCrusaderVillagePreferencesWindow *self,
             GSettings                           *settings,
             const char                          *key);
@@ -90,6 +109,11 @@ static void
 read_python_install (GtkCrusaderVillagePreferencesWindow *self,
                      GSettings                           *settings,
                      const char                          *key);
+
+static void
+read_background_image (GtkCrusaderVillagePreferencesWindow *self,
+                       GSettings                           *settings,
+                       const char                          *key);
 
 static void
 gtk_crusader_village_preferences_window_dispose (GObject *object)
@@ -148,6 +172,7 @@ gtk_crusader_village_preferences_window_set_property (GObject      *object,
           gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, KEY_SHOW_GRADIENT));
           gtk_switch_set_active (self->show_cursor_glow, g_settings_get_boolean (self->settings, KEY_SHOW_CURSOR_GLOW));
           read_python_install (self, self->settings, KEY_PYTHON_INSTALL);
+          read_background_image (self, self->settings, KEY_BACKGROUND_IMAGE);
         }
       break;
     default:
@@ -181,6 +206,9 @@ gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreference
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_gradient);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_cursor_glow);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, python_install);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_label);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_button);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_clear);
 }
 
 static void
@@ -199,6 +227,11 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->python_install, "notify::text",
                     G_CALLBACK (ui_changed), self);
+
+  g_signal_connect (self->background_button, "clicked",
+                    G_CALLBACK (background_button_clicked), self);
+  g_signal_connect (self->background_clear, "clicked",
+                    G_CALLBACK (background_clear_clicked), self);
 }
 
 static void
@@ -212,6 +245,8 @@ setting_changed (GSettings                           *self,
     gtk_switch_set_active (window->show_grid, g_settings_get_boolean (self, KEY_SHOW_GRID));
   else if (g_strcmp0 (key, KEY_SHOW_GRADIENT) == 0)
     gtk_switch_set_active (window->show_gradient, g_settings_get_boolean (self, KEY_SHOW_GRADIENT));
+  else if (g_strcmp0 (key, KEY_BACKGROUND_IMAGE) == 0)
+    read_background_image (window, self, key);
   else if (g_strcmp0 (key, KEY_SHOW_CURSOR_GLOW) == 0)
     gtk_switch_set_active (window->show_cursor_glow, g_settings_get_boolean (self, KEY_SHOW_CURSOR_GLOW));
   else if (g_strcmp0 (key, KEY_PYTHON_INSTALL) == 0)
@@ -240,6 +275,56 @@ ui_changed (GtkWidget                           *widget,
     g_settings_set_string (window->settings, KEY_PYTHON_INSTALL, gtk_editable_get_text (GTK_EDITABLE (window->python_install)));
 
   g_signal_handlers_unblock_by_func (window->settings, setting_changed, window);
+}
+
+static void
+background_button_clicked (GtkButton                           *self,
+                           GtkCrusaderVillagePreferencesWindow *window)
+{
+  g_autoptr (GtkFileDialog) file_dialog = NULL;
+  g_autoptr (GtkFileFilter) filter      = NULL;
+
+  file_dialog = gtk_file_dialog_new ();
+  filter      = gtk_file_filter_new ();
+
+  gtk_file_filter_add_mime_type (filter, "image/*");
+  gtk_file_dialog_set_default_filter (file_dialog, filter);
+
+  gtk_file_dialog_open (file_dialog, GTK_WINDOW (window),
+                        NULL, image_dialog_finish_cb, window);
+}
+
+static void
+background_clear_clicked (GtkButton                           *self,
+                          GtkCrusaderVillagePreferencesWindow *window)
+{
+  g_settings_set_string (window->settings, KEY_BACKGROUND_IMAGE, "");
+}
+
+static void
+image_dialog_finish_cb (GObject      *source_object,
+                        GAsyncResult *res,
+                        gpointer      data)
+{
+  GtkCrusaderVillagePreferencesWindow *self = data;
+  g_autoptr (GError) local_error            = NULL;
+  g_autoptr (GFile) file                    = NULL;
+
+  file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
+
+  if (file != NULL)
+    {
+      g_autofree char *path = NULL;
+
+      path = g_file_get_path (file);
+      g_settings_set_string (self->settings, KEY_BACKGROUND_IMAGE, path);
+    }
+  else
+    gtk_crusader_village_dialog (
+        "An Error Occurred",
+        "Could not retrieve image from disk.",
+        local_error->message,
+        GTK_WINDOW (self), NULL);
 }
 
 void
@@ -294,8 +379,19 @@ read_python_install (GtkCrusaderVillagePreferencesWindow *self,
 {
   g_autofree char *path = NULL;
 
-  path = g_settings_get_string (settings, KEY_PYTHON_INSTALL);
+  path = g_settings_get_string (settings, key);
   gtk_editable_set_text (GTK_EDITABLE (self->python_install), path);
+}
+
+static void
+read_background_image (GtkCrusaderVillagePreferencesWindow *self,
+                       GSettings                           *settings,
+                       const char                          *key)
+{
+  g_autofree char *path = NULL;
+
+  path = g_settings_get_string (settings, key);
+  gtk_label_set_label (self->background_label, path);
 }
 
 /* I don't like this whole setup */
