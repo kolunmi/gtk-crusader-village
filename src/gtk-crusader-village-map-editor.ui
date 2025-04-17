@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageMapEditor" parent="GtkWidget">
+    <property name="focusable">TRUE</property>
+    <child>
+      <object class='GtkShortcutController' id="shortcuts">
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>h</property>
+            <property name='action'>action(back-page)</property>
+          </object>
+        </child>
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>&lt;Shift&gt;p</property>
+            <property name='action'>action(back-page)</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>k</property>
+            <property name='action'>action(back-one)</property>
+          </object>
+        </child>
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>p</property>
+            <property name='action'>action(back-one)</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>j</property>
+            <property name='action'>action(forward-one)</property>
+          </object>
+        </child>
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>n</property>
+            <property name='action'>action(forward-one)</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>l</property>
+            <property name='action'>action(forward-page)</property>
+          </object>
+        </child>
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>&lt;Shift&gt;n</property>
+            <property name='action'>action(forward-page)</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>g</property>
+            <property name='action'>action(beginning)</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>&lt;Shift&gt;g</property>
+            <property name='action'>action(end)</property>
+          </object>
+        </child>
+
+        <child>
+          <object class='GtkShortcut'>
+            <property name='trigger'>s</property>
+            <property name='action'>action(jump-to-search)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>
