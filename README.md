@@ -1,6 +1,6 @@
 # GTK Crusader Village
 
-![Image](https://github.com/user-attachments/assets/4319c9ce-7bc8-4524-b22c-6eb01f3febd1)
+![Image](https://github.com/user-attachments/assets/304c0408-6309-44a9-9dec-07fdd9dd8e5c)
 
 ## What is this
 
@@ -11,7 +11,7 @@ In [Stronghold Crusader](https://en.wikipedia.org/wiki/Stronghold:_Crusader), `.
 Right now I am developing on linux, but I will test other operating systems shortly.
 ```sh
 meson setup build --prefix=/usr/local
-ninja -C build
+ninja -C build --buildtype=release
 
 # installation
 sudo ninja -C build install
@@ -19,11 +19,7 @@ sudo ninja -C build install
 
 ## This is a WIP
 
-TODO:
-* Finish editor functionality (adding all the in-game buildings and units and being able to place them in the editor, etc)
-* Save/Export: Add two impls
-  1. "Normal" likely just a serialized `GVariant`
-  2. `.aiv` format: the binary format from the original game is not fully understood afaict, so this will require some reverse engineering. Please file an issue if you have any useful information regarding this format
+Most functionality is finished, however.
 
 ## Acknowledgments
 
