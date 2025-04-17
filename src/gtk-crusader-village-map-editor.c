@@ -880,9 +880,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
     }
 
   if (editor->background_image_tex != NULL)
-    gtk_snapshot_append_texture (
+    gtk_snapshot_append_scaled_texture (
         snapshot,
         editor->background_image_tex,
+        GSK_SCALING_FILTER_NEAREST,
         &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
 
   if (editor->show_grid)
