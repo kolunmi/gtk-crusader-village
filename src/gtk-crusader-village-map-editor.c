@@ -139,6 +139,41 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                                           GtkSnapshot *snapshot);
 
 static void
+back_page_cb (GtkWidget  *widget,
+              const char *action_name,
+              GVariant   *parameter);
+
+static void
+back_one_cb (GtkWidget  *widget,
+             const char *action_name,
+             GVariant   *parameter);
+
+static void
+forward_one_cb (GtkWidget  *widget,
+                const char *action_name,
+                GVariant   *parameter);
+
+static void
+forward_page_cb (GtkWidget  *widget,
+                 const char *action_name,
+                 GVariant   *parameter);
+
+static void
+beginning_cb (GtkWidget  *widget,
+              const char *action_name,
+              GVariant   *parameter);
+
+static void
+end_cb (GtkWidget  *widget,
+        const char *action_name,
+        GVariant   *parameter);
+
+static void
+jump_to_search_cb (GtkWidget  *widget,
+                   const char *action_name,
+                   GVariant   *parameter);
+
+static void
 dark_theme_changed (GtkSettings                 *settings,
                     GParamSpec                  *pspec,
                     GtkCrusaderVillageMapEditor *editor);
@@ -632,9 +667,19 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
   g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
   g_object_class_override_property (object_class, PROP_VSCROLL_POLICY, "vscroll-policy");
 
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-map-editor.ui");
+
   widget_class->measure       = gtk_crusader_village_map_editor_measure;
   widget_class->size_allocate = gtk_crusader_village_map_editor_size_allocate;
   widget_class->snapshot      = gtk_crusader_village_map_editor_snapshot;
+
+  gtk_widget_class_install_action (widget_class, "back-page", NULL, back_page_cb);
+  gtk_widget_class_install_action (widget_class, "back-one", NULL, back_one_cb);
+  gtk_widget_class_install_action (widget_class, "forward-one", NULL, forward_one_cb);
+  gtk_widget_class_install_action (widget_class, "forward-page", NULL, forward_page_cb);
+  gtk_widget_class_install_action (widget_class, "beginning", NULL, beginning_cb);
+  gtk_widget_class_install_action (widget_class, "end", NULL, end_cb);
+  gtk_widget_class_install_action (widget_class, "jump-to-search", NULL, jump_to_search_cb);
 }
 
 static void
@@ -652,6 +697,8 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
   self->hover_y   = -1;
   self->canvas_x  = -1.0;
   self->canvas_y  = -1.0;
+
+  gtk_widget_init_template (GTK_WIDGET (self));
 
   self->gtk_settings = gtk_settings_get_default ();
   g_signal_connect (self->gtk_settings, "notify::gtk-application-prefer-dark-theme",
@@ -1281,6 +1328,141 @@ scrollable_iface_init (GtkScrollableInterface *iface)
 }
 
 static void
+back_page_cb (GtkWidget  *widget,
+              const char *action_name,
+              GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  guint                        cursor = 0;
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+  if (cursor == 0)
+    return;
+
+  g_object_set (
+      self->handle,
+      "cursor", cursor - MIN (cursor, 5),
+      NULL);
+}
+
+static void
+back_one_cb (GtkWidget  *widget,
+             const char *action_name,
+             GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  guint                        cursor = 0;
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+  if (cursor == 0)
+    return;
+
+  g_object_set (
+      self->handle,
+      "cursor", cursor - MIN (cursor, 1),
+      NULL);
+}
+
+static void
+forward_one_cb (GtkWidget  *widget,
+                const char *action_name,
+                GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  guint                        cursor = 0;
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+  g_object_set (
+      self->handle,
+      "cursor", cursor + 1,
+      NULL);
+}
+
+static void
+forward_page_cb (GtkWidget  *widget,
+                 const char *action_name,
+                 GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  guint                        cursor = 0;
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+  g_object_set (
+      self->handle,
+      "cursor", cursor + 5,
+      NULL);
+}
+
+static void
+beginning_cb (GtkWidget  *widget,
+              const char *action_name,
+              GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_set (
+      self->handle,
+      "cursor", 0,
+      NULL);
+}
+
+static void
+end_cb (GtkWidget  *widget,
+        const char *action_name,
+        GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+
+  if (self->handle == NULL)
+    return;
+
+  g_object_set (
+      self->handle,
+      "cursor", G_MAXUINT,
+      NULL);
+}
+
+static void
+jump_to_search_cb (GtkWidget  *widget,
+                   const char *action_name,
+                   GVariant   *parameter)
+{
+  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+
+  if (self->item_area == NULL)
+    return;
+
+  gtk_crusader_village_item_area_grab_search_focus (self->item_area);
+}
+
+static void
 dark_theme_changed (GtkSettings                 *settings,
                     GParamSpec                  *pspec,
                     GtkCrusaderVillageMapEditor *editor)
@@ -1346,6 +1528,8 @@ drag_gesture_begin_gesture (GtkGesture                  *self,
                             GdkEventSequence            *sequence,
                             GtkCrusaderVillageMapEditor *editor)
 {
+  gtk_widget_grab_focus (GTK_WIDGET (editor));
+
   if (editor->hadjustment == NULL || editor->vadjustment == NULL)
     gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_DENIED);
 }
@@ -1404,6 +1588,8 @@ draw_gesture_begin_gesture (GtkGesture                  *self,
                             GdkEventSequence            *sequence,
                             GtkCrusaderVillageMapEditor *editor)
 {
+  gtk_widget_grab_focus (GTK_WIDGET (editor));
+
   if (editor->item_area == NULL)
     gtk_gesture_set_state (GTK_GESTURE (self), GTK_EVENT_SEQUENCE_DENIED);
 }
@@ -1666,6 +1852,8 @@ scroll_event (GtkEventControllerScroll    *self,
       gtk_gesture_is_recognized (editor->zoom_gesture))
     return GDK_EVENT_STOP;
 
+  gtk_widget_grab_focus (GTK_WIDGET (editor));
+
   editor->zoom += dy * -0.06 * editor->zoom;
   editor->zoom = CLAMP (editor->zoom, 0.5, 7.5);
 
@@ -1686,6 +1874,7 @@ motion_enter (GtkEventControllerMotion    *self,
               gdouble                      y,
               GtkCrusaderVillageMapEditor *editor)
 {
+  gtk_widget_grab_focus (GTK_WIDGET (editor));
   update_motion (editor, x, y);
 }
 

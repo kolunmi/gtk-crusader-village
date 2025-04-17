@@ -356,3 +356,11 @@ update_filter (GtkCrusaderVillageItemArea *self)
 
   gtk_filter_changed (filter, GTK_FILTER_CHANGE_DIFFERENT);
 }
+
+void
+gtk_crusader_village_item_area_grab_search_focus (GtkCrusaderVillageItemArea *self)
+{
+  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_AREA (self));
+
+  gtk_widget_grab_focus (GTK_WIDGET (self->entry));
+}

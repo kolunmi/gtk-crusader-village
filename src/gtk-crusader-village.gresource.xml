@@ -21,6 +21,7 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-preferences-window.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-item-area-item.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-overlay.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view.ui</file>

@@ -28,4 +28,7 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemArea, gtk_crusader_village_item_area, GTK_CRUSADER_VILLAGE, ITEM_AREA, GtkCrusaderVillageUtilBin)
 
+void
+gtk_crusader_village_item_area_grab_search_focus (GtkCrusaderVillageItemArea *self);
+
 G_END_DECLS
