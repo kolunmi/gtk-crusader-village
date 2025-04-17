@@ -10,8 +10,8 @@ In [Stronghold Crusader](https://en.wikipedia.org/wiki/Stronghold:_Crusader), `.
 
 Right now I am developing on linux, but I will test other operating systems shortly.
 ```sh
-meson setup build --prefix=/usr/local
-ninja -C build --buildtype=release
+meson setup build --prefix=/usr/local --buildtype=release
+ninja -C build
 
 # installation
 sudo ninja -C build install
