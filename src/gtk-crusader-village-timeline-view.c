@@ -42,6 +42,7 @@ struct _GtkCrusaderVillageTimelineView
   GtkListView    *list_view;
   GtkCheckButton *insert_mode;
   GtkButton      *delete_stroke;
+  GtkScale       *scale;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageTimelineView, gtk_crusader_village_timeline_view, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
@@ -81,6 +82,14 @@ static void
 listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
                             GParamSpec                  *pspec,
                             GtkListItem                 *list_item);
+
+static void
+model_changed (GListModel                     *self,
+               guint                           position,
+               guint                           removed,
+               guint                           added,
+               GtkCrusaderVillageTimelineView *timeline_view);
+
 static void
 row_activated (GtkListView                    *self,
                guint                           position,
@@ -101,6 +110,12 @@ lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
                    GtkCrusaderVillageTimelineView *timeline_view);
 
 static void
+scale_change_value (GtkRange                       *self,
+                    GtkScrollType                  *scroll,
+                    gdouble                         value,
+                    GtkCrusaderVillageTimelineView *timeline_view);
+
+static void
 update_selected (GtkCrusaderVillageTimelineView *self);
 
 static void
@@ -113,6 +128,9 @@ gtk_crusader_village_timeline_view_dispose (GObject *object)
 
   g_clear_object (&self->selection);
   g_clear_object (&self->wrapper_store);
+
+  if (self->model != NULL)
+    g_signal_handlers_disconnect_by_func (self->model, model_changed, self);
   g_clear_object (&self->model);
 
   if (self->handle != NULL)
@@ -159,6 +177,9 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
     case PROP_MAP_HANDLE:
       {
         g_list_store_remove_all (self->wrapper_store);
+
+        if (self->model != NULL)
+          g_signal_handlers_disconnect_by_func (self->model, model_changed, self);
         g_clear_object (&self->model);
 
         if (self->handle != NULL)
@@ -181,6 +202,8 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
                 NULL);
 
             g_list_store_append (self->wrapper_store, self->model);
+            g_signal_connect (self->model, "items-changed",
+                              G_CALLBACK (model_changed), self);
 
             g_signal_connect (self->handle, "notify::cursor",
                               G_CALLBACK (cursor_changed), self);
@@ -226,6 +249,7 @@ gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewCla
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, list_view);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, insert_mode);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, delete_stroke);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, scale);
 }
 
 static void
@@ -265,6 +289,10 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
                     G_CALLBACK (row_activated), self);
   g_signal_connect (self->delete_stroke, "clicked",
                     G_CALLBACK (delete_stroke_clicked), self);
+
+  gtk_range_set_increments (GTK_RANGE (self->scale), 1, 5);
+  g_signal_connect (self->scale, "change-value",
+                    G_CALLBACK (scale_change_value), self);
 }
 
 static void
@@ -375,6 +403,16 @@ listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
+model_changed (GListModel                     *self,
+               guint                           position,
+               guint                           removed,
+               guint                           added,
+               GtkCrusaderVillageTimelineView *timeline_view)
+{
+  update_ui (timeline_view);
+}
+
+static void
 row_activated (GtkListView                    *self,
                guint                           position,
                GtkCrusaderVillageTimelineView *timeline_view)
@@ -433,6 +471,21 @@ lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
 }
 
 static void
+scale_change_value (GtkRange                       *self,
+                    GtkScrollType                  *scroll,
+                    gdouble                         value,
+                    GtkCrusaderVillageTimelineView *timeline_view)
+{
+  if (timeline_view->handle == NULL)
+    return;
+
+  g_object_set (
+      timeline_view->handle,
+      "cursor", (guint) MAX (0, round (value)),
+      NULL);
+}
+
+static void
 update_selected (GtkCrusaderVillageTimelineView *self)
 {
   guint cursor = 0;
@@ -453,6 +506,7 @@ update_ui (GtkCrusaderVillageTimelineView *self)
   guint    n_strokes   = 0;
   char     buf[128]    = { 0 };
   gboolean lock_hinted = FALSE;
+  guint    cursor      = 0;
 
   if (self->handle == NULL)
     return;
@@ -479,4 +533,12 @@ update_ui (GtkCrusaderVillageTimelineView *self)
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted);
   gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && selected > 0);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted);
+
+  g_object_get (
+      self->handle,
+      "cursor", &cursor,
+      NULL);
+  gtk_range_set_range (GTK_RANGE (self->scale), 0, n_strokes);
+  gtk_range_set_value (GTK_RANGE (self->scale), cursor);
 }

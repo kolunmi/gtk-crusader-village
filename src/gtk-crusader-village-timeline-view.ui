@@ -35,27 +35,41 @@
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
           </object>
         </child>
-
+        
         <child>
-          <object class="GtkCenterBox">
-            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          <object class="GtkBox">
+            <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
             
-            <property name="start-widget">
-              <object class="GtkCheckButton" id="insert_mode">
-                <property name="label">Insert</property>
+            <child>
+              <object class="GtkScale" id="scale">
+                <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                <property name="draw-value">TRUE</property>
+                <property name="digits">0</property>
               </object>
-            </property>
+            </child>
             
-            <property name="end-widget">
-              <object class="GtkButton" id="delete_stroke">
-                <property name="margin-start">5</property>
-                <property name="margin-end">5</property>
-                <property name="margin-top">5</property>
-                <property name="margin-bottom">5</property>
-                <property name="label">Delete</property>
+            <child>
+              <object class="GtkCenterBox">
+                <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                
+                <property name="start-widget">
+                  <object class="GtkCheckButton" id="insert_mode">
+                    <property name="label">Insert</property>
+                  </object>
+                </property>
+                
+                <property name="end-widget">
+                  <object class="GtkButton" id="delete_stroke">
+                    <property name="margin-start">5</property>
+                    <property name="margin-end">5</property>
+                    <property name="margin-top">5</property>
+                    <property name="margin-bottom">5</property>
+                    <property name="label">Delete</property>
+                  </object>
+                </property>
+                
               </object>
-            </property>
-            
+            </child>
           </object>
         </child>
         
