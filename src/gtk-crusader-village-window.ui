@@ -78,7 +78,9 @@
               <object class="GtkPaned">
                 <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
                 <property name="wide-handle">TRUE</property>
-                <property name="position">1000</property>
+                <property name="position">900</property>
+                <property name="shrink-start-child">FALSE</property>
+                <property name="shrink-end-child">FALSE</property>
                 <property name="start-child">
                   <object class="GtkCrusaderVillageTimelineView" id="timeline_view"/>
                 </property>
