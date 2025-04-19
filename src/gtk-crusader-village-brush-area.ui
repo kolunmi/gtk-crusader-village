@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageBrushArea" parent="GtkCrusaderVillageUtilBin">
+    <property name="width-request">350</property>
+    <property name="child">
+      <object class="GtkBox">
+        <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+            <property name="spacing">5</property>
+            <child>
+              <object class="GtkButton" id="new_mask_brush">
+                <property name="margin-start">4</property>
+                <property name="margin-end">4</property>
+                <property name="margin-top">4</property>
+                <property name="margin-bottom">4</property>
+                <property name="hexpand">TRUE</property>
+                <property name="label">Add mask brush...</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinner" id="new_mask_brush_spinner">
+                <property name="visible">FALSE</property>
+                <property name="spinning">TRUE</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkSeparator">
+            <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="vexpand">TRUE</property>
+            <property name="hscrollbar-policy">GTK_POLICY_NEVER</property>
+            <property name="propagate-natural-width">TRUE</property>
+            <property name="child">
+              <object class="GtkListView" id="list_view">
+                <property name="show-separators">TRUE</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        
+      </object>
+    </property>
+  </template>
+</interface>

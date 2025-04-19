@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="GtkCrusaderVillageBrushAreaItem" parent="GtkCrusaderVillageUtilBin">
+    <property name="has-tooltip">TRUE</property>
+    <property name="child">
+      <object class="GtkCenterBox">
+        <property name="orientation">horizontal</property>
+        <property name="margin-end">20</property>
+
+        <property name="start-widget">
+          <object class="GtkLabel" id="name"/>
+        </property>
+
+        <property name="center-widget">
+          <object class="GtkScale" id="size">
+            <property name="width-request">100</property>
+          </object>
+        </property>
+        
+        <property name="end-widget">
+          <object class="GtkPicture" id="thumbnail">
+            <property name="height-request">50</property>
+            <property name="can-shrink">TRUE</property>
+          </object>
+        </property>
+        
+      </object>
+    </property>
+  </template>
+</interface>

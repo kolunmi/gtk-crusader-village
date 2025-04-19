@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "gtk-crusader-village-brush-area.h"
 #include "gtk-crusader-village-item-area.h"
 #include "gtk-crusader-village-item-store.h"
 #include "gtk-crusader-village-map-editor-overlay.h"
@@ -38,6 +39,7 @@ struct _GtkCrusaderVillageWindow
   GSettings *settings;
 
   GtkCrusaderVillageItemStore *item_store;
+  GListStore                  *brush_store;
   GtkCrusaderVillageMap       *map;
   GtkCrusaderVillageMapHandle *map_handle;
 
@@ -46,6 +48,7 @@ struct _GtkCrusaderVillageWindow
   GtkCrusaderVillageMapEditorStatus *map_editor_status;
   GtkCrusaderVillageItemArea        *item_area;
   GtkCrusaderVillageTimelineView    *timeline_view;
+  GtkCrusaderVillageBrushArea       *brush_area;
   GtkWidget                         *busy;
 };
 
@@ -56,6 +59,7 @@ enum
   PROP_0,
 
   PROP_ITEM_STORE,
+  PROP_BRUSH_STORE,
   PROP_MAP,
   PROP_SETTINGS,
   PROP_BUSY,
@@ -72,6 +76,7 @@ gtk_crusader_village_window_dispose (GObject *object)
 
   g_clear_object (&self->settings);
   g_clear_object (&self->item_store);
+  g_clear_object (&self->brush_store);
   g_clear_object (&self->map);
   g_clear_object (&self->map_handle);
 
@@ -90,6 +95,9 @@ gtk_crusader_village_window_get_property (GObject    *object,
     {
     case PROP_ITEM_STORE:
       g_value_set_object (value, self->item_store);
+      break;
+    case PROP_BRUSH_STORE:
+      g_value_set_object (value, self->brush_store);
       break;
     case PROP_MAP:
       g_value_set_object (value, self->map);
@@ -121,6 +129,14 @@ gtk_crusader_village_window_set_property (GObject      *object,
       g_object_set (
           self->item_area,
           "item-store", self->item_store,
+          NULL);
+      break;
+    case PROP_BRUSH_STORE:
+      g_clear_object (&self->brush_store);
+      self->brush_store = g_value_dup_object (value);
+      g_object_set (
+          self->brush_area,
+          "brush-store", self->brush_store,
           NULL);
       break;
     case PROP_MAP:
@@ -174,6 +190,14 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
           GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE,
           G_PARAM_READWRITE);
 
+  props[PROP_BRUSH_STORE] =
+      g_param_spec_object (
+          "brush-store",
+          "Brush Store",
+          "The brush store object for this window",
+          G_TYPE_LIST_STORE,
+          G_PARAM_READWRITE);
+
   props[PROP_MAP] =
       g_param_spec_object (
           "map",
@@ -205,12 +229,14 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_STATUS);
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA);
   g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_TIMELINE_VIEW);
+  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-window.ui");
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, map_editor);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, map_editor_status);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, item_area);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, timeline_view);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, brush_area);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, busy);
 }
 

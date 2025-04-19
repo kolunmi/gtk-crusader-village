@@ -24,6 +24,7 @@
 #include <glib/gi18n.h>
 
 #include "gtk-crusader-village-application.h"
+#include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-preferences-window.h"
@@ -50,6 +51,7 @@ struct _GtkCrusaderVillageApplication
   int        theme_setting;
 
   GtkCrusaderVillageItemStore *item_store;
+  GListStore                  *brush_store;
 
   GtkCssProvider *custom_css;
   GtkCssProvider *shc_theme_light_css;
@@ -151,6 +153,7 @@ gtk_crusader_village_application_dispose (GObject *object)
   g_clear_object (&self->settings);
 
   g_clear_object (&self->item_store);
+  g_clear_object (&self->brush_store);
 
   g_clear_object (&self->custom_css);
   g_clear_object (&self->shc_theme_light_css);
@@ -190,6 +193,7 @@ gtk_crusader_village_application_activate (GApplication *app)
         GTK_CRUSADER_VILLAGE_TYPE_WINDOW,
         "application", app,
         "item-store", self->item_store,
+        "brush-store", self->brush_store,
         "settings", self->settings,
         NULL);
 
@@ -693,6 +697,8 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 
   self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
   gtk_crusader_village_item_store_read_resources (self->item_store);
+
+  self->brush_store = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE);
 
   g_action_map_add_action_entries (
       G_ACTION_MAP (self),

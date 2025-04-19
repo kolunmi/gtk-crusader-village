@@ -26,6 +26,8 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-brush-area.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-brush-area-item.ui</file>
 
     <!-- items -->
     <file>items/Apothecary.variant</file>

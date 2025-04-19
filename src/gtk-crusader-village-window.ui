@@ -75,7 +75,17 @@
             </property>
             
             <property name="end-child">
-              <object class="GtkCrusaderVillageTimelineView" id="timeline_view"/>
+              <object class="GtkPaned">
+                <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+                <property name="wide-handle">TRUE</property>
+                <property name="position">1000</property>
+                <property name="start-child">
+                  <object class="GtkCrusaderVillageTimelineView" id="timeline_view"/>
+                </property>
+                <property name="end-child">
+                  <object class="GtkCrusaderVillageBrushArea" id="brush_area"/>
+                </property>
+              </object>
             </property>
             
           </object>
