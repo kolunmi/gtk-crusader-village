@@ -10,7 +10,6 @@
         <child>
           <object class="GtkBox">
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-            <property name="spacing">5</property>
             <child>
               <object class="GtkButton" id="new_mask_brush">
                 <property name="margin-start">4</property>
@@ -24,6 +23,8 @@
             <child>
               <object class="GtkSpinner" id="new_mask_brush_spinner">
                 <property name="visible">FALSE</property>
+                <property name="margin-start">5</property>
+                <property name="margin-end">5</property>
                 <property name="spinning">TRUE</property>
               </object>
             </child>
