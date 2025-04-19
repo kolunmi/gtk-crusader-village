@@ -41,7 +41,6 @@ struct _GtkCrusaderVillageMapEditor
   gboolean   show_grid;
   gboolean   show_gradient;
   gboolean   show_cursor_glow;
-  char      *background_image;
 
   GtkCrusaderVillageMap       *map;
   GtkCrusaderVillageMapHandle *handle;
@@ -53,7 +52,7 @@ struct _GtkCrusaderVillageMapEditor
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
   graphene_rect_t render_cache_extents;
-  GdkTexture     *background_image_tex;
+  GdkTexture     *bg_image_tex;
 
   double   zoom;
   gboolean queue_center;
@@ -329,6 +328,20 @@ update_motion (GtkCrusaderVillageMapEditor *self,
                double                       y);
 
 static void
+read_background_image (GtkCrusaderVillageMapEditor *self);
+
+static void
+background_texture_load_async_thread (GTask        *task,
+                                      gpointer      object,
+                                      gpointer      task_data,
+                                      GCancellable *cancellable);
+
+static void
+background_texture_load_finish_cb (GObject      *source_object,
+                                   GAsyncResult *res,
+                                   gpointer      data);
+
+static void
 gtk_crusader_village_map_editor_dispose (GObject *object)
 {
   GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
@@ -348,7 +361,6 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
           self->settings, background_image_changed, self);
     }
   g_clear_object (&self->settings);
-  g_clear_pointer (&self->background_image, g_free);
 
   if (self->handle != NULL)
     {
@@ -366,7 +378,7 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
   g_clear_object (&self->current_stroke);
 
   g_clear_pointer (&self->tile_textures, g_hash_table_unref);
-  g_clear_object (&self->background_image_tex);
+  g_clear_object (&self->bg_image_tex);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
 }
@@ -457,15 +469,10 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
           g_signal_connect (self->settings, "changed::background-image",
                             G_CALLBACK (background_image_changed), self);
 
-          g_clear_pointer (&self->background_image, g_free);
-
           self->show_grid        = g_settings_get_boolean (self->settings, "show-grid");
           self->show_gradient    = g_settings_get_boolean (self->settings, "show-gradient");
           self->show_cursor_glow = g_settings_get_boolean (self->settings, "show-cursor-glow");
-
-          self->background_image = g_settings_get_string (self->settings, "background-image");
-          if (self->background_image[0] == '\0')
-            g_clear_pointer (&self->background_image, g_free);
+          read_background_image (self);
         }
       else
         {
@@ -895,41 +902,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
         editor->dark_theme ? bg_radial_gradient_color_stops_dark : bg_radial_gradient_color_stops,
         editor->dark_theme ? G_N_ELEMENTS (bg_radial_gradient_color_stops_dark) : G_N_ELEMENTS (bg_radial_gradient_color_stops));
 
-  if (editor->background_image != NULL &&
-      editor->background_image_tex == NULL)
-    {
-      g_autoptr (GError) local_error = NULL;
-
-      editor->background_image_tex = gdk_texture_new_from_filename (editor->background_image, &local_error);
-      g_clear_pointer (&editor->background_image, g_free);
-
-      if (editor->background_image_tex == NULL)
-        {
-          GtkWidget      *app_window  = NULL;
-          GtkApplication *application = NULL;
-          GtkWindow      *window      = NULL;
-
-          app_window = gtk_widget_get_ancestor (GTK_WIDGET (editor), GTK_TYPE_WINDOW);
-          g_assert (app_window != NULL);
-
-          application = gtk_window_get_application (GTK_WINDOW (app_window));
-          window      = gtk_application_get_active_window (application);
-
-          gtk_crusader_village_dialog (
-              "Error",
-              "Could not load background image ",
-              local_error->message,
-              window, NULL);
-
-          if (editor->settings != NULL)
-            g_settings_set_string (editor->settings, "background-image", "");
-        }
-    }
-
-  if (editor->background_image_tex != NULL)
+  if (editor->bg_image_tex != NULL)
     gtk_snapshot_append_scaled_texture (
         snapshot,
-        editor->background_image_tex,
+        editor->bg_image_tex,
         GSK_SCALING_FILTER_NEAREST,
         &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
 
@@ -1507,13 +1483,7 @@ background_image_changed (GSettings                   *self,
                           gchar                       *key,
                           GtkCrusaderVillageMapEditor *editor)
 {
-  g_clear_object (&editor->background_image_tex);
-
-  editor->background_image = g_settings_get_string (editor->settings, "background-image");
-  if (editor->background_image[0] == '\0')
-    g_clear_pointer (&editor->background_image, g_free);
-
-  gtk_widget_queue_draw (GTK_WIDGET (editor));
+  read_background_image (editor);
 }
 
 static void
@@ -2144,4 +2114,87 @@ update_motion (GtkCrusaderVillageMapEditor *self,
     g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HOVER_Y]);
   if (redraw)
     gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+static void
+read_background_image (GtkCrusaderVillageMapEditor *self)
+{
+  g_autofree char *path = NULL;
+
+  g_clear_object (&self->bg_image_tex);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+
+  path = g_settings_get_string (self->settings, "background-image");
+
+  if (path[0] != '\0')
+    {
+      g_autoptr (GTask) task = NULL;
+
+      task = g_task_new (self, NULL, background_texture_load_finish_cb, NULL);
+      g_task_set_task_data (task, g_steal_pointer (&path), g_free);
+      g_task_set_priority (task, G_PRIORITY_HIGH);
+      g_task_set_check_cancellable (task, TRUE);
+      g_task_run_in_thread (task, background_texture_load_async_thread);
+    }
+}
+
+static void
+background_texture_load_async_thread (GTask        *task,
+                                      gpointer      object,
+                                      gpointer      task_data,
+                                      GCancellable *cancellable)
+{
+  const char *path               = task_data;
+  g_autoptr (GError) local_error = NULL;
+  g_autoptr (GdkTexture) texture = NULL;
+
+  if (g_task_return_error_if_cancelled (task))
+    return;
+
+  texture = gdk_texture_new_from_filename (path, &local_error);
+  if (texture == NULL)
+    {
+      g_task_return_error (task, g_steal_pointer (&local_error));
+      return;
+    }
+
+  g_task_return_pointer (task, g_steal_pointer (&texture), g_object_unref);
+}
+
+static void
+background_texture_load_finish_cb (GObject      *source_object,
+                                   GAsyncResult *res,
+                                   gpointer      data)
+{
+  GtkCrusaderVillageMapEditor *editor = GTK_CRUSADER_VILLAGE_MAP_EDITOR (source_object);
+  g_autoptr (GError) local_error      = NULL;
+  GdkTexture *texture                 = NULL;
+
+  texture = g_task_propagate_pointer (G_TASK (res), &local_error);
+
+  if (texture == NULL)
+    {
+      GtkWidget      *app_window  = NULL;
+      GtkApplication *application = NULL;
+      GtkWindow      *window      = NULL;
+
+      app_window = gtk_widget_get_ancestor (GTK_WIDGET (editor), GTK_TYPE_WINDOW);
+      g_assert (app_window != NULL);
+
+      application = gtk_window_get_application (GTK_WINDOW (app_window));
+      window      = gtk_application_get_active_window (application);
+
+      gtk_crusader_village_dialog (
+          "Error",
+          "Could not load background image ",
+          local_error->message,
+          window, NULL);
+
+      if (editor->settings != NULL)
+        g_settings_set_string (editor->settings, "background-image", "");
+    }
+
+  g_clear_object (&editor->bg_image_tex);
+  editor->bg_image_tex = texture;
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
 }

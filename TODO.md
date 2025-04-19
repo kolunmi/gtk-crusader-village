@@ -1,6 +1,6 @@
 # TODO
 
-+ [ ] Make background image loading async, in case the user decides to
++ [X] Make background image loading async, in case the user decides to
       load a massive image or an image from a network location, so as
       not to block the UI
 + [ ] Improve sorting efficiency for item sections
