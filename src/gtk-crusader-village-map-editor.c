@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "gtk-crusader-village-brush-area.h"
+#include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-item-area.h"
 #include "gtk-crusader-village-item-stroke.h"
@@ -45,9 +47,11 @@ struct _GtkCrusaderVillageMapEditor
   GtkCrusaderVillageMap       *map;
   GtkCrusaderVillageMapHandle *handle;
 
-  GtkCrusaderVillageItemArea *item_area;
-  int                         border_gap;
-  gboolean                    line_mode;
+  GtkCrusaderVillageItemArea  *item_area;
+  GtkCrusaderVillageBrushArea *brush_area;
+
+  int      border_gap;
+  gboolean line_mode;
 
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
@@ -79,6 +83,12 @@ struct _GtkCrusaderVillageMapEditor
   GtkGesture *zoom_gesture;
 
   GtkCrusaderVillageItemStroke *current_stroke;
+  GtkCrusaderVillageItemStroke *brush_stroke;
+
+  guint8        *brush_mask;
+  int            brush_width;
+  int            brush_height;
+  GskRenderNode *brush_node;
 };
 
 static void scrollable_iface_init (GtkScrollableInterface *iface);
@@ -94,16 +104,13 @@ enum
   PROP_0,
 
   PROP_SETTINGS,
-
   PROP_MAP_HANDLE,
   PROP_ITEM_AREA,
-
+  PROP_BRUSH_AREA,
   PROP_BORDER_GAP,
-
   PROP_HOVER_X,
   PROP_HOVER_Y,
   PROP_DRAWING,
-
   PROP_LINE_MODE,
 
   LAST_NATIVE_PROP,
@@ -308,6 +315,12 @@ static void
 selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
                        GParamSpec                  *pspec,
                        GtkCrusaderVillageMapEditor *editor);
+
+static void
+selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
+                        GParamSpec                  *pspec,
+                        GtkCrusaderVillageMapEditor *editor);
+
 static void
 grid_changed (GtkCrusaderVillageMapHandle *handle,
               GParamSpec                  *pspec,
@@ -326,6 +339,9 @@ static void
 update_motion (GtkCrusaderVillageMapEditor *self,
                double                       x,
                double                       y);
+
+static void
+read_brush (GtkCrusaderVillageMapEditor *self);
 
 static void
 read_background_image (GtkCrusaderVillageMapEditor *self);
@@ -372,13 +388,23 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
   g_clear_object (&self->handle);
   g_clear_object (&self->map);
 
+  if (self->item_area != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->item_area, selected_item_changed, self);
   g_clear_object (&self->item_area);
+  if (self->item_area != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->item_area, selected_brush_changed, self);
+  g_clear_object (&self->brush_area);
+
   g_clear_object (&self->hadjustment);
   g_clear_object (&self->vadjustment);
   g_clear_object (&self->current_stroke);
-
+  g_clear_object (&self->brush_stroke);
   g_clear_pointer (&self->tile_textures, g_hash_table_unref);
   g_clear_object (&self->bg_image_tex);
+  g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+  g_clear_pointer (&self->brush_node, gsk_render_node_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
 }
@@ -401,6 +427,9 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
       break;
     case PROP_ITEM_AREA:
       g_value_set_object (value, self->item_area);
+      break;
+    case PROP_BRUSH_AREA:
+      g_value_set_object (value, self->brush_area);
       break;
     case PROP_BORDER_GAP:
       g_value_set_int (value, self->border_gap);
@@ -520,9 +549,22 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
       g_clear_object (&self->item_area);
 
       self->item_area = g_value_dup_object (value);
-      if (self->item_area)
+      if (self->item_area != NULL)
         g_signal_connect (self->item_area, "notify::selected-item",
                           G_CALLBACK (selected_item_changed), self);
+      break;
+
+    case PROP_BRUSH_AREA:
+      if (self->brush_area != NULL)
+        g_signal_handlers_disconnect_by_func (
+            self->brush_area, selected_brush_changed, self);
+      g_clear_object (&self->brush_area);
+
+      self->brush_area = g_value_dup_object (value);
+      if (self->brush_area != NULL)
+        g_signal_connect (self->brush_area, "notify::selected-brush",
+                          G_CALLBACK (selected_brush_changed), self);
+      read_brush (self);
       break;
 
     case PROP_BORDER_GAP:
@@ -625,6 +667,14 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "Item Area",
           "The item area to use for tracking the current brush",
           GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA,
+          G_PARAM_READWRITE);
+
+  props[PROP_BRUSH_AREA] =
+      g_param_spec_object (
+          "brush-area",
+          "Brush Area",
+          "The brush area to use for tracking the current brush",
+          GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA,
           G_PARAM_READWRITE);
 
   props[PROP_BORDER_GAP] =
@@ -1219,7 +1269,9 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           g_assert (current_item != NULL);
 
           g_object_get (
-              editor->current_stroke,
+              editor->brush_stroke != NULL
+                  ? editor->brush_stroke
+                  : editor->current_stroke,
               "instances", &instances,
               NULL);
 
@@ -1242,48 +1294,67 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       if (current_item != NULL &&
           editor->hover_x >= 0 && editor->hover_y >= 0)
         {
-          double top_left_x  = 0.0;
-          double top_left_y  = 0.0;
-          double rect_width  = 0;
-          double rect_height = 0;
-
-          top_left_x  = (double) editor->hover_x * tile_size;
-          top_left_y  = (double) editor->hover_y * tile_size;
-          rect_width  = (double) MIN (item_tile_width, map_tile_width - editor->hover_x) * tile_size;
-          rect_height = (double) MIN (item_tile_height, map_tile_height - editor->hover_y) * tile_size;
-
-          if (editor->show_cursor_glow)
+          if (item_tile_width == 1 &&
+              item_tile_height == 1 &&
+              editor->brush_node != NULL)
             {
-              double center_x        = 0.0;
-              double center_y        = 0.0;
-              double glow_top_left_x = 0.0;
-              double glow_top_left_y = 0.0;
-              double glow_width      = 0.0;
-              double glow_height     = 0.0;
+              double top_left_x = 0.0;
+              double top_left_y = 0.0;
 
-              center_x        = top_left_x + rect_width / 2.0;
-              center_y        = top_left_y + rect_height / 2.0;
-              glow_top_left_x = MIN (top_left_x, center_x - BASE_TILE_SIZE * 4.0);
-              glow_top_left_y = MIN (top_left_y, center_y - BASE_TILE_SIZE * 4.0);
-              glow_width      = MAX (rect_width, (center_x + BASE_TILE_SIZE * 4.0) - glow_top_left_x);
-              glow_height     = MAX (rect_height, (center_y + BASE_TILE_SIZE * 4.0) - glow_top_left_y);
+              top_left_x = (editor->hover_x - (double) (int) (editor->brush_width / 2)) * tile_size;
+              top_left_y = (editor->hover_y - (double) (int) (editor->brush_height / 2)) * tile_size;
 
-              gtk_snapshot_append_radial_gradient (
-                  snapshot,
-                  &GRAPHENE_RECT_INIT (glow_top_left_x, glow_top_left_y, glow_width, glow_height),
-                  &GRAPHENE_POINT_INIT (center_x, center_y),
-                  glow_width / 2.0, glow_height / 2.0, 0.0, 1.0,
-                  cursor_radial_gradient_color_stops,
-                  G_N_ELEMENTS (cursor_radial_gradient_color_stops));
+              gtk_snapshot_save (snapshot);
+              gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (top_left_x, top_left_y));
+              gtk_snapshot_scale (snapshot, tile_size, tile_size);
+              gtk_snapshot_append_node (snapshot, editor->brush_node);
+              gtk_snapshot_restore (snapshot);
             }
+          else
+            {
+              double top_left_x  = 0.0;
+              double top_left_y  = 0.0;
+              double rect_width  = 0;
+              double rect_height = 0;
 
-          gtk_snapshot_append_border (
-              snapshot,
-              &GSK_ROUNDED_RECT_INIT (top_left_x, top_left_y, rect_width, rect_height),
-              BORDER_WIDTH (BASE_TILE_SIZE / 8.0 * editor->zoom),
-              editor->dark_theme
-                  ? BORDER_COLOR_LITERAL ({ 1.0, 1.0, 1.0, 1.0 })
-                  : BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
+              top_left_x  = (double) editor->hover_x * tile_size;
+              top_left_y  = (double) editor->hover_y * tile_size;
+              rect_width  = (double) MIN (item_tile_width, map_tile_width - editor->hover_x) * tile_size;
+              rect_height = (double) MIN (item_tile_height, map_tile_height - editor->hover_y) * tile_size;
+
+              if (editor->show_cursor_glow)
+                {
+                  double center_x        = 0.0;
+                  double center_y        = 0.0;
+                  double glow_top_left_x = 0.0;
+                  double glow_top_left_y = 0.0;
+                  double glow_width      = 0.0;
+                  double glow_height     = 0.0;
+
+                  center_x        = top_left_x + rect_width / 2.0;
+                  center_y        = top_left_y + rect_height / 2.0;
+                  glow_top_left_x = MIN (top_left_x, center_x - BASE_TILE_SIZE * 4.0);
+                  glow_top_left_y = MIN (top_left_y, center_y - BASE_TILE_SIZE * 4.0);
+                  glow_width      = MAX (rect_width, (center_x + BASE_TILE_SIZE * 4.0) - glow_top_left_x);
+                  glow_height     = MAX (rect_height, (center_y + BASE_TILE_SIZE * 4.0) - glow_top_left_y);
+
+                  gtk_snapshot_append_radial_gradient (
+                      snapshot,
+                      &GRAPHENE_RECT_INIT (glow_top_left_x, glow_top_left_y, glow_width, glow_height),
+                      &GRAPHENE_POINT_INIT (center_x, center_y),
+                      glow_width / 2.0, glow_height / 2.0, 0.0, 1.0,
+                      cursor_radial_gradient_color_stops,
+                      G_N_ELEMENTS (cursor_radial_gradient_color_stops));
+                }
+
+              gtk_snapshot_append_border (
+                  snapshot,
+                  &GSK_ROUNDED_RECT_INIT (top_left_x, top_left_y, rect_width, rect_height),
+                  BORDER_WIDTH (BASE_TILE_SIZE / 8.0 * editor->zoom),
+                  editor->dark_theme
+                      ? BORDER_COLOR_LITERAL ({ 1.0, 1.0, 1.0, 1.0 })
+                      : BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
+            }
         }
     }
 
@@ -1447,7 +1518,10 @@ dark_theme_changed (GtkSettings                 *settings,
       settings,
       "gtk-application-prefer-dark-theme", &editor->dark_theme,
       NULL);
+
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
+  read_brush (editor);
+
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
@@ -1589,6 +1663,7 @@ draw_gesture_begin (GtkGestureDrag              *self,
       GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
       "item", selected_item,
       NULL);
+  g_clear_object (&editor->brush_stroke);
 
   draw_gesture_update (self, 0.0, 0.0, editor);
 
@@ -1606,11 +1681,12 @@ draw_gesture_update (GtkGestureDrag              *gesture,
                      double                       offset_y,
                      GtkCrusaderVillageMapEditor *editor)
 {
-  g_autoptr (GArray) instances                          = NULL;
   g_autoptr (GHashTable) grid                           = NULL;
   int map_tile_width                                    = 0;
   int map_tile_height                                   = 0;
   g_autoptr (GtkCrusaderVillageItem) item               = NULL;
+  g_autoptr (GArray) instances                          = NULL;
+  g_autoptr (GArray) brush_instances                    = NULL;
   int                                  item_tile_width  = 0;
   int                                  item_tile_height = 0;
   GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
@@ -1654,8 +1730,27 @@ draw_gesture_update (GtkGestureDrag              *gesture,
     last_instance = g_array_index (
         instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1);
 
+  if (editor->brush_stroke == NULL &&
+      item_tile_height == 1 &&
+      item_tile_width == 1 &&
+      editor->brush_mask != NULL)
+    editor->brush_stroke = g_object_new (
+        GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+        "item", item,
+        NULL);
+
+  if (editor->brush_stroke != NULL)
+    g_object_get (
+        editor->brush_stroke,
+        "instances", &brush_instances,
+        NULL);
+
   if (editor->line_mode)
-    g_array_set_size (instances, 0);
+    {
+      g_array_set_size (instances, 0);
+      if (brush_instances != NULL)
+        g_array_set_size (brush_instances, 0);
+    }
 
   dx = editor->hover_x - last_instance.x;
   dy = editor->hover_y - last_instance.y;
@@ -1665,9 +1760,9 @@ draw_gesture_update (GtkGestureDrag              *gesture,
 
   for (int i = 0; i < divisor; i++)
     {
-      gboolean add = TRUE;
       int      cx  = 0;
       int      cy  = 0;
+      gboolean add = TRUE;
 
       cx = last_instance.x + i * dx / divisor;
       cy = last_instance.y + i * dy / divisor;
@@ -1696,12 +1791,49 @@ draw_gesture_update (GtkGestureDrag              *gesture,
         }
 
       if (add)
-        gtk_crusader_village_item_stroke_add_instance (
-            editor->current_stroke,
-            (GtkCrusaderVillageItemStrokeInstance) {
-                .x = cx,
-                .y = cy,
-            });
+        {
+          gtk_crusader_village_item_stroke_add_instance (
+              editor->current_stroke,
+              (GtkCrusaderVillageItemStrokeInstance) {
+                  .x = cx,
+                  .y = cy,
+              });
+
+          if (editor->brush_stroke != NULL)
+            {
+              int bx = 0;
+              int by = 0;
+
+              bx = cx - editor->brush_width / 2;
+              by = cy - editor->brush_height / 2;
+
+              for (int y = 0; y < editor->brush_height; y++)
+                {
+                  for (int x = 0; x < editor->brush_width; x++)
+                    {
+                      if (bx + x < 0 ||
+                          by + y < 0 ||
+                          bx + x >= map_tile_width ||
+                          by + y >= map_tile_height)
+                        continue;
+
+                      if (editor->brush_mask[y * editor->brush_width + x] != 0)
+                        {
+                          guint tile_idx = 0;
+
+                          tile_idx = (by + y) * map_tile_width + (bx + x);
+                          if (!g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+                            gtk_crusader_village_item_stroke_add_instance (
+                                editor->brush_stroke,
+                                (GtkCrusaderVillageItemStrokeInstance) {
+                                    .x = bx + x,
+                                    .y = by + y,
+                                });
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1729,10 +1861,15 @@ draw_gesture_end (GtkGestureDrag              *gesture,
           editor->map,
           "strokes", &strokes,
           NULL);
-      g_list_store_append (strokes, editor->current_stroke);
+      g_list_store_append (
+          strokes,
+          editor->brush_stroke != NULL
+              ? editor->brush_stroke
+              : editor->current_stroke);
     }
 
   g_clear_object (&editor->current_stroke);
+  g_clear_object (&editor->brush_stroke);
 
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
@@ -1901,6 +2038,14 @@ selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
 {
   if (editor->hover_x >= 0 && editor->hover_y >= 0)
     gtk_widget_queue_draw (GTK_WIDGET (editor));
+}
+
+static void
+selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
+                        GParamSpec                  *pspec,
+                        GtkCrusaderVillageMapEditor *editor)
+{
+  read_brush (editor);
 }
 
 static void
@@ -2114,6 +2259,98 @@ update_motion (GtkCrusaderVillageMapEditor *self,
     g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HOVER_Y]);
   if (redraw)
     gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+static void
+read_brush (GtkCrusaderVillageMapEditor *self)
+{
+  g_autoptr (GtkCrusaderVillageBrushable) brush = NULL;
+  int                mask_width                 = 0;
+  int                mask_height                = 0;
+  g_autofree guint8 *mask                       = NULL;
+  g_autoptr (GtkSnapshot) snapshot              = NULL;
+  g_autoptr (GskPathBuilder) builder            = NULL;
+  g_autoptr (GskPath) path                      = NULL;
+  g_autoptr (GskStroke) stroke                  = NULL;
+
+  g_clear_pointer (&self->brush_mask, g_free);
+  g_clear_pointer (&self->brush_node, gsk_render_node_unref);
+
+  if (self->hover_x >= 0 && self->hover_y >= 0)
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+
+  if (self->brush_area == NULL)
+    return;
+
+  g_object_get (
+      self->brush_area,
+      "selected-brush", &brush,
+      NULL);
+  if (brush == NULL)
+    return;
+
+  mask = gtk_crusader_village_brushable_get_mask (brush, &mask_width, &mask_height);
+  g_assert (mask != NULL);
+
+  snapshot = gtk_snapshot_new ();
+  builder  = gsk_path_builder_new ();
+  for (int y = 0; y < mask_height; y++)
+    {
+      for (int x = 0; x < mask_width; x++)
+        {
+          if (mask[y * mask_width + x] != 0)
+            {
+              if (x == 0 || mask[y * mask_width + (x - 1)] == 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 0.0, 1.0);
+                }
+              if (y == 0 || mask[(y - 1) * mask_width + x] == 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 1.0, 0.0);
+                }
+              if (x == mask_width - 1)
+                {
+                  gsk_path_builder_move_to (builder, (float) x + 1.0, (float) y + 1.0);
+                  gsk_path_builder_rel_line_to (builder, 0.0, -1.0);
+                }
+              if (y == mask_height - 1)
+                {
+                  gsk_path_builder_move_to (builder, (float) x + 1.0, (float) y + 1.0);
+                  gsk_path_builder_rel_line_to (builder, -1.0, 0.0);
+                }
+            }
+          else
+            {
+              if (x > 0 && mask[y * mask_width + (x - 1)] != 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 0.0, 1.0);
+                }
+              if (y > 0 && mask[(y - 1) * mask_width + x] != 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 1.0, 0.0);
+                }
+            }
+        }
+    }
+  path = gsk_path_builder_free_to_path (g_steal_pointer (&builder));
+
+  stroke = gsk_stroke_new (0.15);
+  gsk_stroke_set_line_cap (stroke, GSK_LINE_CAP_SQUARE);
+
+  gtk_snapshot_append_stroke (
+      snapshot, path, stroke,
+      self->dark_theme
+          ? &(const GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
+          : &(const GdkRGBA) { 0.0, 0.0, 0.0, 1.0 });
+
+  self->brush_mask   = g_steal_pointer (&mask);
+  self->brush_width  = mask_width;
+  self->brush_height = mask_height;
+  self->brush_node   = gtk_snapshot_free_to_node (g_steal_pointer (&snapshot));
 }
 
 static void
