@@ -263,7 +263,7 @@ new_mask_brush_clicked (GtkButton                   *self,
   gtk_file_dialog_open (file_dialog, GTK_WINDOW (window),
                         NULL, image_dialog_finish_cb, brush_area);
 
-  gtk_widget_set_sensitive (GTK_WIDGET (brush_area->new_mask_brush_spinner), FALSE);
+  gtk_widget_set_sensitive (GTK_WIDGET (brush_area->new_mask_brush), FALSE);
   gtk_widget_set_visible (GTK_WIDGET (brush_area->new_mask_brush_spinner), TRUE);
 }
 
@@ -299,7 +299,7 @@ image_dialog_finish_cb (GObject      *source_object,
           local_error->message,
           window, NULL);
 
-      gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
       gtk_widget_set_visible (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
     }
 }
@@ -336,6 +336,6 @@ load_brush_image_file_finish_cb (GObject      *source_object,
           window, NULL);
     }
 
-  gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
   gtk_widget_set_visible (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
 }
