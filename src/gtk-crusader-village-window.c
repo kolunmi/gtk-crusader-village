@@ -160,6 +160,10 @@ gtk_crusader_village_window_set_property (GObject      *object,
       g_clear_object (&self->settings);
       self->settings = g_value_dup_object (value);
       g_object_set (
+          self->item_area,
+          "settings", self->settings,
+          NULL);
+      g_object_set (
           self->map_editor,
           "settings", self->settings,
           NULL);

@@ -1843,13 +1843,15 @@ draw_gesture_end (GtkGestureDrag              *gesture,
                   double                       offset_y,
                   GtkCrusaderVillageMapEditor *editor)
 {
-  g_autoptr (GArray) instances = NULL;
+  g_autoptr (GtkCrusaderVillageItem) item = NULL;
+  g_autoptr (GArray) instances            = NULL;
 
   if (editor->current_stroke == NULL)
     return;
 
   g_object_get (
       editor->current_stroke,
+      "item", &item,
       "instances", &instances,
       NULL);
 
@@ -1866,6 +1868,31 @@ draw_gesture_end (GtkGestureDrag              *gesture,
           editor->brush_stroke != NULL
               ? editor->brush_stroke
               : editor->current_stroke);
+
+      if (editor->settings != NULL)
+        {
+          g_autofree char *name                 = NULL;
+          g_autoptr (GVariant) frequencies      = NULL;
+          g_autoptr (GVariantDict) variant_dict = NULL;
+          guint count                           = 0;
+          g_autoptr (GVariant) reinitialized    = NULL;
+
+          g_object_get (
+              item,
+              "name", &name,
+              NULL);
+
+          /* Update the recency list */
+          frequencies  = g_settings_get_value (editor->settings, "item-frequencies");
+          variant_dict = g_variant_dict_new (frequencies);
+
+          if (g_variant_dict_contains (variant_dict, name))
+            g_variant_dict_lookup (variant_dict, name, "u", &count);
+          g_variant_dict_insert (variant_dict, name, "u", count + 1);
+
+          reinitialized = g_variant_ref_sink (g_variant_dict_end (variant_dict));
+          g_settings_set_value (editor->settings, "item-frequencies", reinitialized);
+        }
     }
 
   g_clear_object (&editor->current_stroke);

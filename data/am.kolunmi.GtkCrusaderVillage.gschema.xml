@@ -49,5 +49,10 @@
       <summary>Image Brushes</summary>
       <description>A list of paths to user-registered image files to use as brushes</description>
     </key>
+    <key name="item-frequencies" type="a{sv}">
+      <default>{}</default>
+      <summary>Item Frequencies</summary>
+      <description>A dictionary mapping item resources to the number of times they have been used in the editor</description>
+    </key>
   </schema>
 </schemalist>

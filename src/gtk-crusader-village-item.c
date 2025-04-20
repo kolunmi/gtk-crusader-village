@@ -448,7 +448,7 @@ gtk_crusader_village_item_get_name (GtkCrusaderVillageItem *self)
 {
   g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self), NULL);
 
-  return GUINT_TO_POINTER (self->name);
+  return self->name;
 }
 
 gpointer

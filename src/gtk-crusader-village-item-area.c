@@ -29,7 +29,10 @@ struct _GtkCrusaderVillageItemArea
 {
   GtkCrusaderVillageUtilBin parent_instance;
 
+  GSettings                   *settings;
   GtkCrusaderVillageItemStore *item_store;
+
+  GVariant *frequencies;
 
   /* Template widgets */
   GtkEntry    *entry;
@@ -52,6 +55,7 @@ enum
 {
   PROP_0,
 
+  PROP_SETTINGS,
   PROP_ITEM_STORE,
   PROP_SELECTED_ITEM,
 
@@ -59,6 +63,11 @@ enum
 };
 
 static GParamSpec *props[LAST_PROP] = { 0 };
+
+static void
+item_frequencies_changed (GSettings                  *self,
+                          gchar                      *key,
+                          GtkCrusaderVillageItemArea *item_area);
 
 static void
 setup_listitem (GtkListItemFactory         *factory,
@@ -73,6 +82,11 @@ bind_listitem (GtkListItemFactory         *factory,
 static void
 search_changed (GtkEditable                *self,
                 GtkCrusaderVillageItemArea *item_area);
+
+static gint
+cmp_item (GtkCrusaderVillageItem     *a,
+          GtkCrusaderVillageItem     *b,
+          GtkCrusaderVillageItemArea *item_area);
 
 static int
 match (GtkCrusaderVillageItem     *item,
@@ -89,6 +103,12 @@ selected_item_changed (GtkSingleSelection         *selection,
                        GtkCrusaderVillageItemArea *item_area);
 
 static void
+read_frequencies (GtkCrusaderVillageItemArea *self);
+
+static void
+update_sorter (GtkCrusaderVillageItemArea *self);
+
+static void
 update_filter (GtkCrusaderVillageItemArea *self);
 
 static void
@@ -96,7 +116,13 @@ gtk_crusader_village_item_area_dispose (GObject *object)
 {
   GtkCrusaderVillageItemArea *self = GTK_CRUSADER_VILLAGE_ITEM_AREA (object);
 
+  if (self->settings != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->settings, item_frequencies_changed, self);
+  g_clear_object (&self->settings);
   g_clear_object (&self->item_store);
+
+  g_clear_pointer (&self->frequencies, g_variant_unref);
 
   G_OBJECT_CLASS (gtk_crusader_village_item_area_parent_class)->dispose (object);
 }
@@ -111,6 +137,9 @@ gtk_crusader_village_item_area_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_SETTINGS:
+      g_value_set_object (value, self->settings);
+      break;
     case PROP_ITEM_STORE:
       g_value_set_object (value, self->item_store);
       break;
@@ -140,20 +169,34 @@ gtk_crusader_village_item_area_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_SETTINGS:
+      if (self->settings != NULL)
+        g_signal_handlers_disconnect_by_func (
+            self->settings, item_frequencies_changed, self);
+      g_clear_object (&self->settings);
+      self->settings = g_value_dup_object (value);
+      if (self->settings != NULL)
+        g_signal_connect (self->settings, "changed::item-frequencies",
+                          G_CALLBACK (item_frequencies_changed), self);
+      update_sorter (self);
+      break;
     case PROP_ITEM_STORE:
       {
-        GtkSingleSelection *single_selection_model = NULL;
-        GtkFilterListModel *filter_list_model      = NULL;
+        GtkSingleSelection *selection_model   = NULL;
+        GtkSortListModel   *sort_list_model   = NULL;
+        GtkFilterListModel *filter_list_model = NULL;
 
-        single_selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-        filter_list_model      = GTK_FILTER_LIST_MODEL (gtk_single_selection_get_model (single_selection_model));
-        gtk_filter_list_model_set_model (filter_list_model, NULL);
+        selection_model   = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
+        sort_list_model   = GTK_SORT_LIST_MODEL (gtk_single_selection_get_model (selection_model));
+        filter_list_model = GTK_FILTER_LIST_MODEL (gtk_sort_list_model_get_model (sort_list_model));
 
         g_clear_object (&self->item_store);
-
         self->item_store = g_value_dup_object (value);
-        if (self->item_store != NULL)
-          gtk_filter_list_model_set_model (filter_list_model, G_LIST_MODEL (self->item_store));
+        gtk_filter_list_model_set_model (
+            filter_list_model,
+            self->item_store != NULL
+                ? G_LIST_MODEL (self->item_store)
+                : NULL);
       }
       break;
     default:
@@ -170,6 +213,14 @@ gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klas
   object_class->dispose      = gtk_crusader_village_item_area_dispose;
   object_class->get_property = gtk_crusader_village_item_area_get_property;
   object_class->set_property = gtk_crusader_village_item_area_set_property;
+
+  props[PROP_SETTINGS] =
+      g_param_spec_object (
+          "settings",
+          "Settings",
+          "The settings object from which to retrieve recency sorting info",
+          G_TYPE_SETTINGS,
+          G_PARAM_READWRITE);
 
   props[PROP_ITEM_STORE] =
       g_param_spec_object (
@@ -207,17 +258,23 @@ gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klas
 static void
 gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
 {
-  GtkListItemFactory *factory         = NULL;
   GtkCustomFilter    *custom_filter   = NULL;
   GtkFilterListModel *filter_model    = NULL;
+  GtkCustomSorter    *custom_sorter   = NULL;
+  GtkSortListModel   *sort_model      = NULL;
   GtkSelectionModel  *selection_model = NULL;
+  GtkListItemFactory *factory         = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  custom_filter = gtk_custom_filter_new ((GtkCustomFilterFunc) match, self, NULL);
+  filter_model  = gtk_filter_list_model_new (NULL, GTK_FILTER (custom_filter));
+
+  custom_sorter = gtk_custom_sorter_new ((GCompareDataFunc) cmp_item, self, NULL);
+  sort_model    = gtk_sort_list_model_new (G_LIST_MODEL (filter_model), GTK_SORTER (custom_sorter));
+
+  selection_model = GTK_SELECTION_MODEL (gtk_single_selection_new (G_LIST_MODEL (sort_model)));
   factory         = gtk_signal_list_item_factory_new ();
-  custom_filter   = gtk_custom_filter_new ((GtkCustomFilterFunc) match, self, NULL);
-  filter_model    = gtk_filter_list_model_new (NULL, GTK_FILTER (custom_filter));
-  selection_model = GTK_SELECTION_MODEL (gtk_single_selection_new (G_LIST_MODEL (filter_model)));
 
   g_signal_connect (factory, "setup", G_CALLBACK (setup_listitem), self);
   g_signal_connect (factory, "bind", G_CALLBACK (bind_listitem), self);
@@ -249,6 +306,14 @@ gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
   g_signal_connect (self->food, "notify::active", G_CALLBACK (active_group_changed), self);
   g_signal_connect (self->euro, "notify::active", G_CALLBACK (active_group_changed), self);
   g_signal_connect (self->arab, "notify::active", G_CALLBACK (active_group_changed), self);
+}
+
+static void
+item_frequencies_changed (GSettings                  *self,
+                          gchar                      *key,
+                          GtkCrusaderVillageItemArea *item_area)
+{
+  read_frequencies (item_area);
 }
 
 static void
@@ -284,6 +349,41 @@ search_changed (GtkEditable                *editable,
                 GtkCrusaderVillageItemArea *item_area)
 {
   update_filter (item_area);
+}
+
+static gint
+cmp_item (GtkCrusaderVillageItem     *a,
+          GtkCrusaderVillageItem     *b,
+          GtkCrusaderVillageItemArea *item_area)
+{
+  const char *a_name = NULL;
+  const char *b_name = NULL;
+  gboolean    a_res  = FALSE;
+  gboolean    b_res  = FALSE;
+  guint       a_cnt  = 0;
+  guint       b_cnt  = 0;
+
+  if (item_area->frequencies == NULL)
+    return 0;
+
+  a_name = gtk_crusader_village_item_get_name (a);
+  b_name = gtk_crusader_village_item_get_name (b);
+
+  a_res = g_variant_lookup (item_area->frequencies, a_name, "u", &a_cnt);
+  b_res = g_variant_lookup (item_area->frequencies, b_name, "u", &b_cnt);
+
+  if (!a_res && !b_res)
+    return 0;
+  else if (a_res && !b_res)
+    return -1;
+  else if (!a_res && b_res)
+    return 1;
+  else if (a_cnt == b_cnt)
+    return 0;
+  else if (a_cnt > b_cnt)
+    return -1;
+  else
+    return 1;
 }
 
 static int
@@ -344,14 +444,38 @@ active_group_changed (GtkToggleButton            *toggle_button,
 }
 
 static void
+read_frequencies (GtkCrusaderVillageItemArea *self)
+{
+  g_clear_pointer (&self->frequencies, g_variant_unref);
+  self->frequencies = g_settings_get_value (self->settings, "item-frequencies");
+  update_sorter (self);
+}
+
+static void
+update_sorter (GtkCrusaderVillageItemArea *self)
+{
+  GtkSingleSelection *selection_model = NULL;
+  GtkSortListModel   *sort_list_model = NULL;
+  GtkSorter          *sorter          = NULL;
+
+  selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
+  sort_list_model = GTK_SORT_LIST_MODEL (gtk_single_selection_get_model (selection_model));
+  sorter          = gtk_sort_list_model_get_sorter (sort_list_model);
+
+  gtk_sorter_changed (sorter, GTK_SORTER_CHANGE_DIFFERENT);
+}
+
+static void
 update_filter (GtkCrusaderVillageItemArea *self)
 {
   GtkSingleSelection *selection_model   = NULL;
+  GtkSortListModel   *sort_list_model   = NULL;
   GtkFilterListModel *filter_list_model = NULL;
   GtkFilter          *filter            = NULL;
 
   selection_model   = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-  filter_list_model = GTK_FILTER_LIST_MODEL (gtk_single_selection_get_model (selection_model));
+  sort_list_model   = GTK_SORT_LIST_MODEL (gtk_single_selection_get_model (selection_model));
+  filter_list_model = GTK_FILTER_LIST_MODEL (gtk_sort_list_model_get_model (sort_list_model));
   filter            = gtk_filter_list_model_get_filter (filter_list_model);
 
   gtk_filter_changed (filter, GTK_FILTER_CHANGE_DIFFERENT);
