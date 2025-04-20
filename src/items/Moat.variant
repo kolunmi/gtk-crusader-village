@@ -5,6 +5,6 @@
     "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Moat.png">,
     "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
     "kind": <"moat">,
-    "tile-width": <3>,
-    "tile-height": <3>
+    "tile-width": <1>,
+    "tile-height": <1>
 }
