@@ -37,14 +37,14 @@ typedef enum
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageImageMaskBrush, gtk_crusader_village_image_mask_brush, GTK_CRUSADER_VILLAGE, IMAGE_MASK_BRUSH, GObject)
 
 void
-gtk_crusader_village_image_mask_new_from_file_async (GFile              *file,
-                                                     int                 io_priority,
-                                                     GCancellable       *cancellable,
-                                                     GAsyncReadyCallback callback,
-                                                     gpointer            user_data);
+gtk_crusader_village_image_mask_brush_new_from_file_async (GFile              *file,
+                                                           int                 io_priority,
+                                                           GCancellable       *cancellable,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer            user_data);
 
 GtkCrusaderVillageImageMaskBrush *
-gtk_crusader_village_image_mask_new_from_file_finish (GAsyncResult *result,
-                                                      GError      **error);
+gtk_crusader_village_image_mask_brush_new_from_file_finish (GAsyncResult *result,
+                                                            GError      **error);
 
 G_END_DECLS

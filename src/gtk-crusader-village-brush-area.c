@@ -36,6 +36,7 @@ struct _GtkCrusaderVillageBrushArea
   GtkButton   *new_mask_brush;
   GtkSpinner  *new_mask_brush_spinner;
   GtkListView *list_view;
+  GtkButton   *delete_brush;
 };
 
 G_DEFINE_FINAL_TYPE (GtkCrusaderVillageBrushArea, gtk_crusader_village_brush_area, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
@@ -70,6 +71,10 @@ selected_item_changed (GtkSingleSelection          *selection,
 static void
 new_mask_brush_clicked (GtkButton                   *self,
                         GtkCrusaderVillageBrushArea *brush_area);
+
+static void
+delete_brush_clicked (GtkButton                   *self,
+                      GtkCrusaderVillageBrushArea *brush_area);
 
 static void
 image_dialog_finish_cb (GObject      *source_object,
@@ -178,6 +183,7 @@ gtk_crusader_village_brush_area_class_init (GtkCrusaderVillageBrushAreaClass *kl
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, new_mask_brush);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, new_mask_brush_spinner);
   gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, list_view);
+  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, delete_brush);
 }
 
 static void
@@ -201,6 +207,8 @@ gtk_crusader_village_brush_area_init (GtkCrusaderVillageBrushArea *self)
 
   g_signal_connect (self->new_mask_brush, "clicked",
                     G_CALLBACK (new_mask_brush_clicked), self);
+  g_signal_connect (self->delete_brush, "clicked",
+                    G_CALLBACK (delete_brush_clicked), self);
 }
 
 static void
@@ -268,6 +276,20 @@ new_mask_brush_clicked (GtkButton                   *self,
 }
 
 static void
+delete_brush_clicked (GtkButton                   *self,
+                      GtkCrusaderVillageBrushArea *brush_area)
+{
+  GtkSingleSelection *single_selection_model = NULL;
+  guint               selected               = 0;
+
+  single_selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (brush_area->list_view));
+  selected               = gtk_single_selection_get_selected (single_selection_model);
+
+  if (selected != GTK_INVALID_LIST_POSITION)
+    g_list_store_remove (brush_area->brush_store, selected);
+}
+
+static void
 image_dialog_finish_cb (GObject      *source_object,
                         GAsyncResult *res,
                         gpointer      data)
@@ -279,7 +301,7 @@ image_dialog_finish_cb (GObject      *source_object,
   file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
 
   if (file != NULL)
-    gtk_crusader_village_image_mask_new_from_file_async (
+    gtk_crusader_village_image_mask_brush_new_from_file_async (
         file, G_PRIORITY_DEFAULT, NULL, load_brush_image_file_finish_cb, self);
   else
     {
@@ -313,7 +335,7 @@ load_brush_image_file_finish_cb (GObject      *source_object,
   g_autoptr (GError) local_error                     = NULL;
   g_autoptr (GtkCrusaderVillageImageMaskBrush) brush = NULL;
 
-  brush = gtk_crusader_village_image_mask_new_from_file_finish (res, &local_error);
+  brush = gtk_crusader_village_image_mask_brush_new_from_file_finish (res, &local_error);
 
   if (brush != NULL)
     g_list_store_append (self->brush_store, brush);

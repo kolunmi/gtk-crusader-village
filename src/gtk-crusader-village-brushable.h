@@ -33,6 +33,7 @@ struct _GtkCrusaderVillageBrushableInterface
   GTypeInterface parent_iface;
 
   char *(*get_name) (GtkCrusaderVillageBrushable *self);
+  char *(*get_file) (GtkCrusaderVillageBrushable *self);
   guint8 *(*get_mask) (GtkCrusaderVillageBrushable *self,
                        int                         *width,
                        int                         *height);
@@ -42,6 +43,9 @@ struct _GtkCrusaderVillageBrushableInterface
 
 char *
 gtk_crusader_village_brushable_get_name (GtkCrusaderVillageBrushable *self);
+
+char *
+gtk_crusader_village_brushable_get_file (GtkCrusaderVillageBrushable *self);
 
 guint8 *
 gtk_crusader_village_brushable_get_mask (GtkCrusaderVillageBrushable *self,

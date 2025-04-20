@@ -34,6 +34,7 @@ struct _GtkCrusaderVillageImageMaskBrush
   GObject parent_instance;
 
   char       *name;
+  char       *file;
   guint8     *cache;
   int         width;
   int         height;
@@ -61,6 +62,7 @@ gtk_crusader_village_image_mask_brush_dispose (GObject *object)
   GtkCrusaderVillageImageMaskBrush *self = GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH (object);
 
   g_clear_pointer (&self->name, g_free);
+  g_clear_pointer (&self->file, g_free);
   g_clear_pointer (&self->cache, g_free);
   g_clear_object (&self->thumbnail);
 
@@ -88,6 +90,14 @@ gtk_crusader_village_image_mask_brush_get_name (GtkCrusaderVillageBrushable *sel
   g_return_val_if_fail (brush->name != NULL, NULL);
 
   return g_strdup (brush->name);
+}
+
+static char *
+gtk_crusader_village_image_mask_brush_get_file (GtkCrusaderVillageBrushable *self)
+{
+  GtkCrusaderVillageImageMaskBrush *brush = GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH (self);
+
+  return brush->file != NULL ? g_strdup (brush->file) : NULL;
 }
 
 static guint8 *
@@ -125,35 +135,36 @@ static void
 brushable_iface_init (GtkCrusaderVillageBrushableInterface *iface)
 {
   iface->get_name       = gtk_crusader_village_image_mask_brush_get_name;
+  iface->get_file       = gtk_crusader_village_image_mask_brush_get_file;
   iface->get_mask       = gtk_crusader_village_image_mask_brush_get_mask;
   iface->get_adjustment = gtk_crusader_village_image_mask_brush_get_adjustment;
   iface->get_thumbnail  = gtk_crusader_village_image_mask_brush_get_thumbnail;
 }
 
 void
-gtk_crusader_village_image_mask_new_from_file_async (GFile              *file,
-                                                     int                 io_priority,
-                                                     GCancellable       *cancellable,
-                                                     GAsyncReadyCallback callback,
-                                                     gpointer            user_data)
+gtk_crusader_village_image_mask_brush_new_from_file_async (GFile              *file,
+                                                           int                 io_priority,
+                                                           GCancellable       *cancellable,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer            user_data)
 {
   g_autoptr (GTask) task = NULL;
 
   g_return_if_fail (G_IS_FILE (file));
 
   task = g_task_new (file, cancellable, callback, user_data);
-  g_task_set_source_tag (task, gtk_crusader_village_image_mask_new_from_file_async);
+  g_task_set_source_tag (task, gtk_crusader_village_image_mask_brush_new_from_file_async);
   g_task_set_priority (task, io_priority);
   g_task_set_check_cancellable (task, TRUE);
   g_task_run_in_thread (task, new_from_file_async_thread);
 }
 
 GtkCrusaderVillageImageMaskBrush *
-gtk_crusader_village_image_mask_new_from_file_finish (GAsyncResult *result,
-                                                      GError      **error)
+gtk_crusader_village_image_mask_brush_new_from_file_finish (GAsyncResult *result,
+                                                            GError      **error)
 {
   g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
-                            gtk_crusader_village_image_mask_new_from_file_async,
+                            gtk_crusader_village_image_mask_brush_new_from_file_async,
                         NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
@@ -224,6 +235,7 @@ new_from_file_async_thread (GTask        *task,
 
   brush            = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_IMAGE_MASK_BRUSH, NULL);
   brush->name      = g_file_get_basename (file);
+  brush->file      = g_file_get_path (file);
   brush->cache     = g_steal_pointer (&data);
   brush->width     = width;
   brush->height    = height;

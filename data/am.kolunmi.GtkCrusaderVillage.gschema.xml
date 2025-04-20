@@ -44,5 +44,10 @@
       <summary>Show Cursor Glow</summary>
       <description>Whether to show a glow around the currently hovered tile in the map editor</description>
     </key>
+    <key name="image-brushes" type="as">
+      <default>[]</default>
+      <summary>Image Brushes</summary>
+      <description>A list of paths to user-registered image files to use as brushes</description>
+    </key>
   </schema>
 </schemalist>

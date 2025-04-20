@@ -26,6 +26,7 @@
 #include "gtk-crusader-village-application.h"
 #include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-dialog-window.h"
+#include "gtk-crusader-village-image-mask-brush.h"
 #include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-window.h"
@@ -51,7 +52,8 @@ struct _GtkCrusaderVillageApplication
   int        theme_setting;
 
   GtkCrusaderVillageItemStore *item_store;
-  GListStore                  *brush_store;
+
+  GListStore *brush_store;
 
   GtkCssProvider *custom_css;
   GtkCssProvider *shc_theme_light_css;
@@ -691,6 +693,43 @@ static const GActionEntry app_actions[] = {
 };
 
 static void
+brushes_changed (GListModel                    *self,
+                 guint                          position,
+                 guint                          removed,
+                 guint                          added,
+                 GtkCrusaderVillageApplication *application)
+{
+  guint n_items                    = 0;
+  g_autoptr (GStrvBuilder) builder = NULL;
+  g_auto (GStrv) strv              = NULL;
+
+  if (application->settings == NULL)
+    return;
+
+  n_items = g_list_model_get_n_items (self);
+  builder = g_strv_builder_new ();
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr (GtkCrusaderVillageBrushable) brush = NULL;
+      g_autofree char *path                         = NULL;
+
+      brush = g_list_model_get_item (self, i);
+      if (!GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH (brush))
+        continue;
+
+      path = gtk_crusader_village_brushable_get_file (brush);
+
+      if (path != NULL)
+        g_strv_builder_take (builder, g_steal_pointer (&path));
+    }
+  strv = g_strv_builder_end (builder);
+
+  g_settings_set_strv (application->settings,
+                       "image-brushes",
+                       (const char *const *) strv);
+}
+
+static void
 gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 {
   self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
@@ -699,6 +738,8 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
   gtk_crusader_village_item_store_read_resources (self->item_store);
 
   self->brush_store = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE);
+  g_signal_connect (self->brush_store, "items-changed",
+                    G_CALLBACK (brushes_changed), self);
 
   g_action_map_add_action_entries (
       G_ACTION_MAP (self),
@@ -797,9 +838,27 @@ apply_gtk_theme (GtkCrusaderVillageApplication *self)
 }
 
 static void
+load_brush_finished_cb (GObject      *source_object,
+                        GAsyncResult *res,
+                        gpointer      data)
+{
+  GtkCrusaderVillageApplication *self                = data;
+  g_autoptr (GError) local_error                     = NULL;
+  g_autoptr (GtkCrusaderVillageImageMaskBrush) brush = NULL;
+
+  brush = gtk_crusader_village_image_mask_brush_new_from_file_finish (
+      res, &local_error);
+  if (brush != NULL)
+    g_list_store_append (self->brush_store, brush);
+  else
+    g_critical ("Could not load cached image file for brush: %s", local_error->message);
+}
+
+static void
 ensure_settings (GtkCrusaderVillageApplication *self)
 {
-  const char *app_id = NULL;
+  const char *app_id     = NULL;
+  g_auto (GStrv) brushes = NULL;
 
   if (self->settings != NULL)
     return;
@@ -812,6 +871,17 @@ ensure_settings (GtkCrusaderVillageApplication *self)
   g_signal_connect (self->settings, "changed::theme",
                     G_CALLBACK (theme_changed), self);
   read_theme_from_settings (self);
+
+  brushes = g_settings_get_strv (self->settings, "image-brushes");
+  for (char **path = brushes; *path != NULL; path++)
+    {
+      g_autoptr (GFile) file = NULL;
+
+      file = g_file_new_for_path (*path);
+      /* TODO consider cancellables in case job lasts longer than object? */
+      gtk_crusader_village_image_mask_brush_new_from_file_async (
+          file, G_PRIORITY_DEFAULT, NULL, load_brush_finished_cb, self);
+    }
 }
 
 #ifdef USE_THEME_PORTAL
