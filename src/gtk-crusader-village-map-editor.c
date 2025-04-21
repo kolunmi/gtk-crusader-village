@@ -55,7 +55,7 @@ struct _GtkCrusaderVillageMapEditor
 
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
-  graphene_rect_t render_cache_extents;
+  graphene_rect_t viewport;
   GdkTexture     *bg_image_tex;
 
   double   zoom;
@@ -873,6 +873,9 @@ static void
 gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                                           GtkSnapshot *snapshot)
 {
+#define BORDER_WIDTH(w)           ((float[4]) { (w), (w), (w), (w) })
+#define BORDER_COLOR_LITERAL(...) ((GdkRGBA[4]) { __VA_ARGS__, __VA_ARGS__, __VA_ARGS__, __VA_ARGS__ })
+
   const GskColorStop bg_radial_gradient_color_stops[2] = {
     { 0.25, { 0.75, 0.55, 0.80, 1.0 } },
     {  1.0, { 0.90, 0.75, 0.80, 1.0 } },
@@ -890,6 +893,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
   int                          widget_width    = 0;
   int                          widget_height   = 0;
   graphene_rect_t              viewport        = { 0 };
+  graphene_rect_t              extents         = { 0 };
   double                       tile_size       = 0.0;
   int                          map_tile_width  = 0;
   int                          map_tile_height = 0;
@@ -929,10 +933,15 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           NULL);
 
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-value_x, -value_y));
-      viewport = GRAPHENE_RECT_INIT (value_x, value_y, (float) widget_width, (float) widget_height);
+      viewport = extents = GRAPHENE_RECT_INIT (value_x, value_y, (float) widget_width, (float) widget_height);
     }
   else
-    viewport = GRAPHENE_RECT_INIT (0, 0, (float) widget_width, (float) widget_height);
+    viewport = extents = GRAPHENE_RECT_INIT (0, 0, (float) widget_width, (float) widget_height);
+
+  viewport.origin.x /= editor->zoom;
+  viewport.origin.y /= editor->zoom;
+  viewport.size.width /= editor->zoom;
+  viewport.size.height /= editor->zoom;
 
   tile_size = BASE_TILE_SIZE * editor->zoom;
 
@@ -942,7 +951,6 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       "height", &map_tile_height,
       "strokes", &strokes,
       NULL);
-
   map_width  = (double) map_tile_width * tile_size;
   map_height = (double) map_tile_height * tile_size;
 
@@ -951,10 +959,18 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       &GRAPHENE_POINT_INIT (
           (double) editor->border_gap * tile_size,
           (double) editor->border_gap * tile_size));
-  viewport.origin.x -= (double) editor->border_gap * tile_size;
-  viewport.origin.y -= (double) editor->border_gap * tile_size;
+  viewport.origin.x -= (double) editor->border_gap * BASE_TILE_SIZE;
+  viewport.origin.y -= (double) editor->border_gap * BASE_TILE_SIZE;
+  extents.origin.x -= (double) editor->border_gap * tile_size;
+  extents.origin.y -= (double) editor->border_gap * tile_size;
 
-  if (editor->show_gradient)
+  if (editor->bg_image_tex != NULL)
+    gtk_snapshot_append_scaled_texture (
+        snapshot,
+        editor->bg_image_tex,
+        GSK_SCALING_FILTER_NEAREST,
+        &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
+  else if (editor->show_gradient)
     gtk_snapshot_append_radial_gradient (
         snapshot,
         &GRAPHENE_RECT_INIT (0, 0, map_width, map_height),
@@ -963,29 +979,17 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
         editor->dark_theme ? bg_radial_gradient_color_stops_dark : bg_radial_gradient_color_stops,
         editor->dark_theme ? G_N_ELEMENTS (bg_radial_gradient_color_stops_dark) : G_N_ELEMENTS (bg_radial_gradient_color_stops));
 
-  if (editor->bg_image_tex != NULL)
-    gtk_snapshot_append_scaled_texture (
-        snapshot,
-        editor->bg_image_tex,
-        GSK_SCALING_FILTER_NEAREST,
-        &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
-
   if (editor->show_grid)
     {
       gtk_snapshot_push_repeat (
           snapshot,
           &GRAPHENE_RECT_INIT (0, 0, map_width, map_height),
           &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size));
-
-#define BORDER_WIDTH(w)           ((float[4]) { (w), (w), (w), (w) })
-#define BORDER_COLOR_LITERAL(...) ((GdkRGBA[4]) { __VA_ARGS__, __VA_ARGS__, __VA_ARGS__, __VA_ARGS__ })
-
       gtk_snapshot_append_border (
           snapshot,
           &GSK_ROUNDED_RECT_INIT (0, 0, tile_size, tile_size),
           BORDER_WIDTH (BASE_TILE_SIZE / 32.0 * editor->zoom),
           BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
-
       gtk_snapshot_pop (snapshot);
     }
 
@@ -998,14 +1002,23 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       BASE_TILE_SIZE * 2.0 * editor->zoom);
 
   if (editor->render_cache == NULL ||
-      !graphene_rect_contains_rect (&editor->render_cache_extents, &viewport))
+      editor->viewport.origin.x > viewport.origin.x ||
+      editor->viewport.origin.y > viewport.origin.y ||
+      editor->viewport.origin.x + editor->viewport.size.width < viewport.origin.x + viewport.size.width ||
+      editor->viewport.origin.y + editor->viewport.size.height < viewport.origin.y + viewport.size.height)
     {
       g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
-      editor->render_cache_extents = GRAPHENE_RECT_INIT (
-          viewport.origin.x - viewport.size.width,
-          viewport.origin.y - viewport.size.height,
-          viewport.size.width * 4,
-          viewport.size.height * 4);
+
+      editor->viewport = GRAPHENE_RECT_INIT (
+          viewport.origin.x - viewport.size.width / 2.0,
+          viewport.origin.y - viewport.size.height / 2.0,
+          viewport.size.width * 2.0,
+          viewport.size.height * 2.0);
+      extents = GRAPHENE_RECT_INIT (
+          extents.origin.x - extents.size.width / 2.0,
+          extents.origin.y - extents.size.height / 2.0,
+          extents.size.width * 2.0,
+          extents.size.height * 2.0);
     }
 
   if (editor->render_cache == NULL)
@@ -1086,13 +1099,14 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
               graphene_rect_t                      rect     = { 0 };
 
               instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
-              rect     = GRAPHENE_RECT_INIT (
+
+              rect = GRAPHENE_RECT_INIT (
                   instance.x * tile_size - 1.0,
                   instance.y * tile_size - 1.0,
                   item_tile_width * tile_size + 2.0,
                   item_tile_height * tile_size + 2.0);
 
-              if (graphene_rect_intersection (&editor->render_cache_extents, &rect, NULL))
+              if (graphene_rect_intersection (&extents, &rect, NULL))
                 {
                   if (tile_texture != NULL)
                     {
@@ -1188,7 +1202,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           gtk_snapshot_pop (mask);
 
           gtk_snapshot_push_repeat (
-              mask, &editor->render_cache_extents,
+              mask, &extents,
               &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
           gtk_snapshot_append_texture (
               mask, texture,
