@@ -5,21 +5,28 @@
     <property name="has-tooltip">TRUE</property>
     <property name="child">
       <object class="GtkCenterBox">
+        <property name="margin-start">5</property>
+        <property name="margin-end">5</property>
         <property name="orientation">horizontal</property>
-        <property name="margin-end">20</property>
 
         <property name="start-widget">
-          <object class="GtkLabel" id="name"/>
+          <object class="GtkLabel" id="name">
+            <property name="margin-end">10</property>
+          </object>
         </property>
 
         <property name="center-widget">
           <object class="GtkScale" id="size">
-            <property name="width-request">100</property>
+            <property name="width-request">175</property>
+            <property name="round-digits">0</property>
+            <property name="draw-value">TRUE</property>
+            <property name="digits">0</property>
           </object>
         </property>
         
         <property name="end-widget">
           <object class="GtkPicture" id="thumbnail">
+            <property name="margin-start">10</property>
             <property name="height-request">50</property>
             <property name="can-shrink">TRUE</property>
           </object>

@@ -43,6 +43,7 @@
             <child>
               <object class="GtkScale" id="scale">
                 <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                <property name="round-digits">0</property>
                 <property name="draw-value">TRUE</property>
                 <property name="digits">0</property>
               </object>

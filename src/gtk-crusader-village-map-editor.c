@@ -89,6 +89,7 @@ struct _GtkCrusaderVillageMapEditor
   int            brush_width;
   int            brush_height;
   GskRenderNode *brush_node;
+  GtkAdjustment *brush_adjustment;
 };
 
 static void scrollable_iface_init (GtkScrollableInterface *iface);
@@ -322,6 +323,10 @@ selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
                         GtkCrusaderVillageMapEditor *editor);
 
 static void
+selected_brush_adjustment_value_changed (GtkAdjustment               *adjustment,
+                                         GtkCrusaderVillageMapEditor *editor);
+
+static void
 grid_changed (GtkCrusaderVillageMapHandle *handle,
               GParamSpec                  *pspec,
               GtkCrusaderVillageMapEditor *editor);
@@ -341,7 +346,8 @@ update_motion (GtkCrusaderVillageMapEditor *self,
                double                       y);
 
 static void
-read_brush (GtkCrusaderVillageMapEditor *self);
+read_brush (GtkCrusaderVillageMapEditor *self,
+            gboolean                     different);
 
 static void
 read_background_image (GtkCrusaderVillageMapEditor *self);
@@ -405,6 +411,11 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
   g_clear_object (&self->bg_image_tex);
   g_clear_pointer (&self->render_cache, gsk_render_node_unref);
   g_clear_pointer (&self->brush_node, gsk_render_node_unref);
+
+  if (self->brush_adjustment != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->brush_adjustment, selected_brush_adjustment_value_changed, self);
+  g_clear_object (&self->brush_adjustment);
 
   G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
 }
@@ -564,7 +575,7 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
       if (self->brush_area != NULL)
         g_signal_connect (self->brush_area, "notify::selected-brush",
                           G_CALLBACK (selected_brush_changed), self);
-      read_brush (self);
+      read_brush (self, TRUE);
       break;
 
     case PROP_BORDER_GAP:
@@ -1520,7 +1531,7 @@ dark_theme_changed (GtkSettings                 *settings,
       NULL);
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
-  read_brush (editor);
+  read_brush (editor, FALSE);
 
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
@@ -2072,7 +2083,14 @@ selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
                         GParamSpec                  *pspec,
                         GtkCrusaderVillageMapEditor *editor)
 {
-  read_brush (editor);
+  read_brush (editor, TRUE);
+}
+
+static void
+selected_brush_adjustment_value_changed (GtkAdjustment               *adjustment,
+                                         GtkCrusaderVillageMapEditor *editor)
+{
+  read_brush (editor, FALSE);
 }
 
 static void
@@ -2289,7 +2307,8 @@ update_motion (GtkCrusaderVillageMapEditor *self,
 }
 
 static void
-read_brush (GtkCrusaderVillageMapEditor *self)
+read_brush (GtkCrusaderVillageMapEditor *self,
+            gboolean                     different)
 {
   g_autoptr (GtkCrusaderVillageBrushable) brush = NULL;
   int                mask_width                 = 0;
@@ -2302,6 +2321,14 @@ read_brush (GtkCrusaderVillageMapEditor *self)
 
   g_clear_pointer (&self->brush_mask, g_free);
   g_clear_pointer (&self->brush_node, gsk_render_node_unref);
+
+  if (different)
+    {
+      if (self->brush_adjustment != NULL)
+        g_signal_handlers_disconnect_by_func (
+            self->brush_adjustment, selected_brush_adjustment_value_changed, self);
+      g_clear_object (&self->brush_adjustment);
+    }
 
   if (self->hover_x >= 0 && self->hover_y >= 0)
     gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -2378,6 +2405,14 @@ read_brush (GtkCrusaderVillageMapEditor *self)
   self->brush_width  = mask_width;
   self->brush_height = mask_height;
   self->brush_node   = gtk_snapshot_free_to_node (g_steal_pointer (&snapshot));
+
+  if (different)
+    {
+      self->brush_adjustment = gtk_crusader_village_brushable_get_adjustment (brush);
+      if (self->brush_adjustment != NULL)
+        g_signal_connect (self->brush_adjustment, "value-changed",
+                          G_CALLBACK (selected_brush_adjustment_value_changed), self);
+    }
 }
 
 static void

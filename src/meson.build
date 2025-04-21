@@ -19,6 +19,7 @@ gtk_crusader_village_sources = [
   'gtk-crusader-village-map-handle.c',
   'gtk-crusader-village-theme-utils.c',
   'gtk-crusader-village-brushable.c',
+  'gtk-crusader-village-square-brush.c',
   'gtk-crusader-village-image-mask-brush.c',
   'gtk-crusader-village-brush-area-item.c',
   'gtk-crusader-village-brush-area.c',

@@ -29,6 +29,7 @@
 #include "gtk-crusader-village-image-mask-brush.h"
 #include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-preferences-window.h"
+#include "gtk-crusader-village-square-brush.h"
 #include "gtk-crusader-village-window.h"
 
 #if defined(__APPLE__) || defined(G_OS_WIN32)
@@ -714,7 +715,7 @@ brushes_changed (GListModel                    *self,
       g_autofree char *path                         = NULL;
 
       brush = g_list_model_get_item (self, i);
-      if (!GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH (brush))
+      if (!GTK_CRUSADER_VILLAGE_IS_IMAGE_MASK_BRUSH (brush))
         continue;
 
       path = gtk_crusader_village_brushable_get_file (brush);
@@ -732,12 +733,16 @@ brushes_changed (GListModel                    *self,
 static void
 gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
 {
+  g_autoptr (GtkCrusaderVillageSquareBrush) default_brush = NULL;
+
   self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
 
   self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
   gtk_crusader_village_item_store_read_resources (self->item_store);
 
   self->brush_store = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE);
+  default_brush     = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_SQUARE_BRUSH, NULL);
+  g_list_store_append (self->brush_store, default_brush);
   g_signal_connect (self->brush_store, "items-changed",
                     G_CALLBACK (brushes_changed), self);
 
