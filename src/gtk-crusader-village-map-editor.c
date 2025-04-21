@@ -1072,8 +1072,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
               "tile-height", &item_tile_height,
               NULL);
 
-          wants_layout = editor->zoom >= 3.5 ||
-                         item_tile_width > 1 || item_tile_height > 1;
+          wants_layout = editor->zoom >= 0.5 &&
+                         (editor->zoom >= 3.5 ||
+                          item_tile_width > 1 ||
+                          item_tile_height > 1);
 
           tile_hash = gtk_crusader_village_item_get_tile_resource_hash (item);
           if (tile_hash != NULL)
@@ -1986,7 +1988,7 @@ zoom_gesture_scale_changed (GtkGestureZoom              *self,
   double scale_delta = 0.0;
 
   scale_delta  = gtk_gesture_zoom_get_scale_delta (self);
-  editor->zoom = CLAMP (editor->zoom_gesture_start_val + scale_delta * editor->zoom, 0.5, 7.5);
+  editor->zoom = CLAMP (editor->zoom_gesture_start_val + scale_delta * editor->zoom, 0.25, 7.5);
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
   update_motion (editor, editor->pointer_x, editor->pointer_y);
@@ -2014,7 +2016,7 @@ scroll_event (GtkEventControllerScroll    *self,
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
   editor->zoom += dy * -0.06 * editor->zoom;
-  editor->zoom = CLAMP (editor->zoom, 0.5, 7.5);
+  editor->zoom = CLAMP (editor->zoom, 0.25, 7.5);
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
 
