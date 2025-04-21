@@ -229,6 +229,23 @@ gtk_crusader_village_application_class_init (GtkCrusaderVillageApplicationClass 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
+static void
+gtk_crusader_village_application_subwindow (GSimpleAction *action,
+                                            GVariant      *parameter,
+                                            gpointer       user_data)
+{
+  GtkCrusaderVillageApplication *self   = user_data;
+  GtkWindow                     *window = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (!GTK_CRUSADER_VILLAGE_IS_WINDOW (window))
+    return;
+
+  gtk_crusader_village_window_add_subwindow_viewport (
+      GTK_CRUSADER_VILLAGE_WINDOW (window));
+}
+
 static char *
 get_python_install (GtkCrusaderVillageApplication *self)
 {
@@ -691,6 +708,7 @@ static const GActionEntry app_actions[] = {
   { "preferences",     gtk_crusader_village_application_preferences },
   {      "export",          gtk_crusader_village_application_export },
   {        "load",            gtk_crusader_village_application_load },
+  {   "subwindow",       gtk_crusader_village_application_subwindow },
 };
 
 static void
@@ -776,6 +794,10 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
       GTK_APPLICATION (self),
       "app.preferences",
       (const char *[]) { "<primary>p", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.subwindow",
+      (const char *[]) { "<primary>w", NULL });
 }
 
 static void

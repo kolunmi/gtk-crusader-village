@@ -28,4 +28,7 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (GtkCrusaderVillageWindow, gtk_crusader_village_window, GTK_CRUSADER_VILLAGE, WINDOW, GtkApplicationWindow)
 
+void
+gtk_crusader_village_window_add_subwindow_viewport (GtkCrusaderVillageWindow *self);
+
 G_END_DECLS

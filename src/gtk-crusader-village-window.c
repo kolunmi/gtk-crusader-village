@@ -275,3 +275,29 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
       "editor", self->map_editor,
       NULL);
 }
+
+void
+gtk_crusader_village_window_add_subwindow_viewport (GtkCrusaderVillageWindow *self)
+{
+  GtkCrusaderVillageMapEditor *editor          = NULL;
+  GtkWidget                   *scrolled_window = NULL;
+  GtkWidget                   *window          = NULL;
+
+  editor          = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR, NULL);
+  scrolled_window = gtk_scrolled_window_new ();
+  window          = gtk_window_new ();
+
+  g_object_bind_property (self->map_editor, "settings", editor, "settings", G_BINDING_SYNC_CREATE);
+  g_object_bind_property (self->map_editor, "map-handle", editor, "map-handle", G_BINDING_SYNC_CREATE);
+  g_object_bind_property (self->map_editor, "item-area", editor, "item-area", G_BINDING_SYNC_CREATE);
+  g_object_bind_property (self->map_editor, "brush-area", editor, "brush-area", G_BINDING_SYNC_CREATE);
+
+  gtk_window_set_title (GTK_WINDOW (window), "GTK Crusader Village Viewport");
+  gtk_window_set_default_size (GTK_WINDOW (window), 800, 800);
+  gtk_window_set_transient_for (GTK_WINDOW (window), GTK_WINDOW (self));
+
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scrolled_window), GTK_WIDGET (editor));
+  gtk_window_set_child (GTK_WINDOW (window), GTK_WIDGET (scrolled_window));
+
+  gtk_window_present (GTK_WINDOW (window));
+}
