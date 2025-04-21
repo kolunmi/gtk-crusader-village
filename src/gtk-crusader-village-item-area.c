@@ -178,7 +178,7 @@ gtk_crusader_village_item_area_set_property (GObject      *object,
       if (self->settings != NULL)
         g_signal_connect (self->settings, "changed::item-frequencies",
                           G_CALLBACK (item_frequencies_changed), self);
-      update_sorter (self);
+      read_frequencies (self);
       break;
     case PROP_ITEM_STORE:
       {
