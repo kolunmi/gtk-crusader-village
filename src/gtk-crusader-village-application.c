@@ -849,7 +849,11 @@ load_brush_finished_cb (GObject      *source_object,
   brush = gtk_crusader_village_image_mask_brush_new_from_file_finish (
       res, &local_error);
   if (brush != NULL)
-    g_list_store_append (self->brush_store, brush);
+    {
+      g_signal_handlers_block_by_func (self->brush_store, brushes_changed, self);
+      g_list_store_append (self->brush_store, brush);
+      g_signal_handlers_unblock_by_func (self->brush_store, brushes_changed, self);
+    }
   else
     g_critical ("Could not load cached image file for brush: %s", local_error->message);
 }
