@@ -5,6 +5,8 @@
     "sdk" : "org.gnome.Sdk",
     "command" : "gtk-crusader-village",
     "finish-args" : [
+	"--filesystem=host",
+        "--filesystem=/tmp",
         "--share=network",
         "--share=ipc",
         "--socket=fallback-x11",
