@@ -1089,7 +1089,8 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           wants_layout = editor->zoom >= 0.5 &&
                          (editor->zoom >= 3.5 ||
                           item_tile_width > 1 ||
-                          item_tile_height > 1);
+                          item_tile_height > 1 ||
+                          item_kind == GCV_ITEM_KIND_UNIT);
 
           if (item_kind != GCV_ITEM_KIND_UNIT)
             {
