@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_SQUARE_BRUSH (gtk_crusader_village_square_brush_get_type ())
+#define GCV_TYPE_SQUARE_BRUSH (gcv_square_brush_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageSquareBrush, gtk_crusader_village_square_brush, GTK_CRUSADER_VILLAGE, SQUARE_BRUSH, GObject)
+G_DECLARE_FINAL_TYPE (GcvSquareBrush, gcv_square_brush, GCV, SQUARE_BRUSH, GObject)
 
 G_END_DECLS

@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Slave">,
     "description": <"[English Manual] \"These are the cheapest units in the game. They are armed with a torch and if they get through your defenses can reduce your castle to a smoldering heap of rubble.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabSlave.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/arab_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/ArabSlave.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/arab_sword.png">,
     "kind": <"unit">
 }

@@ -25,15 +25,15 @@
 #include "gtk-crusader-village-timeline-view-item.h"
 #include "gtk-crusader-village-timeline-view.h"
 
-struct _GtkCrusaderVillageTimelineView
+struct _GcvTimelineView
 {
-  GtkCrusaderVillageUtilBin parent_instance;
+  GcvUtilBin parent_instance;
 
   GtkSingleSelection *selection;
   GListStore         *wrapper_store;
 
-  GtkCrusaderVillageMapHandle *handle;
-  GListModel                  *model;
+  GcvMapHandle *handle;
+  GListModel   *model;
 
   GBinding *insert_mode_binding;
 
@@ -45,7 +45,7 @@ struct _GtkCrusaderVillageTimelineView
   GtkScale       *scale;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageTimelineView, gtk_crusader_village_timeline_view, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
+G_DEFINE_FINAL_TYPE (GcvTimelineView, gcv_timeline_view, GCV_TYPE_UTIL_BIN)
 
 enum
 {
@@ -59,72 +59,72 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-setup_listitem (GtkListItemFactory             *factory,
-                GtkListItem                    *list_item,
-                GtkCrusaderVillageTimelineView *self);
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvTimelineView    *self);
 
 static void
-bind_listitem (GtkListItemFactory             *factory,
-               GtkListItem                    *list_item,
-               GtkCrusaderVillageTimelineView *self);
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvTimelineView    *self);
 
 static void
-unbind_listitem (GtkListItemFactory             *factory,
-                 GtkListItem                    *list_item,
-                 GtkCrusaderVillageTimelineView *self);
+unbind_listitem (GtkListItemFactory *factory,
+                 GtkListItem        *list_item,
+                 GcvTimelineView    *self);
 
 static void
-listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                         GParamSpec                  *pspec,
-                         GtkListItem                 *list_item);
+listitem_cursor_changed (GcvMapHandle *handle,
+                         GParamSpec   *pspec,
+                         GtkListItem  *list_item);
 
 static void
-listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
-                            GParamSpec                  *pspec,
-                            GtkListItem                 *list_item);
+listitem_mode_hint_changed (GcvMapHandle *handle,
+                            GParamSpec   *pspec,
+                            GtkListItem  *list_item);
 
 static void
-model_changed (GListModel                     *self,
-               guint                           position,
-               guint                           removed,
-               guint                           added,
-               GtkCrusaderVillageTimelineView *timeline_view);
+model_changed (GListModel      *self,
+               guint            position,
+               guint            removed,
+               guint            added,
+               GcvTimelineView *timeline_view);
 
 static void
-row_activated (GtkListView                    *self,
-               guint                           position,
-               GtkCrusaderVillageTimelineView *timeline_view);
+row_activated (GtkListView     *self,
+               guint            position,
+               GcvTimelineView *timeline_view);
 
 static void
-delete_stroke_clicked (GtkButton                      *self,
-                       GtkCrusaderVillageTimelineView *timeline_view);
+delete_stroke_clicked (GtkButton       *self,
+                       GcvTimelineView *timeline_view);
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle    *handle,
-                GParamSpec                     *pspec,
-                GtkCrusaderVillageTimelineView *timeline_view);
+cursor_changed (GcvMapHandle    *handle,
+                GParamSpec      *pspec,
+                GcvTimelineView *timeline_view);
 
 static void
-lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
-                   GParamSpec                     *pspec,
-                   GtkCrusaderVillageTimelineView *timeline_view);
+lock_hint_changed (GcvMapHandle    *handle,
+                   GParamSpec      *pspec,
+                   GcvTimelineView *timeline_view);
 
 static void
-scale_change_value (GtkRange                       *self,
-                    GtkScrollType                  *scroll,
-                    gdouble                         value,
-                    GtkCrusaderVillageTimelineView *timeline_view);
+scale_change_value (GtkRange        *self,
+                    GtkScrollType   *scroll,
+                    gdouble          value,
+                    GcvTimelineView *timeline_view);
 
 static void
-update_selected (GtkCrusaderVillageTimelineView *self);
+update_selected (GcvTimelineView *self);
 
 static void
-update_ui (GtkCrusaderVillageTimelineView *self);
+update_ui (GcvTimelineView *self);
 
 static void
-gtk_crusader_village_timeline_view_dispose (GObject *object)
+gcv_timeline_view_dispose (GObject *object)
 {
-  GtkCrusaderVillageTimelineView *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW (object);
+  GcvTimelineView *self = GCV_TIMELINE_VIEW (object);
 
   g_clear_object (&self->selection);
   g_clear_object (&self->wrapper_store);
@@ -143,16 +143,16 @@ gtk_crusader_village_timeline_view_dispose (GObject *object)
     }
   g_clear_object (&self->handle);
 
-  G_OBJECT_CLASS (gtk_crusader_village_timeline_view_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_timeline_view_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_timeline_view_get_property (GObject    *object,
-                                                 guint       prop_id,
-                                                 GValue     *value,
-                                                 GParamSpec *pspec)
+gcv_timeline_view_get_property (GObject    *object,
+                                guint       prop_id,
+                                GValue     *value,
+                                GParamSpec *pspec)
 {
-  GtkCrusaderVillageTimelineView *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW (object);
+  GcvTimelineView *self = GCV_TIMELINE_VIEW (object);
 
   switch (prop_id)
     {
@@ -165,12 +165,12 @@ gtk_crusader_village_timeline_view_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_timeline_view_set_property (GObject      *object,
-                                                 guint         prop_id,
-                                                 const GValue *value,
-                                                 GParamSpec   *pspec)
+gcv_timeline_view_set_property (GObject      *object,
+                                guint         prop_id,
+                                const GValue *value,
+                                GParamSpec   *pspec)
 {
-  GtkCrusaderVillageTimelineView *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW (object);
+  GcvTimelineView *self = GCV_TIMELINE_VIEW (object);
 
   switch (prop_id)
     {
@@ -225,35 +225,35 @@ gtk_crusader_village_timeline_view_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_timeline_view_class_init (GtkCrusaderVillageTimelineViewClass *klass)
+gcv_timeline_view_class_init (GcvTimelineViewClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_timeline_view_dispose;
-  object_class->get_property = gtk_crusader_village_timeline_view_get_property;
-  object_class->set_property = gtk_crusader_village_timeline_view_set_property;
+  object_class->dispose      = gcv_timeline_view_dispose;
+  object_class->get_property = gcv_timeline_view_get_property;
+  object_class->set_property = gcv_timeline_view_set_property;
 
   props[PROP_MAP_HANDLE] =
       g_param_spec_object (
           "map-handle",
           "Map Handle",
           "The map handle this widget will use",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+          GCV_TYPE_MAP_HANDLE,
           G_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-timeline-view.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, stats);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, list_view);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, insert_mode);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, delete_stroke);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineView, scale);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-timeline-view.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, stats);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, list_view);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, insert_mode);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, delete_stroke);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, scale);
 }
 
 static void
-gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
+gcv_timeline_view_init (GcvTimelineView *self)
 {
   g_autoptr (GtkListItemFactory) factory      = NULL;
   g_autoptr (GListStore) left_model           = NULL;
@@ -296,26 +296,26 @@ gtk_crusader_village_timeline_view_init (GtkCrusaderVillageTimelineView *self)
 }
 
 static void
-setup_listitem (GtkListItemFactory             *factory,
-                GtkListItem                    *list_item,
-                GtkCrusaderVillageTimelineView *self)
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvTimelineView    *self)
 {
-  GtkCrusaderVillageTimelineViewItem *area_item = NULL;
+  GcvTimelineViewItem *area_item = NULL;
 
-  area_item = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_TIMELINE_VIEW_ITEM, NULL);
+  area_item = g_object_new (GCV_TYPE_TIMELINE_VIEW_ITEM, NULL);
   gtk_list_item_set_child (list_item, GTK_WIDGET (area_item));
 }
 
 static void
-bind_listitem (GtkListItemFactory             *factory,
-               GtkListItem                    *list_item,
-               GtkCrusaderVillageTimelineView *self)
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvTimelineView    *self)
 {
   GObject *stroke = NULL;
 
   stroke = gtk_list_item_get_item (list_item);
 
-  if (GTK_CRUSADER_VILLAGE_IS_ITEM_STROKE (stroke))
+  if (GCV_IS_ITEM_STROKE (stroke))
     {
       GtkWidget *view_item   = NULL;
       gboolean   insert_mode = FALSE;
@@ -345,9 +345,9 @@ bind_listitem (GtkListItemFactory             *factory,
 }
 
 static void
-unbind_listitem (GtkListItemFactory             *factory,
-                 GtkListItem                    *list_item,
-                 GtkCrusaderVillageTimelineView *self)
+unbind_listitem (GtkListItemFactory *factory,
+                 GtkListItem        *list_item,
+                 GcvTimelineView    *self)
 {
   g_signal_handlers_disconnect_by_func (
       self->handle, listitem_cursor_changed, list_item);
@@ -356,9 +356,9 @@ unbind_listitem (GtkListItemFactory             *factory,
 }
 
 static void
-listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                         GParamSpec                  *pspec,
-                         GtkListItem                 *list_item)
+listitem_cursor_changed (GcvMapHandle *handle,
+                         GParamSpec   *pspec,
+                         GtkListItem  *list_item)
 {
   guint      cursor    = 0;
   guint      position  = 0;
@@ -380,9 +380,9 @@ listitem_cursor_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
-listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
-                            GParamSpec                  *pspec,
-                            GtkListItem                 *list_item)
+listitem_mode_hint_changed (GcvMapHandle *handle,
+                            GParamSpec   *pspec,
+                            GtkListItem  *list_item)
 {
   gboolean   insert_mode = FALSE;
   gboolean   lock_hinted = FALSE;
@@ -403,19 +403,19 @@ listitem_mode_hint_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
-model_changed (GListModel                     *self,
-               guint                           position,
-               guint                           removed,
-               guint                           added,
-               GtkCrusaderVillageTimelineView *timeline_view)
+model_changed (GListModel      *self,
+               guint            position,
+               guint            removed,
+               guint            added,
+               GcvTimelineView *timeline_view)
 {
   update_ui (timeline_view);
 }
 
 static void
-row_activated (GtkListView                    *self,
-               guint                           position,
-               GtkCrusaderVillageTimelineView *timeline_view)
+row_activated (GtkListView     *self,
+               guint            position,
+               GcvTimelineView *timeline_view)
 {
   g_object_set (
       timeline_view->handle,
@@ -424,8 +424,8 @@ row_activated (GtkListView                    *self,
 }
 
 static void
-delete_stroke_clicked (GtkButton                      *self,
-                       GtkCrusaderVillageTimelineView *timeline_view)
+delete_stroke_clicked (GtkButton       *self,
+                       GcvTimelineView *timeline_view)
 {
   guint cursor = 0;
 
@@ -439,23 +439,23 @@ delete_stroke_clicked (GtkButton                      *self,
   if (cursor == 0)
     return;
 
-  gtk_crusader_village_map_handle_delete_idx (
+  gcv_map_handle_delete_idx (
       timeline_view->handle, cursor - 1);
 }
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle    *handle,
-                GParamSpec                     *pspec,
-                GtkCrusaderVillageTimelineView *timeline_view)
+cursor_changed (GcvMapHandle    *handle,
+                GParamSpec      *pspec,
+                GcvTimelineView *timeline_view)
 {
   update_selected (timeline_view);
   update_ui (timeline_view);
 }
 
 static void
-lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
-                   GParamSpec                     *pspec,
-                   GtkCrusaderVillageTimelineView *timeline_view)
+lock_hint_changed (GcvMapHandle    *handle,
+                   GParamSpec      *pspec,
+                   GcvTimelineView *timeline_view)
 {
   gboolean lock_hinted = FALSE;
 
@@ -471,10 +471,10 @@ lock_hint_changed (GtkCrusaderVillageMapHandle    *handle,
 }
 
 static void
-scale_change_value (GtkRange                       *self,
-                    GtkScrollType                  *scroll,
-                    gdouble                         value,
-                    GtkCrusaderVillageTimelineView *timeline_view)
+scale_change_value (GtkRange        *self,
+                    GtkScrollType   *scroll,
+                    gdouble          value,
+                    GcvTimelineView *timeline_view)
 {
   if (timeline_view->handle == NULL)
     return;
@@ -486,7 +486,7 @@ scale_change_value (GtkRange                       *self,
 }
 
 static void
-update_selected (GtkCrusaderVillageTimelineView *self)
+update_selected (GcvTimelineView *self)
 {
   guint cursor = 0;
 
@@ -500,7 +500,7 @@ update_selected (GtkCrusaderVillageTimelineView *self)
 }
 
 static void
-update_ui (GtkCrusaderVillageTimelineView *self)
+update_ui (GcvTimelineView *self)
 {
   guint    selected    = 0;
   guint    n_strokes   = 0;

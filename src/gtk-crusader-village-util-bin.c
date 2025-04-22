@@ -29,11 +29,11 @@
 typedef struct
 {
   GtkWidget *child;
-} GtkCrusaderVillageUtilBinPrivate;
+} GcvUtilBinPrivate;
 
-static void gtk_crusader_village_util_bin_buildable_init (GtkBuildableIface *iface);
+static void gcv_util_bin_buildable_init (GtkBuildableIface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (GtkCrusaderVillageUtilBin, gtk_crusader_village_util_bin, GTK_TYPE_WIDGET, G_ADD_PRIVATE (GtkCrusaderVillageUtilBin) G_IMPLEMENT_INTERFACE (GTK_TYPE_BUILDABLE, gtk_crusader_village_util_bin_buildable_init))
+G_DEFINE_TYPE_WITH_CODE (GcvUtilBin, gcv_util_bin, GTK_TYPE_WIDGET, G_ADD_PRIVATE (GcvUtilBin) G_IMPLEMENT_INTERFACE (GTK_TYPE_BUILDABLE, gcv_util_bin_buildable_init))
 
 static GtkBuildableIface *parent_buildable_iface;
 
@@ -47,28 +47,28 @@ enum
 static GParamSpec *props[LAST_PROP];
 
 static void
-gtk_crusader_village_util_bin_dispose (GObject *object)
+gcv_util_bin_dispose (GObject *object)
 {
-  GtkCrusaderVillageUtilBin        *self = GTK_CRUSADER_VILLAGE_UTIL_BIN (object);
-  GtkCrusaderVillageUtilBinPrivate *priv = gtk_crusader_village_util_bin_get_instance_private (self);
+  GcvUtilBin        *self = GCV_UTIL_BIN (object);
+  GcvUtilBinPrivate *priv = gcv_util_bin_get_instance_private (self);
 
   g_clear_pointer (&priv->child, gtk_widget_unparent);
 
-  G_OBJECT_CLASS (gtk_crusader_village_util_bin_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_util_bin_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_util_bin_get_property (GObject    *object,
-                                            guint       prop_id,
-                                            GValue     *value,
-                                            GParamSpec *pspec)
+gcv_util_bin_get_property (GObject    *object,
+                           guint       prop_id,
+                           GValue     *value,
+                           GParamSpec *pspec)
 {
-  GtkCrusaderVillageUtilBin *self = GTK_CRUSADER_VILLAGE_UTIL_BIN (object);
+  GcvUtilBin *self = GCV_UTIL_BIN (object);
 
   switch (prop_id)
     {
     case PROP_CHILD:
-      g_value_set_object (value, gtk_crusader_village_util_bin_get_child (self));
+      g_value_set_object (value, gcv_util_bin_get_child (self));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -76,17 +76,17 @@ gtk_crusader_village_util_bin_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_util_bin_set_property (GObject      *object,
-                                            guint         prop_id,
-                                            const GValue *value,
-                                            GParamSpec   *pspec)
+gcv_util_bin_set_property (GObject      *object,
+                           guint         prop_id,
+                           const GValue *value,
+                           GParamSpec   *pspec)
 {
-  GtkCrusaderVillageUtilBin *self = GTK_CRUSADER_VILLAGE_UTIL_BIN (object);
+  GcvUtilBin *self = GCV_UTIL_BIN (object);
 
   switch (prop_id)
     {
     case PROP_CHILD:
-      gtk_crusader_village_util_bin_set_child (self, g_value_get_object (value));
+      gcv_util_bin_set_child (self, g_value_get_object (value));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -591,14 +591,14 @@ compute_expand (GtkWidget *widget,
 }
 
 static void
-gtk_crusader_village_util_bin_class_init (GtkCrusaderVillageUtilBinClass *klass)
+gcv_util_bin_class_init (GcvUtilBinClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_util_bin_dispose;
-  object_class->get_property = gtk_crusader_village_util_bin_get_property;
-  object_class->set_property = gtk_crusader_village_util_bin_set_property;
+  object_class->dispose      = gcv_util_bin_dispose;
+  object_class->get_property = gcv_util_bin_get_property;
+  object_class->set_property = gcv_util_bin_set_property;
 
   widget_class->compute_expand = compute_expand;
   widget_class->focus          = focus_child;
@@ -615,58 +615,58 @@ gtk_crusader_village_util_bin_class_init (GtkCrusaderVillageUtilBinClass *klass)
 }
 
 static void
-gtk_crusader_village_util_bin_init (GtkCrusaderVillageUtilBin *self)
+gcv_util_bin_init (GcvUtilBin *self)
 {
 }
 
 static void
-gtk_crusader_village_util_bin_buildable_add_child (GtkBuildable *buildable,
-                                                   GtkBuilder   *builder,
-                                                   GObject      *child,
-                                                   const char   *type)
+gcv_util_bin_buildable_add_child (GtkBuildable *buildable,
+                                  GtkBuilder   *builder,
+                                  GObject      *child,
+                                  const char   *type)
 {
   if (GTK_IS_WIDGET (child))
-    gtk_crusader_village_util_bin_set_child (GTK_CRUSADER_VILLAGE_UTIL_BIN (buildable), GTK_WIDGET (child));
+    gcv_util_bin_set_child (GCV_UTIL_BIN (buildable), GTK_WIDGET (child));
   else
     parent_buildable_iface->add_child (buildable, builder, child, type);
 }
 
 static void
-gtk_crusader_village_util_bin_buildable_init (GtkBuildableIface *iface)
+gcv_util_bin_buildable_init (GtkBuildableIface *iface)
 {
   parent_buildable_iface = g_type_interface_peek_parent (iface);
 
-  iface->add_child = gtk_crusader_village_util_bin_buildable_add_child;
+  iface->add_child = gcv_util_bin_buildable_add_child;
 }
 
 GtkWidget *
-gtk_crusader_village_util_bin_new (void)
+gcv_util_bin_new (void)
 {
-  return g_object_new (GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN, NULL);
+  return g_object_new (GCV_TYPE_UTIL_BIN, NULL);
 }
 
 GtkWidget *
-gtk_crusader_village_util_bin_get_child (GtkCrusaderVillageUtilBin *self)
+gcv_util_bin_get_child (GcvUtilBin *self)
 {
-  GtkCrusaderVillageUtilBinPrivate *priv;
+  GcvUtilBinPrivate *priv;
 
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_UTIL_BIN (self), NULL);
+  g_return_val_if_fail (GCV_IS_UTIL_BIN (self), NULL);
 
-  priv = gtk_crusader_village_util_bin_get_instance_private (self);
+  priv = gcv_util_bin_get_instance_private (self);
 
   return priv->child;
 }
 
 void
-gtk_crusader_village_util_bin_set_child (GtkCrusaderVillageUtilBin *self,
-                                         GtkWidget                 *child)
+gcv_util_bin_set_child (GcvUtilBin *self,
+                        GtkWidget  *child)
 {
-  GtkCrusaderVillageUtilBinPrivate *priv;
+  GcvUtilBinPrivate *priv;
 
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_UTIL_BIN (self));
+  g_return_if_fail (GCV_IS_UTIL_BIN (self));
   g_return_if_fail (child == NULL || GTK_IS_WIDGET (child));
 
-  priv = gtk_crusader_village_util_bin_get_instance_private (self);
+  priv = gcv_util_bin_get_instance_private (self);
 
   if (priv->child == child)
     return;

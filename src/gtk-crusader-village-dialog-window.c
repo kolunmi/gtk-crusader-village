@@ -23,7 +23,7 @@
 #include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-theme-utils.h"
 
-struct _GtkCrusaderVillageDialogWindow
+struct _GcvDialogWindow
 {
   GtkWindow parent_instance;
 
@@ -37,7 +37,7 @@ struct _GtkCrusaderVillageDialogWindow
   GtkButton *ok_button;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageDialogWindow, gtk_crusader_village_dialog_window, GTK_TYPE_WINDOW)
+G_DEFINE_FINAL_TYPE (GcvDialogWindow, gcv_dialog_window, GTK_TYPE_WINDOW)
 
 enum
 {
@@ -54,13 +54,13 @@ static GVariant *static_open  = NULL;
 static GVariant *static_close = NULL;
 
 static void
-ok_clicked (GtkButton                      *self,
-            GtkCrusaderVillageDialogWindow *user_data);
+ok_clicked (GtkButton       *self,
+            GcvDialogWindow *user_data);
 
 static gboolean
-register_dictionary_variant (GtkCrusaderVillageDialogWindow *self,
-                             GVariant                       *dictionary,
-                             GtkBox                         *container);
+register_dictionary_variant (GcvDialogWindow *self,
+                             GVariant        *dictionary,
+                             GtkBox          *container);
 
 static void
 boolean_changed (GtkCheckButton *button,
@@ -89,23 +89,23 @@ static void
 maybe_free_variant_pp (gpointer pp);
 
 static void
-gtk_crusader_village_dialog_window_dispose (GObject *object)
+gcv_dialog_window_dispose (GObject *object)
 {
-  GtkCrusaderVillageDialogWindow *self = GTK_CRUSADER_VILLAGE_DIALOG_WINDOW (object);
+  GcvDialogWindow *self = GCV_DIALOG_WINDOW (object);
 
   g_clear_pointer (&self->results, g_ptr_array_unref);
   g_clear_pointer (&self->final_submission, g_variant_unref);
 
-  G_OBJECT_CLASS (gtk_crusader_village_dialog_window_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_dialog_window_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_dialog_window_get_property (GObject    *object,
-                                                 guint       prop_id,
-                                                 GValue     *value,
-                                                 GParamSpec *pspec)
+gcv_dialog_window_get_property (GObject    *object,
+                                guint       prop_id,
+                                GValue     *value,
+                                GParamSpec *pspec)
 {
-  GtkCrusaderVillageDialogWindow *self = GTK_CRUSADER_VILLAGE_DIALOG_WINDOW (object);
+  GcvDialogWindow *self = GCV_DIALOG_WINDOW (object);
 
   switch (prop_id)
     {
@@ -118,12 +118,12 @@ gtk_crusader_village_dialog_window_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_dialog_window_set_property (GObject      *object,
-                                                 guint         prop_id,
-                                                 const GValue *value,
-                                                 GParamSpec   *pspec)
+gcv_dialog_window_set_property (GObject      *object,
+                                guint         prop_id,
+                                const GValue *value,
+                                GParamSpec   *pspec)
 {
-  GtkCrusaderVillageDialogWindow *self = GTK_CRUSADER_VILLAGE_DIALOG_WINDOW (object);
+  GcvDialogWindow *self = GCV_DIALOG_WINDOW (object);
 
   switch (prop_id)
     {
@@ -133,14 +133,14 @@ gtk_crusader_village_dialog_window_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_dialog_window_class_init (GtkCrusaderVillageDialogWindowClass *klass)
+gcv_dialog_window_class_init (GcvDialogWindowClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_dialog_window_dispose;
-  object_class->get_property = gtk_crusader_village_dialog_window_get_property;
-  object_class->set_property = gtk_crusader_village_dialog_window_set_property;
+  object_class->dispose      = gcv_dialog_window_dispose;
+  object_class->get_property = gcv_dialog_window_get_property;
+  object_class->set_property = gcv_dialog_window_set_property;
 
   props[PROP_FINAL_SUBMISSION] =
       g_param_spec_variant (
@@ -153,18 +153,18 @@ gtk_crusader_village_dialog_window_class_init (GtkCrusaderVillageDialogWindowCla
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-dialog-window.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageDialogWindow, header);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageDialogWindow, message);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageDialogWindow, option_box);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageDialogWindow, ok_button);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-dialog-window.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, header);
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, message);
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, option_box);
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, ok_button);
 }
 
 static void
-gtk_crusader_village_dialog_window_init (GtkCrusaderVillageDialogWindow *self)
+gcv_dialog_window_init (GcvDialogWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), TRUE);
+  gcv_register_themed_window (GTK_WINDOW (self), TRUE);
 
   self->results = g_ptr_array_new_with_free_func (maybe_free_variant_pp);
 
@@ -172,8 +172,8 @@ gtk_crusader_village_dialog_window_init (GtkCrusaderVillageDialogWindow *self)
 }
 
 static void
-ok_clicked (GtkButton                      *self,
-            GtkCrusaderVillageDialogWindow *dialog)
+ok_clicked (GtkButton       *self,
+            GcvDialogWindow *dialog)
 {
   g_autoptr (GVariantBuilder) builder = NULL;
 
@@ -249,25 +249,25 @@ int32_scale_changed (GtkScale  *self,
   *write = g_variant_new_int32 (gtk_range_get_value (GTK_RANGE (self)));
 }
 
-GtkCrusaderVillageDialogWindow *
-gtk_crusader_village_dialog (const char *title,
-                             const char *header,
-                             const char *message,
-                             GtkWindow  *parent,
-                             GVariant   *structure)
+GcvDialogWindow *
+gcv_dialog (const char *title,
+            const char *header,
+            const char *message,
+            GtkWindow  *parent,
+            GVariant   *structure)
 {
-  g_autoptr (GtkCrusaderVillageDialogWindow) dialog = NULL;
+  g_autoptr (GcvDialogWindow) dialog = NULL;
 
   g_return_val_if_fail (header != NULL || message != NULL, NULL);
   g_return_val_if_fail (GTK_IS_WINDOW (parent), NULL);
 
   if (structure != NULL && !g_variant_is_of_type (structure, G_VARIANT_TYPE ("a{sv}")))
     {
-      g_critical ("gtk_crusader_village_dialog(): invalid GVariant structure: expected toplevel dictionary");
+      g_critical ("gcv_dialog(): invalid GVariant structure: expected toplevel dictionary");
       return NULL;
     }
 
-  dialog = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_DIALOG_WINDOW, NULL);
+  dialog = g_object_new (GCV_TYPE_DIALOG_WINDOW, NULL);
 
   if (structure != NULL)
     {
@@ -288,9 +288,9 @@ gtk_crusader_village_dialog (const char *title,
 }
 
 static gboolean
-register_dictionary_variant (GtkCrusaderVillageDialogWindow *self,
-                             GVariant                       *dictionary,
-                             GtkBox                         *container)
+register_dictionary_variant (GcvDialogWindow *self,
+                             GVariant        *dictionary,
+                             GtkBox          *container)
 {
   GVariantIter iter = { 0 };
 
@@ -361,7 +361,7 @@ register_dictionary_variant (GtkCrusaderVillageDialogWindow *self,
 
           if (opts == NULL || *opts == NULL)
             {
-              g_critical ("gtk_crusader_village_dialog(): invalid GVariant structure: "
+              g_critical ("gcv_dialog(): invalid GVariant structure: "
                           "length of opts array must be greater than 0");
               return FALSE;
             }
@@ -422,7 +422,7 @@ register_dictionary_variant (GtkCrusaderVillageDialogWindow *self,
         }
       else
         {
-          g_critical ("gtk_crusader_village_dialog(): invalid GVariant structure: invalid component type");
+          g_critical ("gcv_dialog(): invalid GVariant structure: invalid component type");
           return FALSE;
         }
 

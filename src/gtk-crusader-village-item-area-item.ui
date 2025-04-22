@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageItemAreaItem" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvItemAreaItem" parent="GcvUtilBin">
     <property name="has-tooltip">TRUE</property>
     <property name="child">
       <object class="GtkCenterBox">

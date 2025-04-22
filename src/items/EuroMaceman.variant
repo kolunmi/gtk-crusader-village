@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Maceman">,
     "description": <"[English Manual] \"These thuggish brutes are quick and deal out a lot of damage, making them ideal assault troops. They are not heavily armored and like spearmen they can use ladders to scale castle walls.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroMaceman.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroMaceman.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

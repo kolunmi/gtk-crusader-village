@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_OVERLAY (gtk_crusader_village_map_editor_overlay_get_type ())
+#define GCV_TYPE_MAP_EDITOR_OVERLAY (gcv_map_editor_overlay_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMapEditorOverlay, gtk_crusader_village_map_editor_overlay, GTK_CRUSADER_VILLAGE, MAP_EDITOR_OVERLAY, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvMapEditorOverlay, gcv_map_editor_overlay, GCV, MAP_EDITOR_OVERLAY, GcvUtilBin)
 
 G_END_DECLS

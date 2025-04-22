@@ -24,15 +24,15 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_DIALOG_WINDOW (gtk_crusader_village_dialog_window_get_type ())
+#define GCV_TYPE_DIALOG_WINDOW (gcv_dialog_window_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageDialogWindow, gtk_crusader_village_dialog_window, GTK_CRUSADER_VILLAGE, DIALOG_WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE (GcvDialogWindow, gcv_dialog_window, GCV, DIALOG_WINDOW, GtkWindow)
 
-GtkCrusaderVillageDialogWindow *
-gtk_crusader_village_dialog (const char *title,
-                             const char *header,
-                             const char *message,
-                             GtkWindow  *parent,
-                             GVariant   *structure);
+GcvDialogWindow *
+gcv_dialog (const char *title,
+            const char *header,
+            const char *message,
+            GtkWindow  *parent,
+            GVariant   *structure);
 
 G_END_DECLS

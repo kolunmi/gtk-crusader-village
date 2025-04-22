@@ -20,24 +20,24 @@
 
 #include "gtk-crusader-village-brushable.h"
 
-G_DEFINE_INTERFACE (GtkCrusaderVillageBrushable, gtk_crusader_village_brushable, G_TYPE_OBJECT);
+G_DEFINE_INTERFACE (GcvBrushable, gcv_brushable, G_TYPE_OBJECT);
 
 static char *
-gtk_crusader_village_brushable_real_get_name (GtkCrusaderVillageBrushable *self)
+gcv_brushable_real_get_name (GcvBrushable *self)
 {
   return NULL;
 }
 
 static char *
-gtk_crusader_village_brushable_real_get_file (GtkCrusaderVillageBrushable *self)
+gcv_brushable_real_get_file (GcvBrushable *self)
 {
   return NULL;
 }
 
 static guint8 *
-gtk_crusader_village_brushable_real_get_mask (GtkCrusaderVillageBrushable *self,
-                                              int                         *width,
-                                              int                         *height)
+gcv_brushable_real_get_mask (GcvBrushable *self,
+                             int          *width,
+                             int          *height)
 {
   *width  = 0;
   *height = 0;
@@ -45,67 +45,67 @@ gtk_crusader_village_brushable_real_get_mask (GtkCrusaderVillageBrushable *self,
 }
 
 static GtkAdjustment *
-gtk_crusader_village_brushable_real_get_adjustment (GtkCrusaderVillageBrushable *self)
+gcv_brushable_real_get_adjustment (GcvBrushable *self)
 {
   return NULL;
 }
 
 static GdkTexture *
-gtk_crusader_village_brushable_real_get_thumbnail (GtkCrusaderVillageBrushable *self)
+gcv_brushable_real_get_thumbnail (GcvBrushable *self)
 {
   return NULL;
 }
 
 static void
-gtk_crusader_village_brushable_default_init (GtkCrusaderVillageBrushableInterface *iface)
+gcv_brushable_default_init (GcvBrushableInterface *iface)
 {
-  iface->get_name       = gtk_crusader_village_brushable_real_get_name;
-  iface->get_file       = gtk_crusader_village_brushable_real_get_file;
-  iface->get_mask       = gtk_crusader_village_brushable_real_get_mask;
-  iface->get_adjustment = gtk_crusader_village_brushable_real_get_adjustment;
-  iface->get_thumbnail  = gtk_crusader_village_brushable_real_get_thumbnail;
+  iface->get_name       = gcv_brushable_real_get_name;
+  iface->get_file       = gcv_brushable_real_get_file;
+  iface->get_mask       = gcv_brushable_real_get_mask;
+  iface->get_adjustment = gcv_brushable_real_get_adjustment;
+  iface->get_thumbnail  = gcv_brushable_real_get_thumbnail;
 }
 
 char *
-gtk_crusader_village_brushable_get_name (GtkCrusaderVillageBrushable *self)
+gcv_brushable_get_name (GcvBrushable *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_BRUSHABLE (self), NULL);
+  g_return_val_if_fail (GCV_IS_BRUSHABLE (self), NULL);
 
-  return GTK_CRUSADER_VILLAGE_BRUSHABLE_GET_IFACE (self)->get_name (self);
+  return GCV_BRUSHABLE_GET_IFACE (self)->get_name (self);
 }
 
 char *
-gtk_crusader_village_brushable_get_file (GtkCrusaderVillageBrushable *self)
+gcv_brushable_get_file (GcvBrushable *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_BRUSHABLE (self), NULL);
+  g_return_val_if_fail (GCV_IS_BRUSHABLE (self), NULL);
 
-  return GTK_CRUSADER_VILLAGE_BRUSHABLE_GET_IFACE (self)->get_file (self);
+  return GCV_BRUSHABLE_GET_IFACE (self)->get_file (self);
 }
 
 guint8 *
-gtk_crusader_village_brushable_get_mask (GtkCrusaderVillageBrushable *self,
-                                         int                         *width,
-                                         int                         *height)
+gcv_brushable_get_mask (GcvBrushable *self,
+                        int          *width,
+                        int          *height)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_BRUSHABLE (self), NULL);
+  g_return_val_if_fail (GCV_IS_BRUSHABLE (self), NULL);
   g_return_val_if_fail (width != NULL, NULL);
   g_return_val_if_fail (height != NULL, NULL);
 
-  return GTK_CRUSADER_VILLAGE_BRUSHABLE_GET_IFACE (self)->get_mask (self, width, height);
+  return GCV_BRUSHABLE_GET_IFACE (self)->get_mask (self, width, height);
 }
 
 GtkAdjustment *
-gtk_crusader_village_brushable_get_adjustment (GtkCrusaderVillageBrushable *self)
+gcv_brushable_get_adjustment (GcvBrushable *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_BRUSHABLE (self), NULL);
+  g_return_val_if_fail (GCV_IS_BRUSHABLE (self), NULL);
 
-  return GTK_CRUSADER_VILLAGE_BRUSHABLE_GET_IFACE (self)->get_adjustment (self);
+  return GCV_BRUSHABLE_GET_IFACE (self)->get_adjustment (self);
 }
 
 GdkTexture *
-gtk_crusader_village_brushable_get_thumbnail (GtkCrusaderVillageBrushable *self)
+gcv_brushable_get_thumbnail (GcvBrushable *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_BRUSHABLE (self), NULL);
+  g_return_val_if_fail (GCV_IS_BRUSHABLE (self), NULL);
 
-  return GTK_CRUSADER_VILLAGE_BRUSHABLE_GET_IFACE (self)->get_thumbnail (self);
+  return GCV_BRUSHABLE_GET_IFACE (self)->get_thumbnail (self);
 }

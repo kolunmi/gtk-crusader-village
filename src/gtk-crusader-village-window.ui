@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageWindow" parent="GtkApplicationWindow">
+  <template class="GcvWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">GTK Crusader Village</property>
     <property name="default-width">1800</property>
     <property name="default-height">1200</property>
@@ -42,7 +42,7 @@
         <property name="resize-start-child">FALSE</property>
 
         <property name="start-child">
-          <object class="GtkCrusaderVillageItemArea" id="item_area"/>
+          <object class="GcvItemArea" id="item_area"/>
         </property>
         
         <property name="end-child">
@@ -56,10 +56,10 @@
               <object class="GtkBox">
                 <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
                 <child>
-                  <object class="GtkCrusaderVillageMapEditorOverlay" id="overlay">
+                  <object class="GcvMapEditorOverlay" id="overlay">
                     <property name="vexpand">TRUE</property>
                     <property name="editor">
-                      <object class="GtkCrusaderVillageMapEditor" id="map_editor"/>
+                      <object class="GcvMapEditor" id="map_editor"/>
                     </property>
                   </object>
                 </child>
@@ -69,7 +69,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkCrusaderVillageMapEditorStatus" id="map_editor_status"/>
+                  <object class="GcvMapEditorStatus" id="map_editor_status"/>
                 </child>
               </object>
             </property>
@@ -81,10 +81,10 @@
                 <property name="shrink-start-child">FALSE</property>
                 <property name="shrink-end-child">FALSE</property>
                 <property name="start-child">
-                  <object class="GtkCrusaderVillageTimelineView" id="timeline_view"/>
+                  <object class="GcvTimelineView" id="timeline_view"/>
                 </property>
                 <property name="end-child">
-                  <object class="GtkCrusaderVillageBrushArea" id="brush_area"/>
+                  <object class="GcvBrushArea" id="brush_area"/>
                 </property>
               </object>
             </property>

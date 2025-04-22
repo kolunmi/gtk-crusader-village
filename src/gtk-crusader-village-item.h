@@ -24,34 +24,34 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM (gtk_crusader_village_item_get_type ())
+#define GCV_TYPE_ITEM (gcv_item_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItem, gtk_crusader_village_item, GTK_CRUSADER_VILLAGE, ITEM, GObject)
+G_DECLARE_FINAL_TYPE (GcvItem, gcv_item, GCV, ITEM, GObject)
 
 typedef enum
 {
-  GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING,
-  GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT,
-  GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL,
-  GTK_CRUSADER_VILLAGE_ITEM_KIND_MOAT,
-} GtkCrusaderVillageItemKind;
+  GCV_ITEM_KIND_BUILDING,
+  GCV_ITEM_KIND_UNIT,
+  GCV_ITEM_KIND_WALL,
+  GCV_ITEM_KIND_MOAT,
+} GcvItemKind;
 
-GType gtk_crusader_village_item_kind_get_type (void);
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM_KIND (gtk_crusader_village_item_kind_get_type ())
+GType gcv_item_kind_get_type (void);
+#define GCV_TYPE_ITEM_KIND (gcv_item_kind_get_type ())
 
-GtkCrusaderVillageItem *
-gtk_crusader_village_item_new_for_resource (const char *resource_path,
-                                            GError    **error);
+GcvItem *
+gcv_item_new_for_resource (const char *resource_path,
+                           GError    **error);
 
 void
-gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *self,
-                                                     const char             *property,
-                                                     GVariant               *variant);
+gcv_item_set_property_from_variant (GcvItem    *self,
+                                    const char *property,
+                                    GVariant   *variant);
 
 const char *
-gtk_crusader_village_item_get_name (GtkCrusaderVillageItem *self);
+gcv_item_get_name (GcvItem *self);
 
 gpointer
-gtk_crusader_village_item_get_tile_resource_hash (GtkCrusaderVillageItem *self);
+gcv_item_get_tile_resource_hash (GcvItem *self);
 
 G_END_DECLS

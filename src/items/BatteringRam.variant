@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Battering Ram">,
     "description": <"[English Manual] \"Battering Rams are slow but can take a lot of damage and prove a superior weapon for bringing down gatehouses. They are also effective against castle walls and towers when they manage to reach them. Each ram requires 4 siege engineers to man it before it will become operational.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/BatteringRam.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/BatteringRam.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

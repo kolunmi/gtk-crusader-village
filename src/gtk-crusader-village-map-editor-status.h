@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_STATUS (gtk_crusader_village_map_editor_status_get_type ())
+#define GCV_TYPE_MAP_EDITOR_STATUS (gcv_map_editor_status_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMapEditorStatus, gtk_crusader_village_map_editor_status, GTK_CRUSADER_VILLAGE, MAP_EDITOR_STATUS, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvMapEditorStatus, gcv_map_editor_status, GCV, MAP_EDITOR_STATUS, GcvUtilBin)
 
 G_END_DECLS

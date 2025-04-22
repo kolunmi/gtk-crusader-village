@@ -26,9 +26,9 @@
 #include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-image-mask-brush.h"
 
-struct _GtkCrusaderVillageBrushArea
+struct _GcvBrushArea
 {
-  GtkCrusaderVillageUtilBin parent_instance;
+  GcvUtilBin parent_instance;
 
   GListStore *brush_store;
 
@@ -39,7 +39,7 @@ struct _GtkCrusaderVillageBrushArea
   GtkButton   *delete_brush;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageBrushArea, gtk_crusader_village_brush_area, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
+G_DEFINE_FINAL_TYPE (GcvBrushArea, gcv_brush_area, GCV_TYPE_UTIL_BIN)
 
 enum
 {
@@ -54,27 +54,27 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-setup_listitem (GtkListItemFactory          *factory,
-                GtkListItem                 *list_item,
-                GtkCrusaderVillageBrushArea *brush_area);
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvBrushArea       *brush_area);
 
 static void
-bind_listitem (GtkListItemFactory          *factory,
-               GtkListItem                 *list_item,
-               GtkCrusaderVillageBrushArea *brush_area);
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvBrushArea       *brush_area);
 
 static void
-selected_item_changed (GtkSingleSelection          *selection,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageBrushArea *brush_area);
+selected_item_changed (GtkSingleSelection *selection,
+                       GParamSpec         *pspec,
+                       GcvBrushArea       *brush_area);
 
 static void
-new_mask_brush_clicked (GtkButton                   *self,
-                        GtkCrusaderVillageBrushArea *brush_area);
+new_mask_brush_clicked (GtkButton    *self,
+                        GcvBrushArea *brush_area);
 
 static void
-delete_brush_clicked (GtkButton                   *self,
-                      GtkCrusaderVillageBrushArea *brush_area);
+delete_brush_clicked (GtkButton    *self,
+                      GcvBrushArea *brush_area);
 
 static void
 image_dialog_finish_cb (GObject      *source_object,
@@ -87,22 +87,22 @@ load_brush_image_file_finish_cb (GObject      *source_object,
                                  gpointer      data);
 
 static void
-gtk_crusader_village_brush_area_dispose (GObject *object)
+gcv_brush_area_dispose (GObject *object)
 {
-  GtkCrusaderVillageBrushArea *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA (object);
+  GcvBrushArea *self = GCV_BRUSH_AREA (object);
 
   g_clear_object (&self->brush_store);
 
-  G_OBJECT_CLASS (gtk_crusader_village_brush_area_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_brush_area_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_brush_area_get_property (GObject    *object,
-                                              guint       prop_id,
-                                              GValue     *value,
-                                              GParamSpec *pspec)
+gcv_brush_area_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
 {
-  GtkCrusaderVillageBrushArea *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA (object);
+  GcvBrushArea *self = GCV_BRUSH_AREA (object);
 
   switch (prop_id)
     {
@@ -111,11 +111,11 @@ gtk_crusader_village_brush_area_get_property (GObject    *object,
       break;
     case PROP_SELECTED_BRUSH:
       {
-        GtkSingleSelection          *single_selection_model = NULL;
-        GtkCrusaderVillageBrushable *brush                  = NULL;
+        GtkSingleSelection *single_selection_model = NULL;
+        GcvBrushable       *brush                  = NULL;
 
         single_selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-        brush                  = GTK_CRUSADER_VILLAGE_BRUSHABLE (gtk_single_selection_get_selected_item (single_selection_model));
+        brush                  = GCV_BRUSHABLE (gtk_single_selection_get_selected_item (single_selection_model));
 
         g_value_set_object (value, brush);
       }
@@ -126,12 +126,12 @@ gtk_crusader_village_brush_area_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_brush_area_set_property (GObject      *object,
-                                              guint         prop_id,
-                                              const GValue *value,
-                                              GParamSpec   *pspec)
+gcv_brush_area_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
-  GtkCrusaderVillageBrushArea *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA (object);
+  GcvBrushArea *self = GCV_BRUSH_AREA (object);
 
   switch (prop_id)
     {
@@ -152,14 +152,14 @@ gtk_crusader_village_brush_area_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_brush_area_class_init (GtkCrusaderVillageBrushAreaClass *klass)
+gcv_brush_area_class_init (GcvBrushAreaClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_brush_area_dispose;
-  object_class->get_property = gtk_crusader_village_brush_area_get_property;
-  object_class->set_property = gtk_crusader_village_brush_area_set_property;
+  object_class->dispose      = gcv_brush_area_dispose;
+  object_class->get_property = gcv_brush_area_get_property;
+  object_class->set_property = gcv_brush_area_set_property;
 
   props[PROP_BRUSH_STORE] =
       g_param_spec_object (
@@ -174,20 +174,20 @@ gtk_crusader_village_brush_area_class_init (GtkCrusaderVillageBrushAreaClass *kl
           "selected-brush",
           "Selected Brush",
           "The currently selected brush in the list",
-          GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE,
+          GCV_TYPE_BRUSHABLE,
           G_PARAM_READABLE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-brush-area.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, new_mask_brush);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, new_mask_brush_spinner);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, list_view);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushArea, delete_brush);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-brush-area.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushArea, new_mask_brush);
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushArea, new_mask_brush_spinner);
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushArea, list_view);
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushArea, delete_brush);
 }
 
 static void
-gtk_crusader_village_brush_area_init (GtkCrusaderVillageBrushArea *self)
+gcv_brush_area_init (GcvBrushArea *self)
 {
   GtkListItemFactory *factory         = NULL;
   GtkSelectionModel  *selection_model = NULL;
@@ -212,26 +212,26 @@ gtk_crusader_village_brush_area_init (GtkCrusaderVillageBrushArea *self)
 }
 
 static void
-setup_listitem (GtkListItemFactory          *factory,
-                GtkListItem                 *list_item,
-                GtkCrusaderVillageBrushArea *brush_area)
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvBrushArea       *brush_area)
 {
-  GtkCrusaderVillageBrushAreaItem *area_item = NULL;
+  GcvBrushAreaItem *area_item = NULL;
 
-  area_item = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA_ITEM, NULL);
+  area_item = g_object_new (GCV_TYPE_BRUSH_AREA_ITEM, NULL);
   gtk_list_item_set_child (list_item, GTK_WIDGET (area_item));
 }
 
 static void
-bind_listitem (GtkListItemFactory          *factory,
-               GtkListItem                 *list_item,
-               GtkCrusaderVillageBrushArea *brush_area)
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvBrushArea       *brush_area)
 {
-  GtkCrusaderVillageBrushable     *brush     = NULL;
-  GtkCrusaderVillageBrushAreaItem *area_item = NULL;
+  GcvBrushable     *brush     = NULL;
+  GcvBrushAreaItem *area_item = NULL;
 
-  brush     = GTK_CRUSADER_VILLAGE_BRUSHABLE (gtk_list_item_get_item (list_item));
-  area_item = GTK_CRUSADER_VILLAGE_BRUSH_AREA_ITEM (gtk_list_item_get_child (list_item));
+  brush     = GCV_BRUSHABLE (gtk_list_item_get_item (list_item));
+  area_item = GCV_BRUSH_AREA_ITEM (gtk_list_item_get_child (list_item));
 
   g_object_set (
       area_item,
@@ -240,16 +240,16 @@ bind_listitem (GtkListItemFactory          *factory,
 }
 
 static void
-selected_item_changed (GtkSingleSelection          *selection,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageBrushArea *brush_area)
+selected_item_changed (GtkSingleSelection *selection,
+                       GParamSpec         *pspec,
+                       GcvBrushArea       *brush_area)
 {
   g_object_notify_by_pspec (G_OBJECT (brush_area), props[PROP_SELECTED_BRUSH]);
 }
 
 static void
-new_mask_brush_clicked (GtkButton                   *self,
-                        GtkCrusaderVillageBrushArea *brush_area)
+new_mask_brush_clicked (GtkButton    *self,
+                        GcvBrushArea *brush_area)
 {
   GtkWidget      *app_window            = NULL;
   GtkApplication *application           = NULL;
@@ -276,8 +276,8 @@ new_mask_brush_clicked (GtkButton                   *self,
 }
 
 static void
-delete_brush_clicked (GtkButton                   *self,
-                      GtkCrusaderVillageBrushArea *brush_area)
+delete_brush_clicked (GtkButton    *self,
+                      GcvBrushArea *brush_area)
 {
   GtkSingleSelection *single_selection_model = NULL;
   guint               selected               = 0;
@@ -294,14 +294,14 @@ image_dialog_finish_cb (GObject      *source_object,
                         GAsyncResult *res,
                         gpointer      data)
 {
-  GtkCrusaderVillageBrushArea *self = data;
-  g_autoptr (GError) local_error    = NULL;
-  g_autoptr (GFile) file            = NULL;
+  GcvBrushArea *self             = data;
+  g_autoptr (GError) local_error = NULL;
+  g_autoptr (GFile) file         = NULL;
 
   file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
 
   if (file != NULL)
-    gtk_crusader_village_image_mask_brush_new_from_file_async (
+    gcv_image_mask_brush_new_from_file_async (
         file, G_PRIORITY_DEFAULT, NULL, load_brush_image_file_finish_cb, self);
   else
     {
@@ -315,7 +315,7 @@ image_dialog_finish_cb (GObject      *source_object,
       application = gtk_window_get_application (GTK_WINDOW (app_window));
       window      = gtk_application_get_active_window (application);
 
-      gtk_crusader_village_dialog (
+      gcv_dialog (
           "An Error Occurred",
           "Could not retrieve image mask from disk.",
           local_error->message,
@@ -331,11 +331,11 @@ load_brush_image_file_finish_cb (GObject      *source_object,
                                  GAsyncResult *res,
                                  gpointer      data)
 {
-  GtkCrusaderVillageBrushArea *self                  = data;
-  g_autoptr (GError) local_error                     = NULL;
-  g_autoptr (GtkCrusaderVillageImageMaskBrush) brush = NULL;
+  GcvBrushArea *self                  = data;
+  g_autoptr (GError) local_error      = NULL;
+  g_autoptr (GcvImageMaskBrush) brush = NULL;
 
-  brush = gtk_crusader_village_image_mask_brush_new_from_file_finish (res, &local_error);
+  brush = gcv_image_mask_brush_new_from_file_finish (res, &local_error);
 
   if (brush != NULL)
     g_list_store_append (self->brush_store, brush);
@@ -351,7 +351,7 @@ load_brush_image_file_finish_cb (GObject      *source_object,
       application = gtk_window_get_application (GTK_WINDOW (app_window));
       window      = gtk_application_get_active_window (application);
 
-      gtk_crusader_village_dialog (
+      gcv_dialog (
           "An Error Occurred",
           "Could not retrieve image mask from disk.",
           local_error->message,

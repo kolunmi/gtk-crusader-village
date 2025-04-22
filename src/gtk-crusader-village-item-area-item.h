@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA_ITEM (gtk_crusader_village_item_area_item_get_type ())
+#define GCV_TYPE_ITEM_AREA_ITEM (gcv_item_area_item_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemAreaItem, gtk_crusader_village_item_area_item, GTK_CRUSADER_VILLAGE, ITEM_AREA_ITEM, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvItemAreaItem, gcv_item_area_item, GCV, ITEM_AREA_ITEM, GcvUtilBin)
 
 G_END_DECLS

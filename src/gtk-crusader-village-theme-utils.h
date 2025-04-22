@@ -25,7 +25,7 @@
 G_BEGIN_DECLS
 
 void
-gtk_crusader_village_register_themed_window (GtkWindow *window,
-                                             gboolean   animated);
+gcv_register_themed_window (GtkWindow *window,
+                            gboolean   animated);
 
 G_END_DECLS

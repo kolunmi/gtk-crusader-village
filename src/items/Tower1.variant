@@ -2,9 +2,9 @@
     "id": <110>,
     "name": <"Lookout Tower">,
     "description": <"[English Manual] \"This is the tallest of the towers and and attacking ranged units will need to get very close before being effective.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Tower1.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Tower1.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <3>,
     "tile-height": <3>

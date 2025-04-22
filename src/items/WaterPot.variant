@@ -2,9 +2,9 @@
     "id": <342>,
     "name": <"Water Pot">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/WaterPot.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/WaterPot.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <4>,
     "tile-height": <4>

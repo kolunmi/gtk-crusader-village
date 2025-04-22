@@ -32,27 +32,27 @@
 #include "gtk-crusader-village-timeline-view.h"
 #include "gtk-crusader-village-window.h"
 
-struct _GtkCrusaderVillageWindow
+struct _GcvWindow
 {
   GtkApplicationWindow parent_instance;
 
   GSettings *settings;
 
-  GtkCrusaderVillageItemStore *item_store;
-  GListStore                  *brush_store;
-  GtkCrusaderVillageMap       *map;
-  GtkCrusaderVillageMapHandle *map_handle;
+  GcvItemStore *item_store;
+  GListStore   *brush_store;
+  GcvMap       *map;
+  GcvMapHandle *map_handle;
 
   /* Template widgets */
-  GtkCrusaderVillageMapEditor       *map_editor;
-  GtkCrusaderVillageMapEditorStatus *map_editor_status;
-  GtkCrusaderVillageItemArea        *item_area;
-  GtkCrusaderVillageTimelineView    *timeline_view;
-  GtkCrusaderVillageBrushArea       *brush_area;
-  GtkWidget                         *busy;
+  GcvMapEditor       *map_editor;
+  GcvMapEditorStatus *map_editor_status;
+  GcvItemArea        *item_area;
+  GcvTimelineView    *timeline_view;
+  GcvBrushArea       *brush_area;
+  GtkWidget          *busy;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageWindow, gtk_crusader_village_window, GTK_TYPE_APPLICATION_WINDOW)
+G_DEFINE_FINAL_TYPE (GcvWindow, gcv_window, GTK_TYPE_APPLICATION_WINDOW)
 
 enum
 {
@@ -70,9 +70,9 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_window_dispose (GObject *object)
+gcv_window_dispose (GObject *object)
 {
-  GtkCrusaderVillageWindow *self = GTK_CRUSADER_VILLAGE_WINDOW (object);
+  GcvWindow *self = GCV_WINDOW (object);
 
   g_clear_object (&self->settings);
   g_clear_object (&self->item_store);
@@ -80,16 +80,16 @@ gtk_crusader_village_window_dispose (GObject *object)
   g_clear_object (&self->map);
   g_clear_object (&self->map_handle);
 
-  G_OBJECT_CLASS (gtk_crusader_village_window_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_window_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_window_get_property (GObject    *object,
-                                          guint       prop_id,
-                                          GValue     *value,
-                                          GParamSpec *pspec)
+gcv_window_get_property (GObject    *object,
+                         guint       prop_id,
+                         GValue     *value,
+                         GParamSpec *pspec)
 {
-  GtkCrusaderVillageWindow *self = GTK_CRUSADER_VILLAGE_WINDOW (object);
+  GcvWindow *self = GCV_WINDOW (object);
 
   switch (prop_id)
     {
@@ -114,12 +114,12 @@ gtk_crusader_village_window_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_window_set_property (GObject      *object,
-                                          guint         prop_id,
-                                          const GValue *value,
-                                          GParamSpec   *pspec)
+gcv_window_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
 {
-  GtkCrusaderVillageWindow *self = GTK_CRUSADER_VILLAGE_WINDOW (object);
+  GcvWindow *self = GCV_WINDOW (object);
 
   switch (prop_id)
     {
@@ -144,7 +144,7 @@ gtk_crusader_village_window_set_property (GObject      *object,
       g_clear_object (&self->map_handle);
       self->map        = g_value_dup_object (value);
       self->map_handle = g_object_new (
-          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+          GCV_TYPE_MAP_HANDLE,
           "map", self->map,
           NULL);
       g_object_set (
@@ -177,21 +177,21 @@ gtk_crusader_village_window_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
+gcv_window_class_init (GcvWindowClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_window_dispose;
-  object_class->get_property = gtk_crusader_village_window_get_property;
-  object_class->set_property = gtk_crusader_village_window_set_property;
+  object_class->dispose      = gcv_window_dispose;
+  object_class->get_property = gcv_window_get_property;
+  object_class->set_property = gcv_window_set_property;
 
   props[PROP_ITEM_STORE] =
       g_param_spec_object (
           "item-store",
           "Item Store",
           "The item store object for this window",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE,
+          GCV_TYPE_ITEM_STORE,
           G_PARAM_READWRITE);
 
   props[PROP_BRUSH_STORE] =
@@ -207,7 +207,7 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
           "map",
           "Map",
           "The main map this window is handling",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP,
+          GCV_TYPE_MAP,
           G_PARAM_READWRITE);
 
   props[PROP_SETTINGS] =
@@ -228,34 +228,34 @@ gtk_crusader_village_window_class_init (GtkCrusaderVillageWindowClass *klass)
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR);
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_OVERLAY);
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_STATUS);
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA);
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_TIMELINE_VIEW);
-  g_type_ensure (GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA);
+  g_type_ensure (GCV_TYPE_MAP_EDITOR);
+  g_type_ensure (GCV_TYPE_MAP_EDITOR_OVERLAY);
+  g_type_ensure (GCV_TYPE_MAP_EDITOR_STATUS);
+  g_type_ensure (GCV_TYPE_ITEM_AREA);
+  g_type_ensure (GCV_TYPE_TIMELINE_VIEW);
+  g_type_ensure (GCV_TYPE_BRUSH_AREA);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-window.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, map_editor);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, map_editor_status);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, item_area);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, timeline_view);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, brush_area);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageWindow, busy);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-window.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, map_editor);
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, map_editor_status);
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, item_area);
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, timeline_view);
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, brush_area);
+  gtk_widget_class_bind_template_child (widget_class, GcvWindow, busy);
 }
 
 static void
-gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
+gcv_window_init (GcvWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), FALSE);
+  gcv_register_themed_window (GTK_WINDOW (self), FALSE);
 
   self->map = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_MAP,
+      GCV_TYPE_MAP,
       "name", "Untitled",
       NULL);
   self->map_handle = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+      GCV_TYPE_MAP_HANDLE,
       "map", self->map,
       NULL);
 
@@ -277,19 +277,19 @@ gtk_crusader_village_window_init (GtkCrusaderVillageWindow *self)
 }
 
 void
-gtk_crusader_village_window_add_subwindow_viewport (GtkCrusaderVillageWindow *self)
+gcv_window_add_subwindow_viewport (GcvWindow *self)
 {
-  GtkCrusaderVillageMapEditor       *editor          = NULL;
-  GtkWidget                         *scrolled_window = NULL;
-  GtkWidget                         *separator       = NULL;
-  GtkCrusaderVillageMapEditorStatus *status          = NULL;
-  GtkWidget                         *box             = NULL;
-  GtkWidget                         *window          = NULL;
+  GcvMapEditor       *editor          = NULL;
+  GtkWidget          *scrolled_window = NULL;
+  GtkWidget          *separator       = NULL;
+  GcvMapEditorStatus *status          = NULL;
+  GtkWidget          *box             = NULL;
+  GtkWidget          *window          = NULL;
 
-  editor          = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR, NULL);
+  editor          = g_object_new (GCV_TYPE_MAP_EDITOR, NULL);
   scrolled_window = gtk_scrolled_window_new ();
   separator       = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
-  status          = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_MAP_EDITOR_STATUS, NULL);
+  status          = g_object_new (GCV_TYPE_MAP_EDITOR_STATUS, NULL);
   box             = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   window          = gtk_window_new ();
 
@@ -312,7 +312,7 @@ gtk_crusader_village_window_add_subwindow_viewport (GtkCrusaderVillageWindow *se
   gtk_window_set_title (GTK_WINDOW (window), "GTK Crusader Village Viewport");
   gtk_window_set_default_size (GTK_WINDOW (window), 800, 800);
   gtk_window_set_transient_for (GTK_WINDOW (window), GTK_WINDOW (self));
-  gtk_crusader_village_register_themed_window (GTK_WINDOW (window), FALSE);
+  gcv_register_themed_window (GTK_WINDOW (window), FALSE);
   gtk_window_set_child (GTK_WINDOW (window), GTK_WIDGET (box));
 
   gtk_window_present (GTK_WINDOW (window));

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageTimelineViewItem" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvTimelineViewItem" parent="GcvUtilBin">
     <property name="child">
       <object class="GtkCenterBox">
         <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>

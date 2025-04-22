@@ -24,27 +24,27 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH_ERROR (gtk_crusader_village_image_mask_brush_error_quark ())
-GQuark gtk_crusader_village_image_mask_brush_error_quark (void);
+#define GCV_IMAGE_MASK_BRUSH_ERROR (gcv_image_mask_brush_error_quark ())
+GQuark gcv_image_mask_brush_error_quark (void);
 
 typedef enum
 {
-  GTK_CRUSADER_VILLAGE_IMAGE_MASK_BRUSH_ERROR_IMAGE_TOO_LARGE = 0,
-} GtkCrusaderVillageImageMaskBrushError;
+  GCV_IMAGE_MASK_BRUSH_ERROR_IMAGE_TOO_LARGE = 0,
+} GcvImageMaskBrushError;
 
-#define GTK_CRUSADER_VILLAGE_TYPE_IMAGE_MASK_BRUSH (gtk_crusader_village_image_mask_brush_get_type ())
+#define GCV_TYPE_IMAGE_MASK_BRUSH (gcv_image_mask_brush_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageImageMaskBrush, gtk_crusader_village_image_mask_brush, GTK_CRUSADER_VILLAGE, IMAGE_MASK_BRUSH, GObject)
+G_DECLARE_FINAL_TYPE (GcvImageMaskBrush, gcv_image_mask_brush, GCV, IMAGE_MASK_BRUSH, GObject)
 
 void
-gtk_crusader_village_image_mask_brush_new_from_file_async (GFile              *file,
-                                                           int                 io_priority,
-                                                           GCancellable       *cancellable,
-                                                           GAsyncReadyCallback callback,
-                                                           gpointer            user_data);
+gcv_image_mask_brush_new_from_file_async (GFile              *file,
+                                          int                 io_priority,
+                                          GCancellable       *cancellable,
+                                          GAsyncReadyCallback callback,
+                                          gpointer            user_data);
 
-GtkCrusaderVillageImageMaskBrush *
-gtk_crusader_village_image_mask_brush_new_from_file_finish (GAsyncResult *result,
-                                                            GError      **error);
+GcvImageMaskBrush *
+gcv_image_mask_brush_new_from_file_finish (GAsyncResult *result,
+                                           GError      **error);
 
 G_END_DECLS

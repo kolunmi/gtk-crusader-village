@@ -24,23 +24,23 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN (gtk_crusader_village_util_bin_get_type ())
+#define GCV_TYPE_UTIL_BIN (gcv_util_bin_get_type ())
 
-G_DECLARE_DERIVABLE_TYPE (GtkCrusaderVillageUtilBin, gtk_crusader_village_util_bin, GTK_CRUSADER_VILLAGE, UTIL_BIN, GtkWidget)
+G_DECLARE_DERIVABLE_TYPE (GcvUtilBin, gcv_util_bin, GCV, UTIL_BIN, GtkWidget)
 
-struct _GtkCrusaderVillageUtilBinClass
+struct _GcvUtilBinClass
 {
   GtkWidgetClass parent_class;
 };
 
 GtkWidget *
-gtk_crusader_village_util_bin_new (void);
+gcv_util_bin_new (void);
 
 GtkWidget *
-gtk_crusader_village_util_bin_get_child (GtkCrusaderVillageUtilBin *self);
+gcv_util_bin_get_child (GcvUtilBin *self);
 
 void
-gtk_crusader_village_util_bin_set_child (GtkCrusaderVillageUtilBin *self,
-                                         GtkWidget                 *child);
+gcv_util_bin_set_child (GcvUtilBin *self,
+                        GtkWidget  *child);
 
 G_END_DECLS

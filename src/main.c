@@ -28,14 +28,14 @@ int
 main (int   argc,
       char *argv[])
 {
-  g_autoptr (GtkCrusaderVillageApplication) app = NULL;
+  g_autoptr (GcvApplication) app = NULL;
   int ret;
 
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
 
-  app = gtk_crusader_village_application_new ("am.kolunmi.GtkCrusaderVillage", G_APPLICATION_DEFAULT_FLAGS);
+  app = gcv_application_new ("am.kolunmi.GtkCrusaderVillage", G_APPLICATION_DEFAULT_FLAGS);
   ret = g_application_run (G_APPLICATION (app), argc, argv);
 
   return ret;

@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Black Monk">,
     "description": <"[English Manual] \"These are mysterious individuals to say the least. They are slow and cumbersome and fight with a quarterstaff. These can be trained in the cathedral.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroMonk.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroMonk.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

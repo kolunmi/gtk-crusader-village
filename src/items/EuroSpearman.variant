@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Spearman">,
     "description": <"[English Manual] \"These are the first melee troops you have access to and the cheapest to produce. Having no armor makes them quicker than most troops and they prove useful for pushing ladders off of walls and digging moats. They are also one of the few units able to use ladders to scale walls.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroSpearman.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroSpearman.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

@@ -23,11 +23,11 @@
 #include "gtk-crusader-village-brush-area-item.h"
 #include "gtk-crusader-village-brushable.h"
 
-struct _GtkCrusaderVillageBrushAreaItem
+struct _GcvBrushAreaItem
 {
-  GtkCrusaderVillageUtilBin parent_instance;
+  GcvUtilBin parent_instance;
 
-  GtkCrusaderVillageBrushable *brush;
+  GcvBrushable *brush;
 
   /* Template widgets */
   GtkLabel   *name;
@@ -35,7 +35,7 @@ struct _GtkCrusaderVillageBrushAreaItem
   GtkPicture *thumbnail;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageBrushAreaItem, gtk_crusader_village_brush_area_item, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
+G_DEFINE_FINAL_TYPE (GcvBrushAreaItem, gcv_brush_area_item, GCV_TYPE_UTIL_BIN)
 
 enum
 {
@@ -49,22 +49,22 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_brush_area_item_dispose (GObject *object)
+gcv_brush_area_item_dispose (GObject *object)
 {
-  GtkCrusaderVillageBrushAreaItem *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA_ITEM (object);
+  GcvBrushAreaItem *self = GCV_BRUSH_AREA_ITEM (object);
 
   g_clear_object (&self->brush);
 
-  G_OBJECT_CLASS (gtk_crusader_village_brush_area_item_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_brush_area_item_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_brush_area_item_get_property (GObject    *object,
-                                                   guint       prop_id,
-                                                   GValue     *value,
-                                                   GParamSpec *pspec)
+gcv_brush_area_item_get_property (GObject    *object,
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
 {
-  GtkCrusaderVillageBrushAreaItem *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA_ITEM (object);
+  GcvBrushAreaItem *self = GCV_BRUSH_AREA_ITEM (object);
 
   switch (prop_id)
     {
@@ -77,12 +77,12 @@ gtk_crusader_village_brush_area_item_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_brush_area_item_set_property (GObject      *object,
-                                                   guint         prop_id,
-                                                   const GValue *value,
-                                                   GParamSpec   *pspec)
+gcv_brush_area_item_set_property (GObject      *object,
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
 {
-  GtkCrusaderVillageBrushAreaItem *self = GTK_CRUSADER_VILLAGE_BRUSH_AREA_ITEM (object);
+  GcvBrushAreaItem *self = GCV_BRUSH_AREA_ITEM (object);
 
   switch (prop_id)
     {
@@ -97,9 +97,9 @@ gtk_crusader_village_brush_area_item_set_property (GObject      *object,
             g_autoptr (GtkAdjustment) adjustment = NULL;
             g_autoptr (GdkTexture) texture       = NULL;
 
-            name       = gtk_crusader_village_brushable_get_name (self->brush);
-            adjustment = gtk_crusader_village_brushable_get_adjustment (self->brush);
-            texture    = gtk_crusader_village_brushable_get_thumbnail (self->brush);
+            name       = gcv_brushable_get_name (self->brush);
+            adjustment = gcv_brushable_get_adjustment (self->brush);
+            texture    = gcv_brushable_get_thumbnail (self->brush);
 
             gtk_label_set_label (self->name, name);
             gtk_range_set_adjustment (GTK_RANGE (self->size), adjustment);
@@ -121,33 +121,33 @@ gtk_crusader_village_brush_area_item_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_brush_area_item_class_init (GtkCrusaderVillageBrushAreaItemClass *klass)
+gcv_brush_area_item_class_init (GcvBrushAreaItemClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_brush_area_item_dispose;
-  object_class->get_property = gtk_crusader_village_brush_area_item_get_property;
-  object_class->set_property = gtk_crusader_village_brush_area_item_set_property;
+  object_class->dispose      = gcv_brush_area_item_dispose;
+  object_class->get_property = gcv_brush_area_item_get_property;
+  object_class->set_property = gcv_brush_area_item_set_property;
 
   props[PROP_BRUSH] =
       g_param_spec_object (
           "brush",
           "Brush",
           "The brush this widget represents",
-          GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE,
+          GCV_TYPE_BRUSHABLE,
           G_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-brush-area-item.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushAreaItem, name);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushAreaItem, size);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageBrushAreaItem, thumbnail);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-brush-area-item.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushAreaItem, name);
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushAreaItem, size);
+  gtk_widget_class_bind_template_child (widget_class, GcvBrushAreaItem, thumbnail);
 }
 
 static void
-gtk_crusader_village_brush_area_item_init (GtkCrusaderVillageBrushAreaItem *self)
+gcv_brush_area_item_init (GcvBrushAreaItem *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 }

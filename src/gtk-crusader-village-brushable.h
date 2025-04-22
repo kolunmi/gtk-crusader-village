@@ -24,38 +24,38 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE (gtk_crusader_village_brushable_get_type ())
+#define GCV_TYPE_BRUSHABLE (gcv_brushable_get_type ())
 
-G_DECLARE_INTERFACE (GtkCrusaderVillageBrushable, gtk_crusader_village_brushable, GTK_CRUSADER_VILLAGE, BRUSHABLE, GObject)
+G_DECLARE_INTERFACE (GcvBrushable, gcv_brushable, GCV, BRUSHABLE, GObject)
 
-struct _GtkCrusaderVillageBrushableInterface
+struct _GcvBrushableInterface
 {
   GTypeInterface parent_iface;
 
-  char *(*get_name) (GtkCrusaderVillageBrushable *self);
-  char *(*get_file) (GtkCrusaderVillageBrushable *self);
-  guint8 *(*get_mask) (GtkCrusaderVillageBrushable *self,
-                       int                         *width,
-                       int                         *height);
-  GtkAdjustment *(*get_adjustment) (GtkCrusaderVillageBrushable *self);
-  GdkTexture *(*get_thumbnail) (GtkCrusaderVillageBrushable *self);
+  char *(*get_name) (GcvBrushable *self);
+  char *(*get_file) (GcvBrushable *self);
+  guint8 *(*get_mask) (GcvBrushable *self,
+                       int          *width,
+                       int          *height);
+  GtkAdjustment *(*get_adjustment) (GcvBrushable *self);
+  GdkTexture *(*get_thumbnail) (GcvBrushable *self);
 };
 
 char *
-gtk_crusader_village_brushable_get_name (GtkCrusaderVillageBrushable *self);
+gcv_brushable_get_name (GcvBrushable *self);
 
 char *
-gtk_crusader_village_brushable_get_file (GtkCrusaderVillageBrushable *self);
+gcv_brushable_get_file (GcvBrushable *self);
 
 guint8 *
-gtk_crusader_village_brushable_get_mask (GtkCrusaderVillageBrushable *self,
-                                         int                         *width,
-                                         int                         *height);
+gcv_brushable_get_mask (GcvBrushable *self,
+                        int          *width,
+                        int          *height);
 
 GtkAdjustment *
-gtk_crusader_village_brushable_get_adjustment (GtkCrusaderVillageBrushable *self);
+gcv_brushable_get_adjustment (GcvBrushable *self);
 
 GdkTexture *
-gtk_crusader_village_brushable_get_thumbnail (GtkCrusaderVillageBrushable *self);
+gcv_brushable_get_thumbnail (GcvBrushable *self);
 
 G_END_DECLS

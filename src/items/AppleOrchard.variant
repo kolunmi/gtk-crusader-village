@@ -2,9 +2,9 @@
     "id": <72>,
     "name": <"Apple Orchard">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/AppleOrchard.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/AppleOrchard.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/apple.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <10>,
     "tile-height": <10>

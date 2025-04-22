@@ -25,7 +25,7 @@
 #include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-square-brush.h"
 
-struct _GtkCrusaderVillageSquareBrush
+struct _GcvSquareBrush
 {
   GObject parent_instance;
 
@@ -33,59 +33,59 @@ struct _GtkCrusaderVillageSquareBrush
 };
 
 static void
-brushable_iface_init (GtkCrusaderVillageBrushableInterface *iface);
+brushable_iface_init (GcvBrushableInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (
-    GtkCrusaderVillageSquareBrush,
-    gtk_crusader_village_square_brush,
+    GcvSquareBrush,
+    gcv_square_brush,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GTK_CRUSADER_VILLAGE_TYPE_BRUSHABLE, brushable_iface_init))
+    G_IMPLEMENT_INTERFACE (GCV_TYPE_BRUSHABLE, brushable_iface_init))
 
 static void
-gtk_crusader_village_square_brush_dispose (GObject *object)
+gcv_square_brush_dispose (GObject *object)
 {
-  GtkCrusaderVillageSquareBrush *self = GTK_CRUSADER_VILLAGE_SQUARE_BRUSH (object);
+  GcvSquareBrush *self = GCV_SQUARE_BRUSH (object);
 
   g_clear_object (&self->adjustment);
 
-  G_OBJECT_CLASS (gtk_crusader_village_square_brush_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_square_brush_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_square_brush_class_init (GtkCrusaderVillageSquareBrushClass *klass)
+gcv_square_brush_class_init (GcvSquareBrushClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->dispose = gtk_crusader_village_square_brush_dispose;
+  object_class->dispose = gcv_square_brush_dispose;
 }
 
 static void
-gtk_crusader_village_square_brush_init (GtkCrusaderVillageSquareBrush *self)
+gcv_square_brush_init (GcvSquareBrush *self)
 {
   self->adjustment = gtk_adjustment_new (1.0, 1.0, 10.0, 1.0, 1.0, 0.0);
 }
 
 static char *
-gtk_crusader_village_square_brush_get_name (GtkCrusaderVillageBrushable *self)
+gcv_square_brush_get_name (GcvBrushable *self)
 {
   return g_strdup ("Square Brush");
 }
 
 static char *
-gtk_crusader_village_square_brush_get_file (GtkCrusaderVillageBrushable *self)
+gcv_square_brush_get_file (GcvBrushable *self)
 {
   return NULL;
 }
 
 static guint8 *
-gtk_crusader_village_square_brush_get_mask (GtkCrusaderVillageBrushable *self,
-                                            int                         *width,
-                                            int                         *height)
+gcv_square_brush_get_mask (GcvBrushable *self,
+                           int          *width,
+                           int          *height)
 {
-  GtkCrusaderVillageSquareBrush *brush     = GTK_CRUSADER_VILLAGE_SQUARE_BRUSH (self);
-  int                            size      = 0;
-  gsize                          mask_size = 0;
-  guint8                        *mask      = NULL;
+  GcvSquareBrush *brush     = GCV_SQUARE_BRUSH (self);
+  int             size      = 0;
+  gsize           mask_size = 0;
+  guint8         *mask      = NULL;
 
   size    = gtk_adjustment_get_value (brush->adjustment);
   *width  = size;
@@ -98,25 +98,25 @@ gtk_crusader_village_square_brush_get_mask (GtkCrusaderVillageBrushable *self,
 }
 
 static GtkAdjustment *
-gtk_crusader_village_square_brush_get_adjustment (GtkCrusaderVillageBrushable *self)
+gcv_square_brush_get_adjustment (GcvBrushable *self)
 {
-  GtkCrusaderVillageSquareBrush *brush = GTK_CRUSADER_VILLAGE_SQUARE_BRUSH (self);
+  GcvSquareBrush *brush = GCV_SQUARE_BRUSH (self);
 
   return g_object_ref (brush->adjustment);
 }
 
 static GdkTexture *
-gtk_crusader_village_square_brush_get_thumbnail (GtkCrusaderVillageBrushable *self)
+gcv_square_brush_get_thumbnail (GcvBrushable *self)
 {
   return NULL;
 }
 
 static void
-brushable_iface_init (GtkCrusaderVillageBrushableInterface *iface)
+brushable_iface_init (GcvBrushableInterface *iface)
 {
-  iface->get_name       = gtk_crusader_village_square_brush_get_name;
-  iface->get_file       = gtk_crusader_village_square_brush_get_file;
-  iface->get_mask       = gtk_crusader_village_square_brush_get_mask;
-  iface->get_adjustment = gtk_crusader_village_square_brush_get_adjustment;
-  iface->get_thumbnail  = gtk_crusader_village_square_brush_get_thumbnail;
+  iface->get_name       = gcv_square_brush_get_name;
+  iface->get_file       = gcv_square_brush_get_file;
+  iface->get_mask       = gcv_square_brush_get_mask;
+  iface->get_adjustment = gcv_square_brush_get_adjustment;
+  iface->get_thumbnail  = gcv_square_brush_get_thumbnail;
 }

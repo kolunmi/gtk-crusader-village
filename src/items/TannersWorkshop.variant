@@ -2,9 +2,9 @@
     "id": <85>,
     "name": <"Tanner's Workshop">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/TannersWorkshop.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/shield.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/shop.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/TannersWorkshop.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/shield.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/shop.png">,
     "kind": <"building">,
     "tile-width": <4>,
     "tile-height": <4>

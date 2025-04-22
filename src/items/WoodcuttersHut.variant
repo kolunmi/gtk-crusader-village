@@ -2,9 +2,9 @@
     "id": <51>,
     "name": <"Woodcutter's Hut">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/WoodcuttersHut.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/WoodcuttersHut.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/hammer.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <3>,
     "tile-height": <3>

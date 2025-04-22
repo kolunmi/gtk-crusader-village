@@ -27,12 +27,12 @@
 #include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 
-struct _GtkCrusaderVillageMapHandle
+struct _GcvMapHandle
 {
   GObject parent_instance;
 
-  GtkCrusaderVillageMap *map;
-  GListStore            *strokes;
+  GcvMap     *map;
+  GListStore *strokes;
 
   GListStore          *memory;
   GListStore          *backing_model;
@@ -46,7 +46,7 @@ struct _GtkCrusaderVillageMapHandle
   guint       last_append_position;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageMapHandle, gtk_crusader_village_map_handle, G_TYPE_OBJECT)
+G_DEFINE_FINAL_TYPE (GcvMapHandle, gcv_map_handle, G_TYPE_OBJECT)
 
 enum
 {
@@ -65,24 +65,24 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-strokes_changed (GListModel                  *self,
-                 guint                        position,
-                 guint                        removed,
-                 guint                        added,
-                 GtkCrusaderVillageMapHandle *handle);
+strokes_changed (GListModel   *self,
+                 guint         position,
+                 guint         removed,
+                 guint         added,
+                 GcvMapHandle *handle);
 
 static void
-dimensions_changed (GtkCrusaderVillageMap       *map,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapHandle *handle);
+dimensions_changed (GcvMap       *map,
+                    GParamSpec   *pspec,
+                    GcvMapHandle *handle);
 
 static void
-ensure_cache (GtkCrusaderVillageMapHandle *self);
+ensure_cache (GcvMapHandle *self);
 
 static void
-gtk_crusader_village_map_handle_dispose (GObject *object)
+gcv_map_handle_dispose (GObject *object)
 {
-  GtkCrusaderVillageMapHandle *self = GTK_CRUSADER_VILLAGE_MAP_HANDLE (object);
+  GcvMapHandle *self = GCV_MAP_HANDLE (object);
 
   g_clear_object (&self->memory);
   g_clear_object (&self->backing_model);
@@ -98,16 +98,16 @@ gtk_crusader_village_map_handle_dispose (GObject *object)
 
   g_clear_pointer (&self->cache, g_hash_table_unref);
 
-  G_OBJECT_CLASS (gtk_crusader_village_map_handle_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_map_handle_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_map_handle_get_property (GObject    *object,
-                                              guint       prop_id,
-                                              GValue     *value,
-                                              GParamSpec *pspec)
+gcv_map_handle_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
 {
-  GtkCrusaderVillageMapHandle *self = GTK_CRUSADER_VILLAGE_MAP_HANDLE (object);
+  GcvMapHandle *self = GCV_MAP_HANDLE (object);
 
   switch (prop_id)
     {
@@ -136,12 +136,12 @@ gtk_crusader_village_map_handle_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_map_handle_set_property (GObject      *object,
-                                              guint         prop_id,
-                                              const GValue *value,
-                                              GParamSpec   *pspec)
+gcv_map_handle_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
-  GtkCrusaderVillageMapHandle *self = GTK_CRUSADER_VILLAGE_MAP_HANDLE (object);
+  GcvMapHandle *self = GCV_MAP_HANDLE (object);
 
   switch (prop_id)
     {
@@ -218,8 +218,8 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
 
                 if (new_cursor < old_cursor)
                   {
-                    guint                                     range_length = 0;
-                    g_autofree GtkCrusaderVillageItemStroke **withdraw     = NULL;
+                    guint                      range_length = 0;
+                    g_autofree GcvItemStroke **withdraw     = NULL;
 
                     range_length = old_cursor - new_cursor;
 
@@ -235,8 +235,8 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
                   }
                 else if (new_cursor > old_cursor)
                   {
-                    guint                                     range_length = 0;
-                    g_autofree GtkCrusaderVillageItemStroke **restore      = NULL;
+                    guint                      range_length = 0;
+                    g_autofree GcvItemStroke **restore      = NULL;
 
                     range_length = new_cursor - old_cursor;
 
@@ -289,20 +289,20 @@ gtk_crusader_village_map_handle_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *klass)
+gcv_map_handle_class_init (GcvMapHandleClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_map_handle_dispose;
-  object_class->get_property = gtk_crusader_village_map_handle_get_property;
-  object_class->set_property = gtk_crusader_village_map_handle_set_property;
+  object_class->dispose      = gcv_map_handle_dispose;
+  object_class->get_property = gcv_map_handle_get_property;
+  object_class->set_property = gcv_map_handle_set_property;
 
   props[PROP_MAP] =
       g_param_spec_object (
           "map",
           "Map",
           "The map this object will manipulate",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP,
+          GCV_TYPE_MAP,
           G_PARAM_READWRITE);
 
   props[PROP_MODEL] =
@@ -344,7 +344,7 @@ gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *kl
       g_param_spec_boxed (
           "grid",
           "Grid",
-          "A hash table mapping `guint` tile indices to `GtkCrusaderVillageItem`s "
+          "A hash table mapping `guint` tile indices to `GcvItem`s "
           "which will be out-of-date after any other property is modified",
           G_TYPE_HASH_TABLE,
           G_PARAM_READABLE);
@@ -353,9 +353,9 @@ gtk_crusader_village_map_handle_class_init (GtkCrusaderVillageMapHandleClass *kl
 }
 
 static void
-gtk_crusader_village_map_handle_init (GtkCrusaderVillageMapHandle *self)
+gcv_map_handle_init (GcvMapHandle *self)
 {
-  self->memory        = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE);
+  self->memory        = g_list_store_new (GCV_TYPE_ITEM_STROKE);
   self->backing_model = g_list_store_new (G_TYPE_LIST_MODEL);
   self->model         = gtk_flatten_list_model_new (G_LIST_MODEL (g_object_ref (self->backing_model)));
 
@@ -365,11 +365,11 @@ gtk_crusader_village_map_handle_init (GtkCrusaderVillageMapHandle *self)
 }
 
 static void
-strokes_changed (GListModel                  *self,
-                 guint                        position,
-                 guint                        removed,
-                 guint                        added,
-                 GtkCrusaderVillageMapHandle *handle)
+strokes_changed (GListModel   *self,
+                 guint         position,
+                 guint         removed,
+                 guint         added,
+                 GcvMapHandle *handle)
 {
   guint n_strokes = 0;
 
@@ -397,22 +397,22 @@ strokes_changed (GListModel                  *self,
 }
 
 static void
-dimensions_changed (GtkCrusaderVillageMap       *map,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapHandle *handle)
+dimensions_changed (GcvMap       *map,
+                    GParamSpec   *pspec,
+                    GcvMapHandle *handle)
 {
   g_clear_pointer (&handle->cache, g_hash_table_unref);
   g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_GRID]);
 }
 
 void
-gtk_crusader_village_map_handle_delete_idx (GtkCrusaderVillageMapHandle *self,
-                                            guint                        idx)
+gcv_map_handle_delete_idx (GcvMapHandle *self,
+                           guint         idx)
 {
   guint memory_n_items  = 0;
   guint strokes_n_items = 0;
 
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP_HANDLE (self));
+  g_return_if_fail (GCV_IS_MAP_HANDLE (self));
   g_return_if_fail (self->map != NULL);
 
   memory_n_items  = g_list_model_get_n_items (G_LIST_MODEL (self->memory));
@@ -426,9 +426,9 @@ gtk_crusader_village_map_handle_delete_idx (GtkCrusaderVillageMapHandle *self,
 }
 
 void
-gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self)
+gcv_map_handle_clear_all (GcvMapHandle *self)
 {
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP_HANDLE (self));
+  g_return_if_fail (GCV_IS_MAP_HANDLE (self));
   g_return_if_fail (self->map != NULL);
 
   g_list_store_remove_all (self->memory);
@@ -436,7 +436,7 @@ gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self)
 }
 
 static void
-ensure_cache (GtkCrusaderVillageMapHandle *self)
+ensure_cache (GcvMapHandle *self)
 {
   guint start_stroke_idx = 0;
   guint n_strokes        = 0;
@@ -469,12 +469,12 @@ ensure_cache (GtkCrusaderVillageMapHandle *self)
 
   for (guint i = start_stroke_idx; i < n_strokes; i++)
     {
-      g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
-      g_autoptr (GtkCrusaderVillageItem) item         = NULL;
-      GtkCrusaderVillageItemKind item_kind            = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
-      int                        item_tile_width      = 0;
-      int                        item_tile_height     = 0;
-      g_autoptr (GArray) instances                    = NULL;
+      g_autoptr (GcvItemStroke) stroke = NULL;
+      g_autoptr (GcvItem) item         = NULL;
+      GcvItemKind item_kind            = GCV_ITEM_KIND_BUILDING;
+      int         item_tile_width      = 0;
+      int         item_tile_height     = 0;
+      g_autoptr (GArray) instances     = NULL;
 
       stroke = g_list_model_get_item (G_LIST_MODEL (self->model), i);
       g_object_get (
@@ -487,7 +487,7 @@ ensure_cache (GtkCrusaderVillageMapHandle *self)
           "kind", &item_kind,
           NULL);
 
-      if (item_kind == GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT)
+      if (item_kind == GCV_ITEM_KIND_UNIT)
         /* Ignore units for now */
         continue;
 
@@ -505,9 +505,9 @@ ensure_cache (GtkCrusaderVillageMapHandle *self)
 
       for (guint j = 0; j < instances->len; j++)
         {
-          GtkCrusaderVillageItemStrokeInstance *instance = NULL;
+          GcvItemStrokeInstance *instance = NULL;
 
-          instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
+          instance = &g_array_index (instances, GcvItemStrokeInstance, j);
           g_assert (instance->x >= 0 && instance->y >= 0);
 
           if (instance->x + item_tile_width > map_width ||

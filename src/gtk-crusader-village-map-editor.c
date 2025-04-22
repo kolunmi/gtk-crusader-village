@@ -32,7 +32,7 @@
 
 #define BASE_TILE_SIZE 16.0
 
-struct _GtkCrusaderVillageMapEditor
+struct _GcvMapEditor
 {
   GtkWidget parent_instance;
 
@@ -44,11 +44,11 @@ struct _GtkCrusaderVillageMapEditor
   gboolean   show_gradient;
   gboolean   show_cursor_glow;
 
-  GtkCrusaderVillageMap       *map;
-  GtkCrusaderVillageMapHandle *handle;
+  GcvMap       *map;
+  GcvMapHandle *handle;
 
-  GtkCrusaderVillageItemArea  *item_area;
-  GtkCrusaderVillageBrushArea *brush_area;
+  GcvItemArea  *item_area;
+  GcvBrushArea *brush_area;
 
   int      border_gap;
   gboolean line_mode;
@@ -82,8 +82,8 @@ struct _GtkCrusaderVillageMapEditor
   GtkGesture *cancel_gesture;
   GtkGesture *zoom_gesture;
 
-  GtkCrusaderVillageItemStroke *current_stroke;
-  GtkCrusaderVillageItemStroke *brush_stroke;
+  GcvItemStroke *current_stroke;
+  GcvItemStroke *brush_stroke;
 
   guint8        *brush_mask;
   int            brush_width;
@@ -95,8 +95,8 @@ struct _GtkCrusaderVillageMapEditor
 static void scrollable_iface_init (GtkScrollableInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (
-    GtkCrusaderVillageMapEditor,
-    gtk_crusader_village_map_editor,
+    GcvMapEditor,
+    gcv_map_editor,
     GTK_TYPE_WIDGET,
     G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, scrollable_iface_init))
 
@@ -127,23 +127,23 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
-                                         GtkOrientation orientation,
-                                         int            for_size,
-                                         int           *minimum,
-                                         int           *natural,
-                                         int           *minimum_baseline,
-                                         int           *natural_baseline);
+gcv_map_editor_measure (GtkWidget     *widget,
+                        GtkOrientation orientation,
+                        int            for_size,
+                        int           *minimum,
+                        int           *natural,
+                        int           *minimum_baseline,
+                        int           *natural_baseline);
 
 static void
-gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
-                                               int        widget_width,
-                                               int        widget_height,
-                                               int        baseline);
+gcv_map_editor_size_allocate (GtkWidget *widget,
+                              int        widget_width,
+                              int        widget_height,
+                              int        baseline);
 
 static void
-gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
-                                          GtkSnapshot *snapshot);
+gcv_map_editor_snapshot (GtkWidget   *widget,
+                         GtkSnapshot *snapshot);
 
 static void
 back_page_cb (GtkWidget  *widget,
@@ -181,176 +181,176 @@ jump_to_search_cb (GtkWidget  *widget,
                    GVariant   *parameter);
 
 static void
-dark_theme_changed (GtkSettings                 *settings,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor);
+dark_theme_changed (GtkSettings  *settings,
+                    GParamSpec   *pspec,
+                    GcvMapEditor *editor);
 
 static void
-show_grid_changed (GSettings                   *self,
-                   gchar                       *key,
-                   GtkCrusaderVillageMapEditor *editor);
+show_grid_changed (GSettings    *self,
+                   gchar        *key,
+                   GcvMapEditor *editor);
 
 static void
-show_gradient_changed (GSettings                   *self,
-                       gchar                       *key,
-                       GtkCrusaderVillageMapEditor *editor);
+show_gradient_changed (GSettings    *self,
+                       gchar        *key,
+                       GcvMapEditor *editor);
 
 static void
-show_cursor_glow_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor);
+show_cursor_glow_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor);
 
 static void
-background_image_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor);
+background_image_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor);
 
 static void
-adjustment_value_changed (GtkAdjustment               *adjustment,
-                          GtkCrusaderVillageMapEditor *text_view);
+adjustment_value_changed (GtkAdjustment *adjustment,
+                          GcvMapEditor  *text_view);
 
 static void
-drag_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+drag_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-drag_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor);
+drag_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor);
 
 static void
-drag_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor);
+drag_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor);
 
 static void
-drag_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor);
+drag_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor);
 
 static void
-drag_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor);
+drag_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor);
 
 static void
-draw_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+draw_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-draw_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor);
+draw_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor);
 
 static void
-draw_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor);
+draw_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor);
 
 static void
-draw_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor);
+draw_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor);
 
 static void
-draw_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor);
+draw_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor);
 
 static void
-cancel_gesture_begin_gesture (GtkGesture                  *self,
-                              GdkEventSequence            *sequence,
-                              GtkCrusaderVillageMapEditor *editor);
+cancel_gesture_begin_gesture (GtkGesture       *self,
+                              GdkEventSequence *sequence,
+                              GcvMapEditor     *editor);
 
 static void
-cancel_gesture_end_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+cancel_gesture_end_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-zoom_gesture_begin (GtkGesture                  *self,
-                    GdkEventSequence            *sequence,
-                    GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_begin (GtkGesture       *self,
+                    GdkEventSequence *sequence,
+                    GcvMapEditor     *editor);
 
 static void
-zoom_gesture_scale_changed (GtkGestureZoom              *self,
-                            double                       scale,
-                            GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_scale_changed (GtkGestureZoom *self,
+                            double          scale,
+                            GcvMapEditor   *editor);
 
 static void
-zoom_gesture_end (GtkGesture                  *self,
-                  GdkEventSequence            *sequence,
-                  GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_end (GtkGesture       *self,
+                  GdkEventSequence *sequence,
+                  GcvMapEditor     *editor);
 
 static gboolean
-scroll_event (GtkEventControllerScroll    *self,
-              double                       dx,
-              double                       dy,
-              GtkCrusaderVillageMapEditor *editor);
+scroll_event (GtkEventControllerScroll *self,
+              double                    dx,
+              double                    dy,
+              GcvMapEditor             *editor);
 
 static void
-motion_enter (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor);
+motion_enter (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor);
 
 static void
-motion_event (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor);
+motion_event (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor);
 
 static void
-motion_leave (GtkEventControllerMotion    *self,
-              GtkCrusaderVillageMapEditor *editor);
+motion_leave (GtkEventControllerMotion *self,
+              GcvMapEditor             *editor);
 
 static void
-selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageMapEditor *editor);
+selected_item_changed (GcvItemArea  *item_area,
+                       GParamSpec   *pspec,
+                       GcvMapEditor *editor);
 
 static void
-selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
-                        GParamSpec                  *pspec,
-                        GtkCrusaderVillageMapEditor *editor);
+selected_brush_changed (GcvBrushArea *brush_area,
+                        GParamSpec   *pspec,
+                        GcvMapEditor *editor);
 
 static void
-selected_brush_adjustment_value_changed (GtkAdjustment               *adjustment,
-                                         GtkCrusaderVillageMapEditor *editor);
+selected_brush_adjustment_value_changed (GtkAdjustment *adjustment,
+                                         GcvMapEditor  *editor);
 
 static void
-grid_changed (GtkCrusaderVillageMapHandle *handle,
-              GParamSpec                  *pspec,
-              GtkCrusaderVillageMapEditor *editor);
+grid_changed (GcvMapHandle *handle,
+              GParamSpec   *pspec,
+              GcvMapEditor *editor);
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                GParamSpec                  *pspec,
-                GtkCrusaderVillageMapEditor *editor);
+cursor_changed (GcvMapHandle *handle,
+                GParamSpec   *pspec,
+                GcvMapEditor *editor);
 
 static void
-update_scrollable (GtkCrusaderVillageMapEditor *self,
-                   gboolean                     center);
+update_scrollable (GcvMapEditor *self,
+                   gboolean      center);
 
 static void
-update_motion (GtkCrusaderVillageMapEditor *self,
-               double                       x,
-               double                       y);
+update_motion (GcvMapEditor *self,
+               double        x,
+               double        y);
 
 static void
-read_brush (GtkCrusaderVillageMapEditor *self,
-            gboolean                     different);
+read_brush (GcvMapEditor *self,
+            gboolean      different);
 
 static void
-read_background_image (GtkCrusaderVillageMapEditor *self);
+read_background_image (GcvMapEditor *self);
 
 static void
 background_texture_load_async_thread (GTask        *task,
@@ -364,9 +364,9 @@ background_texture_load_finish_cb (GObject      *source_object,
                                    gpointer      data);
 
 static void
-gtk_crusader_village_map_editor_dispose (GObject *object)
+gcv_map_editor_dispose (GObject *object)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   g_signal_handlers_disconnect_by_func (
       self->gtk_settings, dark_theme_changed, self);
@@ -417,16 +417,16 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
         self->brush_adjustment, selected_brush_adjustment_value_changed, self);
   g_clear_object (&self->brush_adjustment);
 
-  G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_map_editor_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_map_editor_get_property (GObject    *object,
-                                              guint       prop_id,
-                                              GValue     *value,
-                                              GParamSpec *pspec)
+gcv_map_editor_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   switch (prop_id)
     {
@@ -476,12 +476,12 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_map_editor_set_property (GObject      *object,
-                                              guint         prop_id,
-                                              const GValue *value,
-                                              GParamSpec   *pspec)
+gcv_map_editor_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   switch (prop_id)
     {
@@ -647,14 +647,14 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *klass)
+gcv_map_editor_class_init (GcvMapEditorClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_map_editor_dispose;
-  object_class->get_property = gtk_crusader_village_map_editor_get_property;
-  object_class->set_property = gtk_crusader_village_map_editor_set_property;
+  object_class->dispose      = gcv_map_editor_dispose;
+  object_class->get_property = gcv_map_editor_get_property;
+  object_class->set_property = gcv_map_editor_set_property;
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -669,7 +669,7 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "map-handle",
           "Map Handle",
           "The map handle this view is editing through",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+          GCV_TYPE_MAP_HANDLE,
           G_PARAM_READWRITE);
 
   props[PROP_ITEM_AREA] =
@@ -677,7 +677,7 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "item-area",
           "Item Area",
           "The item area to use for tracking the current brush",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA,
+          GCV_TYPE_ITEM_AREA,
           G_PARAM_READWRITE);
 
   props[PROP_BRUSH_AREA] =
@@ -685,7 +685,7 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "brush-area",
           "Brush Area",
           "The brush area to use for tracking the current brush",
-          GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA,
+          GCV_TYPE_BRUSH_AREA,
           G_PARAM_READWRITE);
 
   props[PROP_BORDER_GAP] =
@@ -735,11 +735,11 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
   g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
   g_object_class_override_property (object_class, PROP_VSCROLL_POLICY, "vscroll-policy");
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-map-editor.ui");
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-map-editor.ui");
 
-  widget_class->measure       = gtk_crusader_village_map_editor_measure;
-  widget_class->size_allocate = gtk_crusader_village_map_editor_size_allocate;
-  widget_class->snapshot      = gtk_crusader_village_map_editor_snapshot;
+  widget_class->measure       = gcv_map_editor_measure;
+  widget_class->size_allocate = gcv_map_editor_size_allocate;
+  widget_class->snapshot      = gcv_map_editor_snapshot;
 
   gtk_widget_class_install_action (widget_class, "back-page", NULL, back_page_cb);
   gtk_widget_class_install_action (widget_class, "back-one", NULL, back_one_cb);
@@ -751,7 +751,7 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
 }
 
 static void
-gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
+gcv_map_editor_init (GcvMapEditor *self)
 {
   GtkEventController *scroll_controller = NULL;
   GtkEventController *motion_controller = NULL;
@@ -824,19 +824,19 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
 }
 
 static void
-gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
-                                         GtkOrientation orientation,
-                                         int            for_size,
-                                         int           *minimum,
-                                         int           *natural,
-                                         int           *minimum_baseline,
-                                         int           *natural_baseline)
+gcv_map_editor_measure (GtkWidget     *widget,
+                        GtkOrientation orientation,
+                        int            for_size,
+                        int           *minimum,
+                        int           *natural,
+                        int           *minimum_baseline,
+                        int           *natural_baseline)
 {
-  GtkCrusaderVillageMapEditor *editor         = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  int                          map_width      = 0;
-  int                          map_height     = 0;
-  int                          dimension      = 0;
-  double                       minimum_double = 0.0;
+  GcvMapEditor *editor         = GCV_MAP_EDITOR (widget);
+  int           map_width      = 0;
+  int           map_height     = 0;
+  int           dimension      = 0;
+  double        minimum_double = 0.0;
 
   if (editor->map == NULL)
     {
@@ -859,19 +859,19 @@ gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
 }
 
 static void
-gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
-                                               int        widget_width,
-                                               int        widget_height,
-                                               int        baseline)
+gcv_map_editor_size_allocate (GtkWidget *widget,
+                              int        widget_width,
+                              int        widget_height,
+                              int        baseline)
 {
-  GtkCrusaderVillageMapEditor *editor = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *editor = GCV_MAP_EDITOR (widget);
 
   update_scrollable (editor, FALSE);
 }
 
 static void
-gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
-                                          GtkSnapshot *snapshot)
+gcv_map_editor_snapshot (GtkWidget   *widget,
+                         GtkSnapshot *snapshot)
 {
 #define BORDER_WIDTH(w)           ((float[4]) { (w), (w), (w), (w) })
 #define BORDER_COLOR_LITERAL(...) ((GdkRGBA[4]) { __VA_ARGS__, __VA_ARGS__, __VA_ARGS__, __VA_ARGS__ })
@@ -889,18 +889,18 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
     { 1.0, { 0.1, 0.1, 0.1, 0.0 } },
   };
 
-  GtkCrusaderVillageMapEditor *editor          = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  int                          widget_width    = 0;
-  int                          widget_height   = 0;
-  graphene_rect_t              viewport        = { 0 };
-  graphene_rect_t              extents         = { 0 };
-  double                       tile_size       = 0.0;
-  int                          map_tile_width  = 0;
-  int                          map_tile_height = 0;
-  g_autoptr (GListStore) strokes               = NULL;
-  double  map_width                            = 0.0;
-  double  map_height                           = 0.0;
-  GdkRGBA widget_rgba                          = { 0 };
+  GcvMapEditor   *editor          = GCV_MAP_EDITOR (widget);
+  int             widget_width    = 0;
+  int             widget_height   = 0;
+  graphene_rect_t viewport        = { 0 };
+  graphene_rect_t extents         = { 0 };
+  double          tile_size       = 0.0;
+  int             map_tile_width  = 0;
+  int             map_tile_height = 0;
+  g_autoptr (GListStore) strokes  = NULL;
+  double  map_width               = 0.0;
+  double  map_height              = 0.0;
+  GdkRGBA widget_rgba             = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -1049,16 +1049,16 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
       for (guint i = 0; i < n_strokes; i++)
         {
-          g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
-          g_autoptr (GtkCrusaderVillageItem) item         = NULL;
-          g_autoptr (GArray) instances                    = NULL;
-          int         item_tile_width                     = 0;
-          int         item_tile_height                    = 0;
-          gpointer    tile_hash                           = NULL;
-          GdkTexture *tile_texture                        = NULL;
-          gboolean    wants_layout                        = FALSE;
-          g_autoptr (PangoLayout) tile_layout             = NULL;
-          PangoRectangle tile_layout_rect                 = { 0 };
+          g_autoptr (GcvItemStroke) stroke    = NULL;
+          g_autoptr (GcvItem) item            = NULL;
+          g_autoptr (GArray) instances        = NULL;
+          int         item_tile_width         = 0;
+          int         item_tile_height        = 0;
+          gpointer    tile_hash               = NULL;
+          GdkTexture *tile_texture            = NULL;
+          gboolean    wants_layout            = FALSE;
+          g_autoptr (PangoLayout) tile_layout = NULL;
+          PangoRectangle tile_layout_rect     = { 0 };
 
           stroke = g_list_model_get_item (G_LIST_MODEL (strokes), i);
           g_object_get (
@@ -1077,7 +1077,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                           item_tile_width > 1 ||
                           item_tile_height > 1);
 
-          tile_hash = gtk_crusader_village_item_get_tile_resource_hash (item);
+          tile_hash = gcv_item_get_tile_resource_hash (item);
           if (tile_hash != NULL)
             {
               tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
@@ -1097,10 +1097,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
           for (guint j = 0; j < instances->len; j++)
             {
-              GtkCrusaderVillageItemStrokeInstance instance = { 0 };
-              graphene_rect_t                      rect     = { 0 };
+              GcvItemStrokeInstance instance = { 0 };
+              graphene_rect_t       rect     = { 0 };
 
-              instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
+              instance = g_array_index (instances, GcvItemStrokeInstance, j);
 
               rect = GRAPHENE_RECT_INIT (
                   instance.x * tile_size - 1.0,
@@ -1140,7 +1140,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                       char        buf[256]  = { 0 };
                       const char *ptr       = NULL;
 
-                      item_name = gtk_crusader_village_item_get_name (item);
+                      item_name = gcv_item_get_name (item);
 
                       if (editor->zoom >= 4.5)
                         {
@@ -1267,9 +1267,9 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       (editor->current_stroke != NULL ||
        (editor->hover_x >= 0 && editor->hover_y >= 0)))
     {
-      g_autoptr (GtkCrusaderVillageItem) current_item = NULL;
-      int item_tile_width                             = 0;
-      int item_tile_height                            = 0;
+      g_autoptr (GcvItem) current_item = NULL;
+      int item_tile_width              = 0;
+      int item_tile_height             = 0;
 
       if (editor->current_stroke != NULL)
         g_object_get (
@@ -1304,9 +1304,9 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
           for (guint i = 0; i < instances->len; i++)
             {
-              GtkCrusaderVillageItemStrokeInstance instance = { 0 };
+              GcvItemStrokeInstance instance = { 0 };
 
-              instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, i);
+              instance = g_array_index (instances, GcvItemStrokeInstance, i);
               gtk_snapshot_append_color (
                   snapshot,
                   &(GdkRGBA) { 0.2, 0.37, 0.9, 0.5 },
@@ -1406,8 +1406,8 @@ back_page_cb (GtkWidget  *widget,
               const char *action_name,
               GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1430,8 +1430,8 @@ back_one_cb (GtkWidget  *widget,
              const char *action_name,
              GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1454,8 +1454,8 @@ forward_one_cb (GtkWidget  *widget,
                 const char *action_name,
                 GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1475,8 +1475,8 @@ forward_page_cb (GtkWidget  *widget,
                  const char *action_name,
                  GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1496,7 +1496,7 @@ beginning_cb (GtkWidget  *widget,
               const char *action_name,
               GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->handle == NULL)
     return;
@@ -1512,7 +1512,7 @@ end_cb (GtkWidget  *widget,
         const char *action_name,
         GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->handle == NULL)
     return;
@@ -1528,18 +1528,18 @@ jump_to_search_cb (GtkWidget  *widget,
                    const char *action_name,
                    GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->item_area == NULL)
     return;
 
-  gtk_crusader_village_item_area_grab_search_focus (self->item_area);
+  gcv_item_area_grab_search_focus (self->item_area);
 }
 
 static void
-dark_theme_changed (GtkSettings                 *settings,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor)
+dark_theme_changed (GtkSettings  *settings,
+                    GParamSpec   *pspec,
+                    GcvMapEditor *editor)
 {
   g_object_get (
       settings,
@@ -1553,51 +1553,51 @@ dark_theme_changed (GtkSettings                 *settings,
 }
 
 static void
-show_grid_changed (GSettings                   *self,
-                   gchar                       *key,
-                   GtkCrusaderVillageMapEditor *editor)
+show_grid_changed (GSettings    *self,
+                   gchar        *key,
+                   GcvMapEditor *editor)
 {
   editor->show_grid = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-show_gradient_changed (GSettings                   *self,
-                       gchar                       *key,
-                       GtkCrusaderVillageMapEditor *editor)
+show_gradient_changed (GSettings    *self,
+                       gchar        *key,
+                       GcvMapEditor *editor)
 {
   editor->show_gradient = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-show_cursor_glow_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor)
+show_cursor_glow_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor)
 {
   editor->show_cursor_glow = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-background_image_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor)
+background_image_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor)
 {
   read_background_image (editor);
 }
 
 static void
-adjustment_value_changed (GtkAdjustment               *adjustment,
-                          GtkCrusaderVillageMapEditor *editor)
+adjustment_value_changed (GtkAdjustment *adjustment,
+                          GcvMapEditor  *editor)
 {
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-drag_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+drag_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
@@ -1606,10 +1606,10 @@ drag_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-drag_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor)
+drag_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor)
 {
   editor->drag_start_hadjustment_val = gtk_adjustment_get_value (editor->hadjustment);
   editor->drag_start_vadjustment_val = gtk_adjustment_get_value (editor->vadjustment);
@@ -1619,10 +1619,10 @@ drag_gesture_begin (GtkGestureDrag              *self,
 }
 
 static void
-drag_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor)
+drag_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor)
 {
   double start_x = 0.0;
   double start_y = 0.0;
@@ -1637,27 +1637,27 @@ drag_gesture_update (GtkGestureDrag              *gesture,
 }
 
 static void
-drag_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor)
+drag_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor)
 {
   update_motion (editor, editor->pointer_x, editor->pointer_y);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-drag_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor)
+drag_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 }
 
 static void
-draw_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+draw_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
@@ -1666,12 +1666,12 @@ draw_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-draw_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor)
+draw_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor)
 {
-  g_autoptr (GtkCrusaderVillageItem) selected_item = NULL;
+  g_autoptr (GcvItem) selected_item = NULL;
 
   g_object_get (
       editor->item_area,
@@ -1687,7 +1687,7 @@ draw_gesture_begin (GtkGestureDrag              *self,
 
   g_clear_object (&editor->current_stroke);
   editor->current_stroke = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+      GCV_TYPE_ITEM_STROKE,
       "item", selected_item,
       NULL);
   g_clear_object (&editor->brush_stroke);
@@ -1703,23 +1703,23 @@ draw_gesture_begin (GtkGestureDrag              *self,
 }
 
 static void
-draw_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor)
+draw_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor)
 {
-  g_autoptr (GHashTable) grid                           = NULL;
-  int map_tile_width                                    = 0;
-  int map_tile_height                                   = 0;
-  g_autoptr (GtkCrusaderVillageItem) item               = NULL;
-  g_autoptr (GArray) instances                          = NULL;
-  g_autoptr (GArray) brush_instances                    = NULL;
-  int                                  item_tile_width  = 0;
-  int                                  item_tile_height = 0;
-  GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
-  int                                  dx               = 0;
-  int                                  dy               = 0;
-  int                                  divisor          = 0;
+  g_autoptr (GHashTable) grid            = NULL;
+  int map_tile_width                     = 0;
+  int map_tile_height                    = 0;
+  g_autoptr (GcvItem) item               = NULL;
+  g_autoptr (GArray) instances           = NULL;
+  g_autoptr (GArray) brush_instances     = NULL;
+  int                   item_tile_width  = 0;
+  int                   item_tile_height = 0;
+  GcvItemStrokeInstance last_instance    = { 0 };
+  int                   dx               = 0;
+  int                   dy               = 0;
+  int                   divisor          = 0;
 
   if (editor->hover_x < 0 || editor->hover_y < 0)
     return;
@@ -1746,23 +1746,23 @@ draw_gesture_update (GtkGestureDrag              *gesture,
       NULL);
 
   if (instances->len == 0)
-    last_instance = (GtkCrusaderVillageItemStrokeInstance) {
+    last_instance = (GcvItemStrokeInstance) {
       .x = editor->hover_x,
       .y = editor->hover_y
     };
   else if (editor->line_mode)
     last_instance = g_array_index (
-        instances, GtkCrusaderVillageItemStrokeInstance, 0);
+        instances, GcvItemStrokeInstance, 0);
   else
     last_instance = g_array_index (
-        instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1);
+        instances, GcvItemStrokeInstance, instances->len - 1);
 
   if (editor->brush_stroke == NULL &&
       item_tile_height == 1 &&
       item_tile_width == 1 &&
       editor->brush_mask != NULL)
     editor->brush_stroke = g_object_new (
-        GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+        GCV_TYPE_ITEM_STROKE,
         "item", item,
         NULL);
 
@@ -1819,9 +1819,9 @@ draw_gesture_update (GtkGestureDrag              *gesture,
 
       if (add)
         {
-          gtk_crusader_village_item_stroke_add_instance (
+          gcv_item_stroke_add_instance (
               editor->current_stroke,
-              (GtkCrusaderVillageItemStrokeInstance) {
+              (GcvItemStrokeInstance) {
                   .x = cx,
                   .y = cy,
               });
@@ -1850,9 +1850,9 @@ draw_gesture_update (GtkGestureDrag              *gesture,
 
                           tile_idx = (by + y) * map_tile_width + (bx + x);
                           if (!g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
-                            gtk_crusader_village_item_stroke_add_instance (
+                            gcv_item_stroke_add_instance (
                                 editor->brush_stroke,
-                                (GtkCrusaderVillageItemStrokeInstance) {
+                                (GcvItemStrokeInstance) {
                                     .x = bx + x,
                                     .y = by + y,
                                 });
@@ -1865,13 +1865,13 @@ draw_gesture_update (GtkGestureDrag              *gesture,
 }
 
 static void
-draw_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor)
+draw_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor)
 {
-  g_autoptr (GtkCrusaderVillageItem) item = NULL;
-  g_autoptr (GArray) instances            = NULL;
+  g_autoptr (GcvItem) item     = NULL;
+  g_autoptr (GArray) instances = NULL;
 
   if (editor->current_stroke == NULL)
     return;
@@ -1929,9 +1929,9 @@ draw_gesture_end (GtkGestureDrag              *gesture,
 }
 
 static void
-draw_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor)
+draw_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor)
 {
   g_object_set (
       editor->handle,
@@ -1945,9 +1945,9 @@ draw_gesture_end_gesture (GtkGesture                  *self,
 }
 
 static void
-cancel_gesture_begin_gesture (GtkGesture                  *self,
-                              GdkEventSequence            *sequence,
-                              GtkCrusaderVillageMapEditor *editor)
+cancel_gesture_begin_gesture (GtkGesture       *self,
+                              GdkEventSequence *sequence,
+                              GcvMapEditor     *editor)
 {
   g_clear_object (&editor->current_stroke);
 
@@ -1959,18 +1959,18 @@ cancel_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-cancel_gesture_end_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+cancel_gesture_end_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-zoom_gesture_begin (GtkGesture                  *self,
-                    GdkEventSequence            *sequence,
-                    GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_begin (GtkGesture       *self,
+                    GdkEventSequence *sequence,
+                    GcvMapEditor     *editor)
 {
   gtk_gesture_set_state (editor->draw_gesture, GTK_EVENT_SEQUENCE_DENIED);
 
@@ -1981,9 +1981,9 @@ zoom_gesture_begin (GtkGesture                  *self,
 }
 
 static void
-zoom_gesture_scale_changed (GtkGestureZoom              *self,
-                            double                       scale,
-                            GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_scale_changed (GtkGestureZoom *self,
+                            double          scale,
+                            GcvMapEditor   *editor)
 {
   double scale_delta = 0.0;
 
@@ -1995,18 +1995,18 @@ zoom_gesture_scale_changed (GtkGestureZoom              *self,
 }
 
 static void
-zoom_gesture_end (GtkGesture                  *self,
-                  GdkEventSequence            *sequence,
-                  GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_end (GtkGesture       *self,
+                  GdkEventSequence *sequence,
+                  GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 }
 
 static gboolean
-scroll_event (GtkEventControllerScroll    *self,
-              double                       dx,
-              double                       dy,
-              GtkCrusaderVillageMapEditor *editor)
+scroll_event (GtkEventControllerScroll *self,
+              double                    dx,
+              double                    dy,
+              GcvMapEditor             *editor)
 {
   if (gtk_gesture_is_recognized (editor->drag_gesture) ||
       gtk_gesture_is_recognized (editor->draw_gesture) ||
@@ -2030,27 +2030,27 @@ scroll_event (GtkEventControllerScroll    *self,
 }
 
 static void
-motion_enter (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor)
+motion_enter (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
   update_motion (editor, x, y);
 }
 
 static void
-motion_event (GtkEventControllerMotion    *self,
-              double                       x,
-              double                       y,
-              GtkCrusaderVillageMapEditor *editor)
+motion_event (GtkEventControllerMotion *self,
+              double                    x,
+              double                    y,
+              GcvMapEditor             *editor)
 {
   update_motion (editor, x, y);
 }
 
 static void
-motion_leave (GtkEventControllerMotion    *self,
-              GtkCrusaderVillageMapEditor *editor)
+motion_leave (GtkEventControllerMotion *self,
+              GcvMapEditor             *editor)
 {
   gboolean redraw = FALSE;
 
@@ -2086,35 +2086,35 @@ motion_leave (GtkEventControllerMotion    *self,
 }
 
 static void
-selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageMapEditor *editor)
+selected_item_changed (GcvItemArea  *item_area,
+                       GParamSpec   *pspec,
+                       GcvMapEditor *editor)
 {
   if (editor->hover_x >= 0 && editor->hover_y >= 0)
     gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-selected_brush_changed (GtkCrusaderVillageBrushArea *brush_area,
-                        GParamSpec                  *pspec,
-                        GtkCrusaderVillageMapEditor *editor)
+selected_brush_changed (GcvBrushArea *brush_area,
+                        GParamSpec   *pspec,
+                        GcvMapEditor *editor)
 {
   read_brush (editor, TRUE);
 }
 
 static void
-selected_brush_adjustment_value_changed (GtkAdjustment               *adjustment,
-                                         GtkCrusaderVillageMapEditor *editor)
+selected_brush_adjustment_value_changed (GtkAdjustment *adjustment,
+                                         GcvMapEditor  *editor)
 {
   read_brush (editor, FALSE);
 }
 
 static void
-grid_changed (GtkCrusaderVillageMapHandle *handle,
-              GParamSpec                  *pspec,
-              GtkCrusaderVillageMapEditor *editor)
+grid_changed (GcvMapHandle *handle,
+              GParamSpec   *pspec,
+              GcvMapEditor *editor)
 {
-  g_autoptr (GtkCrusaderVillageMap) map = NULL;
+  g_autoptr (GcvMap) map = NULL;
 
   g_object_get (
       handle,
@@ -2131,17 +2131,17 @@ grid_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                GParamSpec                  *pspec,
-                GtkCrusaderVillageMapEditor *editor)
+cursor_changed (GcvMapHandle *handle,
+                GParamSpec   *pspec,
+                GcvMapEditor *editor)
 {
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-update_scrollable (GtkCrusaderVillageMapEditor *self,
-                   gboolean                     center)
+update_scrollable (GcvMapEditor *self,
+                   gboolean      center)
 {
   if (self->hadjustment == NULL || self->vadjustment == NULL)
     return;
@@ -2263,9 +2263,9 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
 }
 
 static void
-update_motion (GtkCrusaderVillageMapEditor *self,
-               double                       x,
-               double                       y)
+update_motion (GcvMapEditor *self,
+               double        x,
+               double        y)
 {
   double   hscroll         = 0.0;
   double   vscroll         = 0.0;
@@ -2323,17 +2323,17 @@ update_motion (GtkCrusaderVillageMapEditor *self,
 }
 
 static void
-read_brush (GtkCrusaderVillageMapEditor *self,
-            gboolean                     different)
+read_brush (GcvMapEditor *self,
+            gboolean      different)
 {
-  g_autoptr (GtkCrusaderVillageBrushable) brush = NULL;
-  int                mask_width                 = 0;
-  int                mask_height                = 0;
-  g_autofree guint8 *mask                       = NULL;
-  g_autoptr (GtkSnapshot) snapshot              = NULL;
-  g_autoptr (GskPathBuilder) builder            = NULL;
-  g_autoptr (GskPath) path                      = NULL;
-  g_autoptr (GskStroke) stroke                  = NULL;
+  g_autoptr (GcvBrushable) brush     = NULL;
+  int                mask_width      = 0;
+  int                mask_height     = 0;
+  g_autofree guint8 *mask            = NULL;
+  g_autoptr (GtkSnapshot) snapshot   = NULL;
+  g_autoptr (GskPathBuilder) builder = NULL;
+  g_autoptr (GskPath) path           = NULL;
+  g_autoptr (GskStroke) stroke       = NULL;
 
   g_clear_pointer (&self->brush_mask, g_free);
   g_clear_pointer (&self->brush_node, gsk_render_node_unref);
@@ -2359,7 +2359,7 @@ read_brush (GtkCrusaderVillageMapEditor *self,
   if (brush == NULL)
     return;
 
-  mask = gtk_crusader_village_brushable_get_mask (brush, &mask_width, &mask_height);
+  mask = gcv_brushable_get_mask (brush, &mask_width, &mask_height);
   g_assert (mask != NULL);
 
   snapshot = gtk_snapshot_new ();
@@ -2424,7 +2424,7 @@ read_brush (GtkCrusaderVillageMapEditor *self,
 
   if (different)
     {
-      self->brush_adjustment = gtk_crusader_village_brushable_get_adjustment (brush);
+      self->brush_adjustment = gcv_brushable_get_adjustment (brush);
       if (self->brush_adjustment != NULL)
         g_signal_connect (self->brush_adjustment, "value-changed",
                           G_CALLBACK (selected_brush_adjustment_value_changed), self);
@@ -2432,7 +2432,7 @@ read_brush (GtkCrusaderVillageMapEditor *self,
 }
 
 static void
-read_background_image (GtkCrusaderVillageMapEditor *self)
+read_background_image (GcvMapEditor *self)
 {
   g_autofree char *path = NULL;
 
@@ -2481,9 +2481,9 @@ background_texture_load_finish_cb (GObject      *source_object,
                                    GAsyncResult *res,
                                    gpointer      data)
 {
-  GtkCrusaderVillageMapEditor *editor = GTK_CRUSADER_VILLAGE_MAP_EDITOR (source_object);
-  g_autoptr (GError) local_error      = NULL;
-  GdkTexture *texture                 = NULL;
+  GcvMapEditor *editor           = GCV_MAP_EDITOR (source_object);
+  g_autoptr (GError) local_error = NULL;
+  GdkTexture *texture            = NULL;
 
   texture = g_task_propagate_pointer (G_TASK (res), &local_error);
 
@@ -2499,7 +2499,7 @@ background_texture_load_finish_cb (GObject      *source_object,
       application = gtk_window_get_application (GTK_WINDOW (app_window));
       window      = gtk_application_get_active_window (application);
 
-      gtk_crusader_village_dialog (
+      gcv_dialog (
           "Error",
           "Could not load background image ",
           local_error->message,

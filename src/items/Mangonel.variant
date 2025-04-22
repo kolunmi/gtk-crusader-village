@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Mangonel">,
     "description": <"[English Manual] \"Mangonels throw out a spray of rocks and are devastating against infantry, but are quite inaccurate.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Mangonel.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Mangonel.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

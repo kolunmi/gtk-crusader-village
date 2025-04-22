@@ -24,11 +24,11 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_WINDOW (gtk_crusader_village_window_get_type ())
+#define GCV_TYPE_WINDOW (gcv_window_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageWindow, gtk_crusader_village_window, GTK_CRUSADER_VILLAGE, WINDOW, GtkApplicationWindow)
+G_DECLARE_FINAL_TYPE (GcvWindow, gcv_window, GCV, WINDOW, GtkApplicationWindow)
 
 void
-gtk_crusader_village_window_add_subwindow_viewport (GtkCrusaderVillageWindow *self);
+gcv_window_add_subwindow_viewport (GcvWindow *self);
 
 G_END_DECLS

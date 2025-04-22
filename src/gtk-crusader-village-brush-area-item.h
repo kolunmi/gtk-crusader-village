@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_BRUSH_AREA_ITEM (gtk_crusader_village_brush_area_item_get_type ())
+#define GCV_TYPE_BRUSH_AREA_ITEM (gcv_brush_area_item_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageBrushAreaItem, gtk_crusader_village_brush_area_item, GTK_CRUSADER_VILLAGE, BRUSH_AREA_ITEM, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvBrushAreaItem, gcv_brush_area_item, GCV, BRUSH_AREA_ITEM, GcvUtilBin)
 
 G_END_DECLS

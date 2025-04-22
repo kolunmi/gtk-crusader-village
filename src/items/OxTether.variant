@@ -2,9 +2,9 @@
     "id": <55>,
     "name": <"Ox Tether">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/OxTether.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/hammer.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/OxTether.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/hammer.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <2>,
     "tile-height": <2>

@@ -2,9 +2,9 @@
     "id": <35>,
     "name": <"Low Crenulated Wall">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/CrenulatedWall.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/cwall.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/CrenulatedWall.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/cwall.png">,
     "kind": <"wall">,
     "tile-width": <1>,
     "tile-height": <1>

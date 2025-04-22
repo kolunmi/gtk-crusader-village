@@ -24,14 +24,14 @@
 #include "gtk-crusader-village-item.h"
 #include "gtk-crusader-village-timeline-view-item.h"
 
-struct _GtkCrusaderVillageTimelineViewItem
+struct _GcvTimelineViewItem
 {
-  GtkCrusaderVillageUtilBin parent_instance;
+  GcvUtilBin parent_instance;
 
-  GtkCrusaderVillageItemStroke *stroke;
-  gboolean                      inactive;
-  gboolean                      insert_mode;
-  gboolean                      drawing;
+  GcvItemStroke *stroke;
+  gboolean       inactive;
+  gboolean       insert_mode;
+  gboolean       drawing;
 
   /* Template widgets */
   GtkImage *overwrite_indicator;
@@ -43,7 +43,7 @@ struct _GtkCrusaderVillageTimelineViewItem
   GtkLabel *right;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageTimelineViewItem, gtk_crusader_village_timeline_view_item, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
+G_DEFINE_FINAL_TYPE (GcvTimelineViewItem, gcv_timeline_view_item, GCV_TYPE_UTIL_BIN)
 
 enum
 {
@@ -61,25 +61,25 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-update_indicators (GtkCrusaderVillageTimelineViewItem *self);
+update_indicators (GcvTimelineViewItem *self);
 
 static void
-gtk_crusader_village_timeline_view_item_dispose (GObject *object)
+gcv_timeline_view_item_dispose (GObject *object)
 {
-  GtkCrusaderVillageTimelineViewItem *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW_ITEM (object);
+  GcvTimelineViewItem *self = GCV_TIMELINE_VIEW_ITEM (object);
 
   g_clear_object (&self->stroke);
 
-  G_OBJECT_CLASS (gtk_crusader_village_timeline_view_item_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_timeline_view_item_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_timeline_view_item_get_property (GObject    *object,
-                                                      guint       prop_id,
-                                                      GValue     *value,
-                                                      GParamSpec *pspec)
+gcv_timeline_view_item_get_property (GObject    *object,
+                                     guint       prop_id,
+                                     GValue     *value,
+                                     GParamSpec *pspec)
 {
-  GtkCrusaderVillageTimelineViewItem *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW_ITEM (object);
+  GcvTimelineViewItem *self = GCV_TIMELINE_VIEW_ITEM (object);
 
   switch (prop_id)
     {
@@ -101,12 +101,12 @@ gtk_crusader_village_timeline_view_item_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_timeline_view_item_set_property (GObject      *object,
-                                                      guint         prop_id,
-                                                      const GValue *value,
-                                                      GParamSpec   *pspec)
+gcv_timeline_view_item_set_property (GObject      *object,
+                                     guint         prop_id,
+                                     const GValue *value,
+                                     GParamSpec   *pspec)
 {
-  GtkCrusaderVillageTimelineViewItem *self = GTK_CRUSADER_VILLAGE_TIMELINE_VIEW_ITEM (object);
+  GcvTimelineViewItem *self = GCV_TIMELINE_VIEW_ITEM (object);
 
   switch (prop_id)
     {
@@ -117,8 +117,8 @@ gtk_crusader_village_timeline_view_item_set_property (GObject      *object,
 
         if (self->stroke != NULL)
           {
-            g_autoptr (GtkCrusaderVillageItem) item = NULL;
-            g_autoptr (GArray) instances            = NULL;
+            g_autoptr (GcvItem) item     = NULL;
+            g_autoptr (GArray) instances = NULL;
 
             g_object_get (
                 self->stroke,
@@ -178,21 +178,21 @@ gtk_crusader_village_timeline_view_item_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_timeline_view_item_class_init (GtkCrusaderVillageTimelineViewItemClass *klass)
+gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_timeline_view_item_dispose;
-  object_class->get_property = gtk_crusader_village_timeline_view_item_get_property;
-  object_class->set_property = gtk_crusader_village_timeline_view_item_set_property;
+  object_class->dispose      = gcv_timeline_view_item_dispose;
+  object_class->get_property = gcv_timeline_view_item_get_property;
+  object_class->set_property = gcv_timeline_view_item_set_property;
 
   props[PROP_STROKE] =
       g_param_spec_object (
           "stroke",
           "Stroke",
           "The stroke this widget represents",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+          GCV_TYPE_ITEM_STROKE,
           G_PARAM_READWRITE);
 
   props[PROP_INACTIVE] =
@@ -221,18 +221,18 @@ gtk_crusader_village_timeline_view_item_class_init (GtkCrusaderVillageTimelineVi
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-timeline-view-item.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, overwrite_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, overwriting_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, insert_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, inserting_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, left);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, center);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageTimelineViewItem, right);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-timeline-view-item.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwrite_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwriting_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, insert_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, inserting_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, left);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, center);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, right);
 }
 
 static void
-gtk_crusader_village_timeline_view_item_init (GtkCrusaderVillageTimelineViewItem *self)
+gcv_timeline_view_item_init (GcvTimelineViewItem *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -242,7 +242,7 @@ gtk_crusader_village_timeline_view_item_init (GtkCrusaderVillageTimelineViewItem
 }
 
 static void
-update_indicators (GtkCrusaderVillageTimelineViewItem *self)
+update_indicators (GcvTimelineViewItem *self)
 {
   gtk_widget_set_visible (GTK_WIDGET (self->overwrite_indicator), self->inactive && !self->insert_mode);
   gtk_widget_set_visible (GTK_WIDGET (self->overwriting_indicator), self->inactive && self->drawing && !self->insert_mode);

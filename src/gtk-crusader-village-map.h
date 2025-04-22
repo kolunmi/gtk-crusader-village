@@ -26,43 +26,43 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_MAP_ERROR (gtk_crusader_village_map_error_quark ())
-GQuark gtk_crusader_village_map_error_quark (void);
+#define GCV_MAP_ERROR (gcv_map_error_quark ())
+GQuark gcv_map_error_quark (void);
 
 typedef enum
 {
-  GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED = 0,
-  GTK_CRUSADER_VILLAGE_MAP_ERROR_INVALID_JSON_STRUCTURE,
-} GtkCrusaderVillageMapError;
+  GCV_MAP_ERROR_SOURCEHOLD_FAILED = 0,
+  GCV_MAP_ERROR_INVALID_JSON_STRUCTURE,
+} GcvMapError;
 
-#define GTK_CRUSADER_VILLAGE_TYPE_MAP (gtk_crusader_village_map_get_type ())
+#define GCV_TYPE_MAP (gcv_map_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMap, gtk_crusader_village_map, GTK_CRUSADER_VILLAGE, MAP, GObject)
-
-void
-gtk_crusader_village_map_new_from_aiv_file_async (GFile                       *file,
-                                                  GtkCrusaderVillageItemStore *store,
-                                                  const char                  *python_exe,
-                                                  int                          io_priority,
-                                                  GCancellable                *cancellable,
-                                                  GAsyncReadyCallback          callback,
-                                                  gpointer                     user_data);
-
-GtkCrusaderVillageMap *
-gtk_crusader_village_map_new_from_aiv_file_finish (GAsyncResult *result,
-                                                   GError      **error);
+G_DECLARE_FINAL_TYPE (GcvMap, gcv_map, GCV, MAP, GObject)
 
 void
-gtk_crusader_village_map_save_to_aiv_file_async (GtkCrusaderVillageMap *self,
-                                                 GFile                 *file,
-                                                 const char            *python_exe,
-                                                 int                    io_priority,
-                                                 GCancellable          *cancellable,
-                                                 GAsyncReadyCallback    callback,
-                                                 gpointer               user_data);
+gcv_map_new_from_aiv_file_async (GFile              *file,
+                                 GcvItemStore       *store,
+                                 const char         *python_exe,
+                                 int                 io_priority,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data);
+
+GcvMap *
+gcv_map_new_from_aiv_file_finish (GAsyncResult *result,
+                                  GError      **error);
+
+void
+gcv_map_save_to_aiv_file_async (GcvMap             *self,
+                                GFile              *file,
+                                const char         *python_exe,
+                                int                 io_priority,
+                                GCancellable       *cancellable,
+                                GAsyncReadyCallback callback,
+                                gpointer            user_data);
 
 gboolean
-gtk_crusader_village_map_save_to_aiv_file_finish (GAsyncResult *result,
-                                                  GError      **error);
+gcv_map_save_to_aiv_file_finish (GAsyncResult *result,
+                                 GError      **error);
 
 G_END_DECLS

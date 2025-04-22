@@ -25,12 +25,12 @@
 #include "gtk-crusader-village-item-store.h"
 #include "gtk-crusader-village-item.h"
 
-struct _GtkCrusaderVillageItemArea
+struct _GcvItemArea
 {
-  GtkCrusaderVillageUtilBin parent_instance;
+  GcvUtilBin parent_instance;
 
-  GSettings                   *settings;
-  GtkCrusaderVillageItemStore *item_store;
+  GSettings    *settings;
+  GcvItemStore *item_store;
 
   GVariant *frequencies;
 
@@ -49,7 +49,7 @@ struct _GtkCrusaderVillageItemArea
   GtkToggleButton *arab;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItemArea, gtk_crusader_village_item_area, GTK_CRUSADER_VILLAGE_TYPE_UTIL_BIN)
+G_DEFINE_FINAL_TYPE (GcvItemArea, gcv_item_area, GCV_TYPE_UTIL_BIN)
 
 enum
 {
@@ -65,56 +65,56 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-item_frequencies_changed (GSettings                  *self,
-                          gchar                      *key,
-                          GtkCrusaderVillageItemArea *item_area);
+item_frequencies_changed (GSettings   *self,
+                          gchar       *key,
+                          GcvItemArea *item_area);
 
 static void
-setup_listitem (GtkListItemFactory         *factory,
-                GtkListItem                *list_item,
-                GtkCrusaderVillageItemArea *item_area);
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvItemArea        *item_area);
 
 static void
-bind_listitem (GtkListItemFactory         *factory,
-               GtkListItem                *list_item,
-               GtkCrusaderVillageItemArea *item_area);
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvItemArea        *item_area);
 
 static void
-search_changed (GtkEditable                *self,
-                GtkCrusaderVillageItemArea *item_area);
+search_changed (GtkEditable *self,
+                GcvItemArea *item_area);
 
 static gint
-cmp_item (GtkCrusaderVillageItem     *a,
-          GtkCrusaderVillageItem     *b,
-          GtkCrusaderVillageItemArea *item_area);
+cmp_item (GcvItem     *a,
+          GcvItem     *b,
+          GcvItemArea *item_area);
 
 static int
-match (GtkCrusaderVillageItem     *item,
-       GtkCrusaderVillageItemArea *item_area);
+match (GcvItem     *item,
+       GcvItemArea *item_area);
 
 static void
-active_group_changed (GtkToggleButton            *toggle_button,
-                      GParamSpec                 *pspec,
-                      GtkCrusaderVillageItemArea *item_area);
+active_group_changed (GtkToggleButton *toggle_button,
+                      GParamSpec      *pspec,
+                      GcvItemArea     *item_area);
 
 static void
-selected_item_changed (GtkSingleSelection         *selection,
-                       GParamSpec                 *pspec,
-                       GtkCrusaderVillageItemArea *item_area);
+selected_item_changed (GtkSingleSelection *selection,
+                       GParamSpec         *pspec,
+                       GcvItemArea        *item_area);
 
 static void
-read_frequencies (GtkCrusaderVillageItemArea *self);
+read_frequencies (GcvItemArea *self);
 
 static void
-update_sorter (GtkCrusaderVillageItemArea *self);
+update_sorter (GcvItemArea *self);
 
 static void
-update_filter (GtkCrusaderVillageItemArea *self);
+update_filter (GcvItemArea *self);
 
 static void
-gtk_crusader_village_item_area_dispose (GObject *object)
+gcv_item_area_dispose (GObject *object)
 {
-  GtkCrusaderVillageItemArea *self = GTK_CRUSADER_VILLAGE_ITEM_AREA (object);
+  GcvItemArea *self = GCV_ITEM_AREA (object);
 
   if (self->settings != NULL)
     g_signal_handlers_disconnect_by_func (
@@ -124,16 +124,16 @@ gtk_crusader_village_item_area_dispose (GObject *object)
 
   g_clear_pointer (&self->frequencies, g_variant_unref);
 
-  G_OBJECT_CLASS (gtk_crusader_village_item_area_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_item_area_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_item_area_get_property (GObject    *object,
-                                             guint       prop_id,
-                                             GValue     *value,
-                                             GParamSpec *pspec)
+gcv_item_area_get_property (GObject    *object,
+                            guint       prop_id,
+                            GValue     *value,
+                            GParamSpec *pspec)
 {
-  GtkCrusaderVillageItemArea *self = GTK_CRUSADER_VILLAGE_ITEM_AREA (object);
+  GcvItemArea *self = GCV_ITEM_AREA (object);
 
   switch (prop_id)
     {
@@ -145,11 +145,11 @@ gtk_crusader_village_item_area_get_property (GObject    *object,
       break;
     case PROP_SELECTED_ITEM:
       {
-        GtkSingleSelection     *single_selection_model = NULL;
-        GtkCrusaderVillageItem *item                   = NULL;
+        GtkSingleSelection *single_selection_model = NULL;
+        GcvItem            *item                   = NULL;
 
         single_selection_model = GTK_SINGLE_SELECTION (gtk_list_view_get_model (self->list_view));
-        item                   = GTK_CRUSADER_VILLAGE_ITEM (gtk_single_selection_get_selected_item (single_selection_model));
+        item                   = GCV_ITEM (gtk_single_selection_get_selected_item (single_selection_model));
 
         g_value_set_object (value, item);
       }
@@ -160,12 +160,12 @@ gtk_crusader_village_item_area_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_item_area_set_property (GObject      *object,
-                                             guint         prop_id,
-                                             const GValue *value,
-                                             GParamSpec   *pspec)
+gcv_item_area_set_property (GObject      *object,
+                            guint         prop_id,
+                            const GValue *value,
+                            GParamSpec   *pspec)
 {
-  GtkCrusaderVillageItemArea *self = GTK_CRUSADER_VILLAGE_ITEM_AREA (object);
+  GcvItemArea *self = GCV_ITEM_AREA (object);
 
   switch (prop_id)
     {
@@ -205,14 +205,14 @@ gtk_crusader_village_item_area_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klass)
+gcv_item_area_class_init (GcvItemAreaClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_item_area_dispose;
-  object_class->get_property = gtk_crusader_village_item_area_get_property;
-  object_class->set_property = gtk_crusader_village_item_area_set_property;
+  object_class->dispose      = gcv_item_area_dispose;
+  object_class->get_property = gcv_item_area_get_property;
+  object_class->set_property = gcv_item_area_set_property;
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -227,7 +227,7 @@ gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klas
           "item-store",
           "Item Store",
           "The item store this widget should reflect",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE,
+          GCV_TYPE_ITEM_STORE,
           G_PARAM_READWRITE);
 
   props[PROP_SELECTED_ITEM] =
@@ -235,28 +235,28 @@ gtk_crusader_village_item_area_class_init (GtkCrusaderVillageItemAreaClass *klas
           "selected-item",
           "Selected Item",
           "The currently selected item in the list",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM,
+          GCV_TYPE_ITEM,
           G_PARAM_READABLE);
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-item-area.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, entry);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, list_view);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-item-area.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, entry);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, list_view);
 
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, all);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, castle);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, industry);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, farm);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, town);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, weapons);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, food);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, euro);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillageItemArea, arab);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, all);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, castle);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, industry);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, farm);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, town);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, weapons);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, food);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, euro);
+  gtk_widget_class_bind_template_child (widget_class, GcvItemArea, arab);
 }
 
 static void
-gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
+gcv_item_area_init (GcvItemArea *self)
 {
   GtkCustomFilter    *custom_filter   = NULL;
   GtkFilterListModel *filter_model    = NULL;
@@ -309,34 +309,34 @@ gtk_crusader_village_item_area_init (GtkCrusaderVillageItemArea *self)
 }
 
 static void
-item_frequencies_changed (GSettings                  *self,
-                          gchar                      *key,
-                          GtkCrusaderVillageItemArea *item_area)
+item_frequencies_changed (GSettings   *self,
+                          gchar       *key,
+                          GcvItemArea *item_area)
 {
   read_frequencies (item_area);
 }
 
 static void
-setup_listitem (GtkListItemFactory         *factory,
-                GtkListItem                *list_item,
-                GtkCrusaderVillageItemArea *item_area)
+setup_listitem (GtkListItemFactory *factory,
+                GtkListItem        *list_item,
+                GcvItemArea        *item_area)
 {
-  GtkCrusaderVillageItemAreaItem *area_item = NULL;
+  GcvItemAreaItem *area_item = NULL;
 
-  area_item = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA_ITEM, NULL);
+  area_item = g_object_new (GCV_TYPE_ITEM_AREA_ITEM, NULL);
   gtk_list_item_set_child (list_item, GTK_WIDGET (area_item));
 }
 
 static void
-bind_listitem (GtkListItemFactory         *factory,
-               GtkListItem                *list_item,
-               GtkCrusaderVillageItemArea *item_area)
+bind_listitem (GtkListItemFactory *factory,
+               GtkListItem        *list_item,
+               GcvItemArea        *item_area)
 {
-  GtkCrusaderVillageItem         *item      = NULL;
-  GtkCrusaderVillageItemAreaItem *area_item = NULL;
+  GcvItem         *item      = NULL;
+  GcvItemAreaItem *area_item = NULL;
 
-  item      = GTK_CRUSADER_VILLAGE_ITEM (gtk_list_item_get_item (list_item));
-  area_item = GTK_CRUSADER_VILLAGE_ITEM_AREA_ITEM (gtk_list_item_get_child (list_item));
+  item      = GCV_ITEM (gtk_list_item_get_item (list_item));
+  area_item = GCV_ITEM_AREA_ITEM (gtk_list_item_get_child (list_item));
 
   g_object_set (
       area_item,
@@ -345,16 +345,16 @@ bind_listitem (GtkListItemFactory         *factory,
 }
 
 static void
-search_changed (GtkEditable                *editable,
-                GtkCrusaderVillageItemArea *item_area)
+search_changed (GtkEditable *editable,
+                GcvItemArea *item_area)
 {
   update_filter (item_area);
 }
 
 static gint
-cmp_item (GtkCrusaderVillageItem     *a,
-          GtkCrusaderVillageItem     *b,
-          GtkCrusaderVillageItemArea *item_area)
+cmp_item (GcvItem     *a,
+          GcvItem     *b,
+          GcvItemArea *item_area)
 {
   const char *a_name = NULL;
   const char *b_name = NULL;
@@ -366,8 +366,8 @@ cmp_item (GtkCrusaderVillageItem     *a,
   if (item_area->frequencies == NULL)
     return 0;
 
-  a_name = gtk_crusader_village_item_get_name (a);
-  b_name = gtk_crusader_village_item_get_name (b);
+  a_name = gcv_item_get_name (a);
+  b_name = gcv_item_get_name (b);
 
   a_res = g_variant_lookup (item_area->frequencies, a_name, "u", &a_cnt);
   b_res = g_variant_lookup (item_area->frequencies, b_name, "u", &b_cnt);
@@ -387,8 +387,8 @@ cmp_item (GtkCrusaderVillageItem     *a,
 }
 
 static int
-match (GtkCrusaderVillageItem     *item,
-       GtkCrusaderVillageItemArea *item_area)
+match (GcvItem     *item,
+       GcvItemArea *item_area)
 {
   const char      *search_text           = NULL;
   g_autofree char *name                  = NULL;
@@ -427,24 +427,24 @@ match (GtkCrusaderVillageItem     *item,
 }
 
 static void
-selected_item_changed (GtkSingleSelection         *selection,
-                       GParamSpec                 *pspec,
-                       GtkCrusaderVillageItemArea *item_area)
+selected_item_changed (GtkSingleSelection *selection,
+                       GParamSpec         *pspec,
+                       GcvItemArea        *item_area)
 {
   g_object_notify_by_pspec (G_OBJECT (item_area), props[PROP_SELECTED_ITEM]);
 }
 
 static void
-active_group_changed (GtkToggleButton            *toggle_button,
-                      GParamSpec                 *pspec,
-                      GtkCrusaderVillageItemArea *item_area)
+active_group_changed (GtkToggleButton *toggle_button,
+                      GParamSpec      *pspec,
+                      GcvItemArea     *item_area)
 {
   if (gtk_toggle_button_get_active (toggle_button))
     update_filter (item_area);
 }
 
 static void
-read_frequencies (GtkCrusaderVillageItemArea *self)
+read_frequencies (GcvItemArea *self)
 {
   g_clear_pointer (&self->frequencies, g_variant_unref);
   self->frequencies = g_settings_get_value (self->settings, "item-frequencies");
@@ -452,7 +452,7 @@ read_frequencies (GtkCrusaderVillageItemArea *self)
 }
 
 static void
-update_sorter (GtkCrusaderVillageItemArea *self)
+update_sorter (GcvItemArea *self)
 {
   GtkSingleSelection *selection_model = NULL;
   GtkSortListModel   *sort_list_model = NULL;
@@ -466,7 +466,7 @@ update_sorter (GtkCrusaderVillageItemArea *self)
 }
 
 static void
-update_filter (GtkCrusaderVillageItemArea *self)
+update_filter (GcvItemArea *self)
 {
   GtkSingleSelection *selection_model   = NULL;
   GtkSortListModel   *sort_list_model   = NULL;
@@ -482,9 +482,9 @@ update_filter (GtkCrusaderVillageItemArea *self)
 }
 
 void
-gtk_crusader_village_item_area_grab_search_focus (GtkCrusaderVillageItemArea *self)
+gcv_item_area_grab_search_focus (GcvItemArea *self)
 {
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_AREA (self));
+  g_return_if_fail (GCV_IS_ITEM_AREA (self));
 
   gtk_widget_grab_focus (GTK_WIDGET (self->entry));
 }

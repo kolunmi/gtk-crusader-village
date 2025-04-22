@@ -2,9 +2,9 @@
     "id": <93>,
     "name": <"Apothecary">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Apothecary.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/shop.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Apothecary.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/shop.png">,
     "kind": <"building">,
     "tile-width": <6>,
     "tile-height": <6>
