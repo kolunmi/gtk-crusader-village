@@ -65,6 +65,7 @@
     <file>items/DunkingStool.variant</file>
     <file>items/EngineersGuild.variant</file>
     <file>items/Engineer.variant</file>
+    <file>items/EngineerWithOil.variant</file>
     <file>items/EuroArcher.variant</file>
     <file>items/EuroCrossbowman.variant</file>
     <file>items/EuroKnight.variant</file>

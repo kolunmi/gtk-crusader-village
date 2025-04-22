@@ -324,6 +324,7 @@ new_from_aiv_file_async_thread (GTask        *task,
   JsonNode *root                              = NULL;
   g_autoptr (GVariant) variant                = NULL;
   g_autoptr (GVariantIter) frames_iter        = NULL;
+  g_autoptr (GVariantIter) misc_iter          = NULL;
   gint64 pause_delay_amount                   = 0;
 
   if (g_task_return_error_if_cancelled (task))
@@ -371,6 +372,8 @@ new_from_aiv_file_async_thread (GTask        *task,
   if (!g_variant_lookup (variant, "pauseDelayAmount", "x", &pause_delay_amount))
     goto err_inval;
   if (!g_variant_lookup (variant, "frames", "av", &frames_iter))
+    goto err_inval;
+  if (!g_variant_lookup (variant, "miscItems", "av", &misc_iter))
     goto err_inval;
 
   for (;;)
@@ -428,6 +431,42 @@ new_from_aiv_file_async_thread (GTask        *task,
                   tile / 100,
               });
         }
+
+      g_list_store_append (G_LIST_STORE (map->strokes), stroke);
+    }
+
+  for (;;)
+    {
+      g_autoptr (GVariant) unit        = NULL;
+      gint64 id                        = 0;
+      g_autoptr (GcvItem) item         = NULL;
+      gint64 tile                      = 0;
+      g_autoptr (GcvItemStroke) stroke = NULL;
+
+      if (!g_variant_iter_next (misc_iter, "v", &unit))
+        break;
+      if (!g_variant_is_of_type (unit, G_VARIANT_TYPE_DICTIONARY))
+        goto err_inval;
+
+      if (!g_variant_lookup (unit, "itemType", "x", &id))
+        goto err_inval;
+      item = gcv_item_store_query_id (data->store, id);
+      if (item == NULL)
+        continue;
+
+      if (!g_variant_lookup (unit, "positionOfset", "x", &tile))
+        goto err_inval;
+
+      stroke = g_object_new (
+          GCV_TYPE_ITEM_STROKE,
+          "item", item,
+          NULL);
+      gcv_item_stroke_add_instance (
+          stroke,
+          (GcvItemStrokeInstance) {
+              tile % 100,
+              tile / 100,
+          });
 
       g_list_store_append (G_LIST_STORE (map->strokes), stroke);
     }
@@ -495,14 +534,16 @@ save_to_aiv_file_async_thread (GTask        *task,
   G_STMT_END
 
   WRITE ("{\"frames\":[");
+
   if (data->strokes->len > 0)
     {
-      for (guint i = 0; i < data->strokes->len; i++)
+      for (guint i = 0, written = 0; i < data->strokes->len; i++)
         {
           GcvItemStroke *stroke        = NULL;
           g_autoptr (GcvItem) item     = NULL;
           g_autoptr (GArray) instances = NULL;
-          int id                       = 0;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
 
           stroke = g_ptr_array_index (data->strokes, i);
           g_object_get (
@@ -513,7 +554,14 @@ save_to_aiv_file_async_thread (GTask        *task,
           g_object_get (
               item,
               "id", &id,
+              "kind", &kind,
               NULL);
+
+          if (kind == GCV_ITEM_KIND_UNIT)
+            continue;
+
+          if (written++ > 0)
+            WRITE (",");
 
           WRITE ("{\"itemType\":%d,\"tilePositionOfsets\":[", id);
           if (instances->len > 0)
@@ -526,11 +574,59 @@ save_to_aiv_file_async_thread (GTask        *task,
                   WRITE (j < instances->len - 1 ? "%d," : "%d", 100 * instance->y + instance->x);
                 }
             }
-          WRITE (i < data->strokes->len - 1 ? "],\"shouldPause\":false}," : "],\"shouldPause\":false}");
+          WRITE ("],\"shouldPause\":false}");
         }
     }
-  WRITE ("],\"miscItems\":[],\"pauseDelayAmount\":100}");
 
+  WRITE ("],\"miscItems\":[");
+
+  if (data->strokes->len > 0)
+    {
+      g_autoptr (GHashTable) unit_counts = NULL;
+
+      unit_counts = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+      for (guint i = 0, written = 0; i < data->strokes->len; i++)
+        {
+          GcvItemStroke *stroke        = NULL;
+          g_autoptr (GcvItem) item     = NULL;
+          g_autoptr (GArray) instances = NULL;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
+          guint       count            = 0;
+
+          stroke = g_ptr_array_index (data->strokes, i);
+          g_object_get (
+              stroke,
+              "item", &item,
+              "instances", &instances,
+              NULL);
+          g_object_get (
+              item,
+              "id", &id,
+              "kind", &kind,
+              NULL);
+
+          if (kind != GCV_ITEM_KIND_UNIT)
+            continue;
+
+          count = GPOINTER_TO_UINT (g_hash_table_lookup (unit_counts, GINT_TO_POINTER (id)));
+          for (guint j = 0; j < instances->len; j++)
+            {
+              GcvItemStrokeInstance *instance = NULL;
+
+              instance = &g_array_index (instances, GcvItemStrokeInstance, j);
+
+              if (written++ > 0)
+                WRITE (",");
+              WRITE ("{\"itemType\":%d,\"positionOfset\":%d,\"number\":%d}",
+                     id, 100 * instance->y + instance->x, count + j);
+            }
+          g_hash_table_replace (unit_counts, GINT_TO_POINTER (id), GUINT_TO_POINTER (count + instances->len));
+        }
+    }
+
+  WRITE ("],\"pauseDelayAmount\":100,\"extra\":{}}");
   WRITE ("\n");
 #undef WRITE
 

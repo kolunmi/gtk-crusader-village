@@ -1023,18 +1023,28 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
   if (editor->render_cache == NULL)
     {
-      g_autoptr (GtkSnapshot) regen                = NULL;
-      g_autoptr (GtkSnapshot) layouts              = NULL;
-      g_autoptr (GHashTable) texture_to_mask       = NULL;
-      guint          n_strokes                     = 0;
-      GdkRGBA        bg_rgba                       = { 0 };
-      GHashTableIter iter                          = { 0 };
-      g_autoptr (GskRenderNode) layouts_node       = NULL;
-      g_autoptr (GskPathBuilder) keep_path_builder = NULL;
-      g_autoptr (GskPath) keep_path                = NULL;
-      g_autoptr (GskStroke) keep_stroke            = NULL;
+      g_autoptr (GtkSnapshot) regen   = NULL;
+      g_autoptr (GtkSnapshot) units   = NULL;
+      g_autoptr (GtkSnapshot) layouts = NULL;
+
+      g_autoptr (GHashTable) texture_to_mask = NULL;
+      guint   n_strokes                      = 0;
+      GdkRGBA bg_rgba                        = { 0 };
+
+      GHashTableIter iter = { 0 };
+
+      g_autoptr (GskRenderNode) units_node   = NULL;
+      g_autoptr (GskRenderNode) layouts_node = NULL;
+
+      g_autoptr (GskPathBuilder) keep_path_builder  = NULL;
+      g_autoptr (GskPath) keep_path                 = NULL;
+      g_autoptr (GskStroke) keep_stroke             = NULL;
+      g_autoptr (GskPathBuilder) units_path_builder = NULL;
+      g_autoptr (GskPath) units_path                = NULL;
+      g_autoptr (GskStroke) units_stroke            = NULL;
 
       regen           = gtk_snapshot_new ();
+      units           = gtk_snapshot_new ();
       layouts         = gtk_snapshot_new ();
       texture_to_mask = g_hash_table_new (g_direct_hash, g_direct_equal);
       n_strokes       = g_list_model_get_n_items (G_LIST_MODEL (strokes));
@@ -1047,6 +1057,8 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
         .alpha = 0.75,
       };
 
+      gtk_snapshot_push_mask (units, GSK_MASK_MODE_ALPHA);
+
       for (guint i = 0; i < n_strokes; i++)
         {
           g_autoptr (GcvItemStroke) stroke    = NULL;
@@ -1054,6 +1066,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           g_autoptr (GArray) instances        = NULL;
           int         item_tile_width         = 0;
           int         item_tile_height        = 0;
+          GcvItemKind item_kind               = 0;
           gpointer    tile_hash               = NULL;
           GdkTexture *tile_texture            = NULL;
           gboolean    wants_layout            = FALSE;
@@ -1068,6 +1081,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
               NULL);
           g_object_get (
               item,
+              "kind", &item_kind,
               "tile-width", &item_tile_width,
               "tile-height", &item_tile_height,
               NULL);
@@ -1077,21 +1091,24 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
                           item_tile_width > 1 ||
                           item_tile_height > 1);
 
-          tile_hash = gcv_item_get_tile_resource_hash (item);
-          if (tile_hash != NULL)
+          if (item_kind != GCV_ITEM_KIND_UNIT)
             {
-              tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
-              if (tile_texture == NULL)
+              tile_hash = gcv_item_get_tile_resource_hash (item);
+              if (tile_hash != NULL)
                 {
-                  g_autofree char *tile_resource = NULL;
+                  tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
+                  if (tile_texture == NULL)
+                    {
+                      g_autofree char *tile_resource = NULL;
 
-                  g_object_get (
-                      item,
-                      "tile-resource", &tile_resource,
-                      NULL);
+                      g_object_get (
+                          item,
+                          "tile-resource", &tile_resource,
+                          NULL);
 
-                  tile_texture = gdk_texture_new_from_resource (tile_resource);
-                  g_hash_table_replace (editor->tile_textures, tile_hash, tile_texture);
+                      tile_texture = gdk_texture_new_from_resource (tile_resource);
+                      g_hash_table_replace (editor->tile_textures, tile_hash, tile_texture);
+                    }
                 }
             }
 
@@ -1110,7 +1127,12 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
               if (graphene_rect_intersection (&extents, &rect, NULL))
                 {
-                  if (tile_texture != NULL)
+                  if (item_kind == GCV_ITEM_KIND_UNIT)
+                    gtk_snapshot_append_color (
+                        units,
+                        &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 },
+                        &rect);
+                  else if (tile_texture != NULL)
                     {
                       GtkSnapshot *mask = NULL;
 
@@ -1250,6 +1272,32 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           editor->dark_theme
               ? &(const GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
               : &(const GdkRGBA) { 0.0, 0.0, 0.0, 1.0 });
+
+      units_path_builder = gsk_path_builder_new ();
+      gsk_path_builder_add_circle (
+          units_path_builder,
+          &GRAPHENE_POINT_INIT (tile_size / 2.0, tile_size / 2.0),
+          tile_size / 3.0);
+      units_path = gsk_path_builder_free_to_path (g_steal_pointer (&units_path_builder));
+
+      units_stroke = gsk_stroke_new (tile_size * 0.15);
+      gsk_stroke_set_dash (units_stroke, (const float[]) { tile_size * 0.25, tile_size * 0.1 }, 2);
+      gsk_stroke_set_line_cap (units_stroke, GSK_LINE_CAP_BUTT);
+
+      gtk_snapshot_pop (units);
+      gtk_snapshot_push_repeat (
+          units, &extents,
+          &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size));
+      gtk_snapshot_append_stroke (
+          units, units_path, units_stroke,
+          editor->dark_theme
+              ? &(const GdkRGBA) { 1.0, 0.25, 0.75, 1.0 }
+              : &(const GdkRGBA) { 0.75, 0.25, 1.0, 1.0 });
+      gtk_snapshot_pop (units);
+      gtk_snapshot_pop (units);
+      units_node = gtk_snapshot_to_node (units);
+      if (units_node != NULL)
+        gtk_snapshot_append_node (regen, units_node);
 
       layouts_node = gtk_snapshot_to_node (layouts);
       if (layouts_node != NULL)
@@ -1714,6 +1762,7 @@ draw_gesture_update (GtkGestureDrag *gesture,
   g_autoptr (GcvItem) item               = NULL;
   g_autoptr (GArray) instances           = NULL;
   g_autoptr (GArray) brush_instances     = NULL;
+  GcvItemKind           item_kind        = 0;
   int                   item_tile_width  = 0;
   int                   item_tile_height = 0;
   GcvItemStrokeInstance last_instance    = { 0 };
@@ -1741,6 +1790,7 @@ draw_gesture_update (GtkGestureDrag *gesture,
       NULL);
   g_object_get (
       item,
+      "kind", &item_kind,
       "tile-width", &item_tile_width,
       "tile-height", &item_tile_height,
       NULL);
@@ -1787,38 +1837,17 @@ draw_gesture_update (GtkGestureDrag *gesture,
 
   for (int i = 0; i < divisor; i++)
     {
-      int      cx  = 0;
-      int      cy  = 0;
-      gboolean add = TRUE;
+      int cx = 0;
+      int cy = 0;
 
       cx = last_instance.x + i * dx / divisor;
       cy = last_instance.y + i * dy / divisor;
 
-      if (cx + item_tile_width > map_tile_width ||
-          cy + item_tile_height > map_tile_height)
-        continue;
-
-      for (int y = 0; y < item_tile_height; y++)
+      if (editor->brush_stroke != NULL)
         {
-          for (int x = 0; x < item_tile_width; x++)
-            {
-              guint tile_idx = 0;
+          int bx = 0;
+          int by = 0;
 
-              tile_idx = (cy + y) * map_tile_width + (cx + x);
-              if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
-                {
-                  /* can't place that there lord! */
-                  add = FALSE;
-                  break;
-                }
-            }
-
-          if (!add)
-            break;
-        }
-
-      if (add)
-        {
           gcv_item_stroke_add_instance (
               editor->current_stroke,
               (GcvItemStrokeInstance) {
@@ -1826,40 +1855,85 @@ draw_gesture_update (GtkGestureDrag *gesture,
                   .y = cy,
               });
 
-          if (editor->brush_stroke != NULL)
+          bx = cx - editor->brush_width / 2;
+          by = cy - editor->brush_height / 2;
+
+          for (int y = 0; y < editor->brush_height; y++)
             {
-              int bx = 0;
-              int by = 0;
-
-              bx = cx - editor->brush_width / 2;
-              by = cy - editor->brush_height / 2;
-
-              for (int y = 0; y < editor->brush_height; y++)
+              for (int x = 0; x < editor->brush_width; x++)
                 {
-                  for (int x = 0; x < editor->brush_width; x++)
+                  guint    tile_idx = 0;
+                  GcvItem *existing = NULL;
+                  gboolean add      = TRUE;
+
+                  if (bx + x < 0 ||
+                      by + y < 0 ||
+                      bx + x >= map_tile_width ||
+                      by + y >= map_tile_height ||
+                      editor->brush_mask[y * editor->brush_width + x] == 0)
+                    continue;
+
+                  tile_idx = (by + y) * map_tile_width + (bx + x);
+                  existing = g_hash_table_lookup (grid, GUINT_TO_POINTER (tile_idx));
+
+                  if (existing != NULL)
                     {
-                      if (bx + x < 0 ||
-                          by + y < 0 ||
-                          bx + x >= map_tile_width ||
-                          by + y >= map_tile_height)
-                        continue;
+                      GcvItemKind existing_kind = 0;
 
-                      if (editor->brush_mask[y * editor->brush_width + x] != 0)
-                        {
-                          guint tile_idx = 0;
+                      g_object_get (
+                          existing,
+                          "kind", &existing_kind,
+                          NULL);
 
-                          tile_idx = (by + y) * map_tile_width + (bx + x);
-                          if (!g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
-                            gcv_item_stroke_add_instance (
-                                editor->brush_stroke,
-                                (GcvItemStrokeInstance) {
-                                    .x = bx + x,
-                                    .y = by + y,
-                                });
-                        }
+                      if (item_kind != GCV_ITEM_KIND_UNIT ||
+                          existing_kind != GCV_ITEM_KIND_BUILDING)
+                        add = FALSE;
                     }
+
+                  if (add)
+                    gcv_item_stroke_add_instance (
+                        editor->brush_stroke,
+                        (GcvItemStrokeInstance) {
+                            .x = bx + x,
+                            .y = by + y,
+                        });
                 }
             }
+        }
+      else
+        {
+          gboolean add = TRUE;
+
+          if (cx + item_tile_width > map_tile_width ||
+              cy + item_tile_height > map_tile_height)
+            continue;
+
+          for (int y = 0; y < item_tile_height; y++)
+            {
+              for (int x = 0; x < item_tile_width; x++)
+                {
+                  guint tile_idx = 0;
+
+                  tile_idx = (cy + y) * map_tile_width + (cx + x);
+                  if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+                    {
+                      /* can't place that there lord! */
+                      add = FALSE;
+                      break;
+                    }
+                }
+
+              if (!add)
+                break;
+            }
+
+          if (add)
+            gcv_item_stroke_add_instance (
+                editor->current_stroke,
+                (GcvItemStrokeInstance) {
+                    .x = cx,
+                    .y = cy,
+                });
         }
     }
 }
@@ -1877,7 +1951,9 @@ draw_gesture_end (GtkGestureDrag *gesture,
     return;
 
   g_object_get (
-      editor->current_stroke,
+      editor->brush_stroke != NULL
+          ? editor->brush_stroke
+          : editor->current_stroke,
       "item", &item,
       "instances", &instances,
       NULL);

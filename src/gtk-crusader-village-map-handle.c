@@ -487,6 +487,7 @@ ensure_cache (GcvMapHandle *self)
           "kind", &item_kind,
           NULL);
 
+      /* TODO make a unit layer */
       if (item_kind == GCV_ITEM_KIND_UNIT)
         /* Ignore units for now */
         continue;

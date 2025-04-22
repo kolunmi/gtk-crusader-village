@@ -136,9 +136,7 @@ gcv_item_store_read_resources (GcvItemStore *self)
           "id", &id,
           NULL);
 
-      if (kind == GCV_ITEM_KIND_BUILDING ||
-          kind == GCV_ITEM_KIND_WALL)
-        g_hash_table_replace (self->id_map, GINT_TO_POINTER (id), item);
+      g_hash_table_replace (self->id_map, GINT_TO_POINTER (id), item);
     }
 }
 
@@ -182,9 +180,7 @@ gcv_item_store_dup (GcvItemStore *self)
           "id", &id,
           NULL);
 
-      if (kind == GCV_ITEM_KIND_BUILDING ||
-          kind == GCV_ITEM_KIND_WALL)
-        g_hash_table_replace (dup->id_map, GINT_TO_POINTER (id), item);
+      g_hash_table_replace (dup->id_map, GINT_TO_POINTER (id), item);
     }
 
   return dup;
