@@ -398,9 +398,9 @@ gcv_map_editor_dispose (GObject *object)
     g_signal_handlers_disconnect_by_func (
         self->item_area, selected_item_changed, self);
   g_clear_object (&self->item_area);
-  if (self->item_area != NULL)
+  if (self->brush_area != NULL)
     g_signal_handlers_disconnect_by_func (
-        self->item_area, selected_brush_changed, self);
+        self->brush_area, selected_brush_changed, self);
   g_clear_object (&self->brush_area);
 
   g_clear_object (&self->hadjustment);
