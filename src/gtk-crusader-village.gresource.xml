@@ -130,7 +130,12 @@
     <file>items/Trebuchet.variant</file>
     <file>items/Tunneler.variant</file>
     <file>items/TunnellersGuild.variant</file>
-    <file>items/WallStairs.variant</file>
+    <file>items/WallStairs1.variant</file>
+    <file>items/WallStairs2.variant</file>
+    <file>items/WallStairs3.variant</file>
+    <file>items/WallStairs4.variant</file>
+    <file>items/WallStairs5.variant</file>
+    <file>items/WallStairs6.variant</file>
     <file>items/WaterPot.variant</file>
     <file>items/Well.variant</file>
     <file>items/WheatFarm.variant</file>
