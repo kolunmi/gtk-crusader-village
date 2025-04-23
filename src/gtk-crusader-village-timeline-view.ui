@@ -25,6 +25,7 @@
             <property name="child">
               <object class="GtkListView" id="list_view">
                 <property name="show-separators">TRUE</property>
+                <property name="enable-rubberband">TRUE</property>
               </object>
             </property>
           </object>

@@ -29,11 +29,13 @@ struct _GcvTimelineViewItem
   GcvUtilBin parent_instance;
 
   GcvItemStroke *stroke;
+  gboolean       selected;
   gboolean       inactive;
   gboolean       insert_mode;
   gboolean       drawing;
 
   /* Template widgets */
+  GtkImage *invisible_indicator;
   GtkImage *overwrite_indicator;
   GtkImage *overwriting_indicator;
   GtkImage *insert_indicator;
@@ -51,6 +53,7 @@ enum
 
   PROP_STROKE,
 
+  PROP_SELECTED,
   PROP_INACTIVE,
   PROP_INSERT_MODE,
   PROP_DRAWING,
@@ -85,6 +88,9 @@ gcv_timeline_view_item_get_property (GObject    *object,
     {
     case PROP_STROKE:
       g_value_set_object (value, self->stroke);
+      break;
+    case PROP_SELECTED:
+      g_value_set_boolean (value, self->selected);
       break;
     case PROP_INACTIVE:
       g_value_set_boolean (value, self->inactive);
@@ -158,7 +164,12 @@ gcv_timeline_view_item_set_property (GObject      *object,
             gtk_label_set_label (self->center, "---");
             gtk_label_set_label (self->right, NULL);
           }
+        update_indicators (self);
       }
+      break;
+    case PROP_SELECTED:
+      self->selected = g_value_get_boolean (value);
+      update_indicators (self);
       break;
     case PROP_INACTIVE:
       self->inactive = g_value_get_boolean (value);
@@ -195,6 +206,14 @@ gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
           GCV_TYPE_ITEM_STROKE,
           G_PARAM_READWRITE);
 
+  props[PROP_SELECTED] =
+      g_param_spec_boolean (
+          "selected",
+          "Selected",
+          "Whether to indicate that this widget is selected",
+          FALSE,
+          G_PARAM_READWRITE);
+
   props[PROP_INACTIVE] =
       g_param_spec_boolean (
           "inactive",
@@ -222,6 +241,7 @@ gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-timeline-view-item.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, invisible_indicator);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwrite_indicator);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwriting_indicator);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, insert_indicator);
@@ -244,8 +264,9 @@ gcv_timeline_view_item_init (GcvTimelineViewItem *self)
 static void
 update_indicators (GcvTimelineViewItem *self)
 {
-  gtk_widget_set_visible (GTK_WIDGET (self->overwrite_indicator), self->inactive && !self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->overwriting_indicator), self->inactive && self->drawing && !self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->inactive && self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->inserting_indicator), self->inactive && self->drawing && self->insert_mode);
+  gtk_widget_set_visible (GTK_WIDGET (self->invisible_indicator), self->inactive);
+  gtk_widget_set_visible (GTK_WIDGET (self->overwrite_indicator), self->selected && !self->insert_mode);
+  gtk_widget_set_visible (GTK_WIDGET (self->overwriting_indicator), self->selected && self->drawing && !self->insert_mode);
+  gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->selected && self->insert_mode);
+  gtk_widget_set_visible (GTK_WIDGET (self->inserting_indicator), self->selected && self->drawing && self->insert_mode);
 }

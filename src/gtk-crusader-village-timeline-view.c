@@ -29,8 +29,8 @@ struct _GcvTimelineView
 {
   GcvUtilBin parent_instance;
 
-  GtkSingleSelection *selection;
-  GListStore         *wrapper_store;
+  GtkMultiSelection *selection;
+  GListStore        *wrapper_store;
 
   GcvMapHandle *handle;
   GListModel   *model;
@@ -91,9 +91,10 @@ model_changed (GListModel      *self,
                GcvTimelineView *timeline_view);
 
 static void
-row_activated (GtkListView     *self,
-               guint            position,
-               GcvTimelineView *timeline_view);
+selection_changed (GtkSelectionModel *self,
+                   guint              position,
+                   guint              n_items,
+                   GcvTimelineView   *timeline_view);
 
 static void
 delete_stroke_clicked (GtkButton       *self,
@@ -114,9 +115,6 @@ scale_change_value (GtkRange        *self,
                     GtkScrollType   *scroll,
                     gdouble          value,
                     GcvTimelineView *timeline_view);
-
-static void
-update_selected (GcvTimelineView *self);
 
 static void
 update_ui (GcvTimelineView *self);
@@ -200,12 +198,13 @@ gcv_timeline_view_set_property (GObject      *object,
                 self->handle,
                 "model", &self->model,
                 NULL);
-
             g_list_store_append (self->wrapper_store, self->model);
             g_signal_connect (self->model, "items-changed",
                               G_CALLBACK (model_changed), self);
 
             g_signal_connect (self->handle, "notify::cursor",
+                              G_CALLBACK (cursor_changed), self);
+            g_signal_connect (self->handle, "notify::cursor-len",
                               G_CALLBACK (cursor_changed), self);
             g_signal_connect (self->handle, "notify::lock-hinted",
                               G_CALLBACK (lock_hint_changed), self);
@@ -215,7 +214,6 @@ gcv_timeline_view_set_property (GObject      *object,
                 G_BINDING_BIDIRECTIONAL);
           }
 
-        update_selected (self);
         update_ui (self);
       }
       break;
@@ -255,12 +253,12 @@ gcv_timeline_view_class_init (GcvTimelineViewClass *klass)
 static void
 gcv_timeline_view_init (GcvTimelineView *self)
 {
-  g_autoptr (GtkListItemFactory) factory      = NULL;
-  g_autoptr (GListStore) left_model           = NULL;
-  g_autoptr (GtkFlattenListModel) right_model = NULL;
-  GListStore          *main_store             = NULL;
-  GtkFlattenListModel *flatten_model          = NULL;
-  g_autoptr (GtkStringObject) dummy           = NULL;
+  g_autoptr (GtkListItemFactory) factory     = NULL;
+  g_autoptr (GListStore) right_model         = NULL;
+  g_autoptr (GtkFlattenListModel) left_model = NULL;
+  GListStore          *main_store            = NULL;
+  GtkFlattenListModel *flatten_model         = NULL;
+  g_autoptr (GtkStringObject) dummy          = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -271,22 +269,22 @@ gcv_timeline_view_init (GcvTimelineView *self)
   gtk_list_view_set_factory (self->list_view, factory);
 
   /* revisit this */
-  left_model          = g_list_store_new (GTK_TYPE_STRING_OBJECT);
+  right_model         = g_list_store_new (GTK_TYPE_STRING_OBJECT);
   self->wrapper_store = g_list_store_new (G_TYPE_LIST_MODEL);
-  right_model         = gtk_flatten_list_model_new (g_object_ref (G_LIST_MODEL (self->wrapper_store)));
+  left_model          = gtk_flatten_list_model_new (g_object_ref (G_LIST_MODEL (self->wrapper_store)));
   main_store          = g_list_store_new (G_TYPE_LIST_MODEL);
   flatten_model       = gtk_flatten_list_model_new (G_LIST_MODEL (main_store));
-  self->selection     = gtk_single_selection_new (G_LIST_MODEL (flatten_model));
+  self->selection     = gtk_multi_selection_new (G_LIST_MODEL (flatten_model));
 
-  dummy = gtk_string_object_new ("Start!");
-  g_list_store_append (left_model, dummy);
+  dummy = gtk_string_object_new ("");
+  g_list_store_append (right_model, dummy);
   g_list_store_append (main_store, left_model);
   g_list_store_append (main_store, right_model);
 
   gtk_list_view_set_model (self->list_view, GTK_SELECTION_MODEL (self->selection));
 
-  g_signal_connect (self->list_view, "activate",
-                    G_CALLBACK (row_activated), self);
+  g_signal_connect (self->selection, "selection-changed",
+                    G_CALLBACK (selection_changed), self);
   g_signal_connect (self->delete_stroke, "clicked",
                     G_CALLBACK (delete_stroke_clicked), self);
 
@@ -318,24 +316,41 @@ bind_listitem (GtkListItemFactory *factory,
   if (GCV_IS_ITEM_STROKE (stroke))
     {
       GtkWidget *view_item   = NULL;
+      guint      cursor      = 0;
+      guint      cursor_len  = 0;
       gboolean   insert_mode = FALSE;
       gboolean   lock_hinted = FALSE;
+      guint      position    = 0;
+      gboolean   inactive    = FALSE;
+      gboolean   selected    = FALSE;
 
       view_item = gtk_list_item_get_child (list_item);
 
       g_object_get (
           self->handle,
+          "cursor", &cursor,
+          "cursor-len", &cursor_len,
           "insert-mode", &insert_mode,
           "lock-hinted", &lock_hinted,
           NULL);
+
+      position = gtk_list_item_get_position (list_item);
+      inactive = position >= cursor;
+      selected = inactive &&
+                 (cursor_len == 0 || position < cursor + cursor_len);
+
       g_object_set (
           view_item,
           "stroke", stroke,
           "insert-mode", insert_mode,
           "drawing", lock_hinted,
+          "selected", selected,
+          "inactive", inactive,
           NULL);
 
       g_signal_connect (self->handle, "notify::cursor",
+                        G_CALLBACK (listitem_cursor_changed), list_item);
+      g_signal_connect (self->handle, "notify::cursor-len",
                         G_CALLBACK (listitem_cursor_changed), list_item);
       g_signal_connect (self->handle, "notify::insert-mode",
                         G_CALLBACK (listitem_mode_hint_changed), list_item);
@@ -349,10 +364,30 @@ unbind_listitem (GtkListItemFactory *factory,
                  GtkListItem        *list_item,
                  GcvTimelineView    *self)
 {
-  g_signal_handlers_disconnect_by_func (
-      self->handle, listitem_cursor_changed, list_item);
-  g_signal_handlers_disconnect_by_func (
-      self->handle, listitem_mode_hint_changed, list_item);
+  GObject *stroke = NULL;
+
+  stroke = gtk_list_item_get_item (list_item);
+
+  if (GCV_IS_ITEM_STROKE (stroke))
+    {
+      GtkWidget *view_item = NULL;
+
+      view_item = gtk_list_item_get_child (list_item);
+
+      g_object_set (
+          view_item,
+          "stroke", NULL,
+          "insert-mode", FALSE,
+          "drawing", FALSE,
+          "selected", FALSE,
+          "inactive", FALSE,
+          NULL);
+
+      g_signal_handlers_disconnect_by_func (
+          self->handle, listitem_cursor_changed, list_item);
+      g_signal_handlers_disconnect_by_func (
+          self->handle, listitem_mode_hint_changed, list_item);
+    }
 }
 
 static void
@@ -360,21 +395,27 @@ listitem_cursor_changed (GcvMapHandle *handle,
                          GParamSpec   *pspec,
                          GtkListItem  *list_item)
 {
-  guint      cursor    = 0;
-  guint      position  = 0;
-  gboolean   inactive  = FALSE;
-  GtkWidget *view_item = NULL;
+  guint      cursor     = 0;
+  guint      cursor_len = 0;
+  guint      position   = 0;
+  gboolean   inactive   = FALSE;
+  gboolean   selected   = FALSE;
+  GtkWidget *view_item  = NULL;
 
   g_object_get (
       handle,
       "cursor", &cursor,
+      "cursor-len", &cursor_len,
       NULL);
   position = gtk_list_item_get_position (list_item);
-  inactive = position > cursor;
+  inactive = position >= cursor;
+  selected = inactive &&
+             (cursor_len == 0 || position < cursor + cursor_len);
 
   view_item = gtk_list_item_get_child (list_item);
   g_object_set (
       view_item,
+      "selected", selected,
       "inactive", inactive,
       NULL);
 }
@@ -413,34 +454,38 @@ model_changed (GListModel      *self,
 }
 
 static void
-row_activated (GtkListView     *self,
-               guint            position,
-               GcvTimelineView *timeline_view)
+selection_changed (GtkSelectionModel *self,
+                   guint              position,
+                   guint              n_items,
+                   GcvTimelineView   *timeline_view)
 {
+  g_autoptr (GtkBitset) selected = NULL;
+  guint min                      = 0;
+  guint max                      = 0;
+
+  selected = gtk_selection_model_get_selection (
+      GTK_SELECTION_MODEL (timeline_view->selection));
+
+  min = gtk_bitset_get_minimum (selected);
+  max = gtk_bitset_get_maximum (selected);
+
   g_object_set (
       timeline_view->handle,
-      "cursor", position,
+      "cursor", min,
+      "cursor-len", max - min + 1,
       NULL);
+
+  update_ui (timeline_view);
 }
 
 static void
 delete_stroke_clicked (GtkButton       *self,
                        GcvTimelineView *timeline_view)
 {
-  guint cursor = 0;
-
   if (timeline_view->handle == NULL)
     return;
 
-  g_object_get (
-      timeline_view->handle,
-      "cursor", &cursor,
-      NULL);
-  if (cursor == 0)
-    return;
-
-  gcv_map_handle_delete_idx (
-      timeline_view->handle, cursor - 1);
+  gcv_map_handle_delete_at_cursor (timeline_view->handle);
 }
 
 static void
@@ -448,8 +493,17 @@ cursor_changed (GcvMapHandle    *handle,
                 GParamSpec      *pspec,
                 GcvTimelineView *timeline_view)
 {
-  update_selected (timeline_view);
-  update_ui (timeline_view);
+  guint cursor     = 0;
+  guint cursor_len = 0;
+
+  g_object_get (
+      timeline_view->handle,
+      "cursor", &cursor,
+      "cursor-len", &cursor_len,
+      NULL);
+  gtk_selection_model_select_range (
+      GTK_SELECTION_MODEL (timeline_view->selection), cursor, MAX (1, cursor_len), TRUE);
+  gtk_list_view_scroll_to (timeline_view->list_view, cursor, GTK_LIST_SCROLL_NONE, NULL);
 }
 
 static void
@@ -457,16 +511,6 @@ lock_hint_changed (GcvMapHandle    *handle,
                    GParamSpec      *pspec,
                    GcvTimelineView *timeline_view)
 {
-  gboolean lock_hinted = FALSE;
-
-  g_object_get (
-      handle,
-      "lock-hinted", &lock_hinted,
-      NULL);
-
-  if (lock_hinted)
-    update_selected (timeline_view);
-
   update_ui (timeline_view);
 }
 
@@ -486,59 +530,36 @@ scale_change_value (GtkRange        *self,
 }
 
 static void
-update_selected (GcvTimelineView *self)
-{
-  guint cursor = 0;
-
-  g_object_get (
-      self->handle,
-      "cursor", &cursor,
-      NULL);
-
-  gtk_list_view_scroll_to (self->list_view, cursor, GTK_LIST_SCROLL_FOCUS, NULL);
-  gtk_single_selection_set_selected (self->selection, cursor);
-}
-
-static void
 update_ui (GcvTimelineView *self)
 {
-  guint    selected    = 0;
   guint    n_strokes   = 0;
+  guint    cursor      = 0;
+  guint    cursor_len  = 0;
   char     buf[128]    = { 0 };
   gboolean lock_hinted = FALSE;
-  guint    cursor      = 0;
 
   if (self->handle == NULL)
     return;
 
-  selected  = gtk_single_selection_get_selected (self->selection);
   n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
-
-  if (selected == n_strokes)
-    {
-      if (n_strokes == 1)
-        g_snprintf (buf, sizeof (buf), "1 stroke");
-      else
-        g_snprintf (buf, sizeof (buf), "%d strokes", n_strokes);
-    }
-  else
-    g_snprintf (buf, sizeof (buf), "cursor: %d", selected);
-
-  gtk_label_set_label (self->stats, buf);
-
   g_object_get (
       self->handle,
       "lock-hinted", &lock_hinted,
+      "cursor", &cursor,
+      "cursor-len", &cursor_len,
       NULL);
+
+  g_snprintf (buf, sizeof (buf), "cursor: %d-%d (total %d)", cursor, cursor_len, n_strokes);
+  gtk_label_set_label (self->stats, buf);
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted);
-  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && selected > 0);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted);
   gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted);
 
-  g_object_get (
-      self->handle,
-      "cursor", &cursor,
-      NULL);
+  g_signal_handlers_block_by_func (
+      self->scale, scale_change_value, self);
   gtk_range_set_range (GTK_RANGE (self->scale), 0, n_strokes);
   gtk_range_set_value (GTK_RANGE (self->scale), cursor);
+  g_signal_handlers_unblock_by_func (
+      self->scale, scale_change_value, self);
 }

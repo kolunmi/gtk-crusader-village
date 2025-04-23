@@ -12,6 +12,14 @@
             <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
             <child>
+              <object class="GtkImage" id="invisible_indicator">
+                <property name="margin-start">5</property>
+                <property name="margin-end">10</property>
+                <property name="visible">FALSE</property>
+                <property name="icon-name">eye-not-looking-symbolic</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkImage" id="overwrite_indicator">
                 <property name="margin-start">5</property>
                 <property name="margin-end">10</property>
