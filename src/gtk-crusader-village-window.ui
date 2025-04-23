@@ -98,11 +98,11 @@
   <menu id="primary_menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">_Load From AIV File</attribute>
+        <attribute name="label" translatable="yes">_Import from AIV File</attribute>
         <attribute name="action">app.load</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Export to AIV</attribute>
+        <attribute name="label" translatable="yes">_Export to AIV File</attribute>
         <attribute name="action">app.export</attribute>
       </item>
       <item>
