@@ -534,10 +534,12 @@ save_to_aiv_file_async_thread (GTask        *task,
   G_STMT_END
 
   WRITE ("{\"frames\":[");
+  WRITE ("{\"itemType\":%d,\"tilePositionOfsets\":[%d],\"shouldPause\":false}",
+         61 /* KEEP2 */, 100 * 43 + 43);
 
   if (data->strokes->len > 0)
     {
-      for (guint i = 0, written = 0; i < data->strokes->len; i++)
+      for (guint i = 0; i < data->strokes->len; i++)
         {
           GcvItemStroke *stroke        = NULL;
           g_autoptr (GcvItem) item     = NULL;
@@ -560,10 +562,7 @@ save_to_aiv_file_async_thread (GTask        *task,
           if (kind == GCV_ITEM_KIND_UNIT)
             continue;
 
-          if (written++ > 0)
-            WRITE (",");
-
-          WRITE ("{\"itemType\":%d,\"tilePositionOfsets\":[", id);
+          WRITE (",{\"itemType\":%d,\"tilePositionOfsets\":[", id);
           if (instances->len > 0)
             {
               for (guint j = 0; j < instances->len; j++)
