@@ -37,12 +37,15 @@ struct _GcvTimelineView
 
   GBinding *insert_mode_binding;
 
+  guint playback_handle;
+
   /* Template widgets */
   GtkLabel       *stats;
   GtkListView    *list_view;
   GtkCheckButton *insert_mode;
   GtkButton      *delete_stroke;
   GtkScale       *scale;
+  GtkButton      *playback;
 };
 
 G_DEFINE_FINAL_TYPE (GcvTimelineView, gcv_timeline_view, GCV_TYPE_UTIL_BIN)
@@ -101,6 +104,10 @@ delete_stroke_clicked (GtkButton       *self,
                        GcvTimelineView *timeline_view);
 
 static void
+playback_clicked (GtkButton       *self,
+                  GcvTimelineView *timeline_view);
+
+static void
 cursor_changed (GcvMapHandle    *handle,
                 GParamSpec      *pspec,
                 GcvTimelineView *timeline_view);
@@ -115,6 +122,9 @@ scale_change_value (GtkRange        *self,
                     GtkScrollType   *scroll,
                     gdouble          value,
                     GcvTimelineView *timeline_view);
+
+static gboolean
+playback_timeout (GcvTimelineView *timeline_view);
 
 static void
 update_ui (GcvTimelineView *self);
@@ -140,6 +150,8 @@ gcv_timeline_view_dispose (GObject *object)
       g_binding_unbind (self->insert_mode_binding);
     }
   g_clear_object (&self->handle);
+
+  g_clear_handle_id (&self->playback_handle, g_source_remove);
 
   G_OBJECT_CLASS (gcv_timeline_view_parent_class)->dispose (object);
 }
@@ -189,6 +201,8 @@ gcv_timeline_view_set_property (GObject      *object,
             g_binding_unbind (self->insert_mode_binding);
           }
         g_clear_object (&self->handle);
+
+        g_clear_handle_id (&self->playback_handle, g_source_remove);
 
         self->handle = g_value_dup_object (value);
 
@@ -248,6 +262,7 @@ gcv_timeline_view_class_init (GcvTimelineViewClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, insert_mode);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, delete_stroke);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, scale);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, playback);
 }
 
 static void
@@ -287,6 +302,8 @@ gcv_timeline_view_init (GcvTimelineView *self)
                     G_CALLBACK (selection_changed), self);
   g_signal_connect (self->delete_stroke, "clicked",
                     G_CALLBACK (delete_stroke_clicked), self);
+  g_signal_connect (self->playback, "clicked",
+                    G_CALLBACK (playback_clicked), self);
 
   gtk_range_set_increments (GTK_RANGE (self->scale), 1, 5);
   g_signal_connect (self->scale, "change-value",
@@ -489,6 +506,21 @@ delete_stroke_clicked (GtkButton       *self,
 }
 
 static void
+playback_clicked (GtkButton       *self,
+                  GcvTimelineView *timeline_view)
+{
+  if (timeline_view->playback_handle > 0)
+    g_clear_handle_id (&timeline_view->playback_handle, g_source_remove);
+  else
+    /* 20 fps */
+    timeline_view->playback_handle =
+        g_timeout_add ((1.0 / 20.0) * G_TIME_SPAN_MILLISECOND,
+                       (GSourceFunc) playback_timeout, timeline_view);
+
+  update_ui (timeline_view);
+}
+
+static void
 cursor_changed (GcvMapHandle    *handle,
                 GParamSpec      *pspec,
                 GcvTimelineView *timeline_view)
@@ -511,6 +543,7 @@ lock_hint_changed (GcvMapHandle    *handle,
                    GParamSpec      *pspec,
                    GcvTimelineView *timeline_view)
 {
+  g_clear_handle_id (&timeline_view->playback_handle, g_source_remove);
   update_ui (timeline_view);
 }
 
@@ -527,6 +560,30 @@ scale_change_value (GtkRange        *self,
       timeline_view->handle,
       "cursor", (guint) MAX (0, round (value)),
       NULL);
+}
+
+static gboolean
+playback_timeout (GcvTimelineView *timeline_view)
+{
+  guint cursor                       = 0;
+  g_autoptr (GListModel) union_model = NULL;
+  guint total_strokes                = 0;
+
+  g_assert (timeline_view->handle != NULL);
+
+  g_object_get (
+      timeline_view->handle,
+      "cursor", &cursor,
+      "model", &union_model,
+      NULL);
+  total_strokes = g_list_model_get_n_items (union_model);
+
+  g_object_set (
+      timeline_view->handle,
+      "cursor", (cursor + 1) % total_strokes,
+      NULL);
+
+  return G_SOURCE_CONTINUE;
 }
 
 static void
@@ -554,7 +611,14 @@ update_ui (GcvTimelineView *self)
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted);
   gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->playback), !lock_hinted);
   gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted);
+
+  gtk_button_set_label (
+      self->playback,
+      self->playback_handle > 0
+          ? "Stop Playback"
+          : "Begin Playback");
 
   g_signal_handlers_block_by_func (
       self->scale, scale_change_value, self);

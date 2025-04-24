@@ -60,6 +60,16 @@
                   </object>
                 </property>
                 
+                <property name="center-widget">
+                  <object class="GtkButton" id="playback">
+                    <property name="margin-start">5</property>
+                    <property name="margin-end">5</property>
+                    <property name="margin-top">5</property>
+                    <property name="margin-bottom">5</property>
+                    <property name="label">Begin Playback</property>
+                  </object>
+                </property>
+                
                 <property name="end-widget">
                   <object class="GtkButton" id="delete_stroke">
                     <property name="margin-start">5</property>
