@@ -335,8 +335,8 @@ bind_listitem (GtkListItemFactory *factory,
           NULL);
 
       position = gtk_list_item_get_position (list_item);
-      inactive = position >= cursor;
-      selected = inactive &&
+      inactive = position >= cursor + cursor_len;
+      selected = position >= cursor &&
                  (cursor_len == 0 || position < cursor + cursor_len);
 
       g_object_set (
@@ -408,8 +408,8 @@ listitem_cursor_changed (GcvMapHandle *handle,
       "cursor-len", &cursor_len,
       NULL);
   position = gtk_list_item_get_position (list_item);
-  inactive = position >= cursor;
-  selected = inactive &&
+  inactive = position >= cursor + cursor_len;
+  selected = position >= cursor &&
              (cursor_len == 0 || position < cursor + cursor_len);
 
   view_item = gtk_list_item_get_child (list_item);

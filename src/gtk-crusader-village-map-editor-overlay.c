@@ -40,12 +40,15 @@ struct _GcvMapEditorOverlay
   double   y;
   gboolean drawing;
 
+  GBinding *draw_after_cursor_binding;
+
   /* Template widgets */
   GtkOverlay        *overlay;
   GtkScrolledWindow *scrolled_window;
   GtkFrame          *frame;
   GtkToggleButton   *pencil;
   GtkToggleButton   *draw_line;
+  GtkToggleButton   *draw_after_cursor;
   GtkButton         *clear;
   GtkButton         *undo;
   GtkButton         *redo;
@@ -148,6 +151,7 @@ gcv_map_editor_overlay_dispose (GObject *object)
       g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
       g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
       g_signal_handlers_disconnect_by_func (self->editor, line_mode_changed, self);
+      g_binding_unbind (self->draw_after_cursor_binding);
     }
   g_clear_object (&self->editor);
 
@@ -197,6 +201,7 @@ gcv_map_editor_overlay_set_property (GObject      *object,
             g_signal_handlers_disconnect_by_func (self->editor, map_handle_changed, self);
             g_signal_handlers_disconnect_by_func (self->editor, drawing_changed, self);
             g_signal_handlers_disconnect_by_func (self->editor, line_mode_changed, self);
+            g_binding_unbind (self->draw_after_cursor_binding);
           }
         g_clear_object (&self->editor);
 
@@ -210,12 +215,18 @@ gcv_map_editor_overlay_set_property (GObject      *object,
         if (self->editor != NULL)
           {
             read_map_handle (self);
+
             g_signal_connect (self->editor, "notify::map-handle",
                               G_CALLBACK (map_handle_changed), self);
             g_signal_connect (self->editor, "notify::drawing",
                               G_CALLBACK (drawing_changed), self);
             g_signal_connect (self->editor, "notify::line-mode",
                               G_CALLBACK (line_mode_changed), self);
+
+            self->draw_after_cursor_binding = g_object_bind_property (
+                self->editor, "draw-after-cursor",
+                self->draw_after_cursor, "active",
+                G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
           }
         else
           update_ui_for_model (self);
@@ -254,6 +265,7 @@ gcv_map_editor_overlay_class_init (GcvMapEditorOverlayClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, frame);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, pencil);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, draw_line);
+  gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, draw_after_cursor);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, clear);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, undo);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, redo);

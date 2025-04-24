@@ -52,6 +52,7 @@ struct _GcvMapEditor
 
   int      border_gap;
   gboolean line_mode;
+  gboolean draw_after_cursor;
 
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
@@ -113,6 +114,7 @@ enum
   PROP_HOVER_Y,
   PROP_DRAWING,
   PROP_LINE_MODE,
+  PROP_DRAW_AFTER_CURSOR,
 
   LAST_NATIVE_PROP,
 
@@ -457,6 +459,9 @@ gcv_map_editor_get_property (GObject    *object,
     case PROP_LINE_MODE:
       g_value_set_boolean (value, self->line_mode);
       break;
+    case PROP_DRAW_AFTER_CURSOR:
+      g_value_set_boolean (value, self->draw_after_cursor);
+      break;
     case PROP_HADJUSTMENT:
       g_value_set_object (value, self->hadjustment);
       break;
@@ -585,6 +590,20 @@ gcv_map_editor_set_property (GObject      *object,
 
     case PROP_LINE_MODE:
       self->line_mode = g_value_get_boolean (value);
+      break;
+
+    case PROP_DRAW_AFTER_CURSOR:
+      {
+        gboolean new_val = FALSE;
+
+        new_val = g_value_get_boolean (value);
+        if (self->draw_after_cursor != new_val)
+          {
+            self->draw_after_cursor = new_val;
+            g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+            gtk_widget_queue_draw (GTK_WIDGET (self));
+          }
+      }
       break;
 
     case PROP_HADJUSTMENT:
@@ -728,6 +747,14 @@ gcv_map_editor_class_init (GcvMapEditorClass *klass)
           FALSE,
           G_PARAM_READWRITE);
 
+  props[PROP_DRAW_AFTER_CURSOR] =
+      g_param_spec_boolean (
+          "draw-after-cursor",
+          "Draw After Cursor",
+          "Whether this widget draws all strokes regardless of the map handle's cursor position",
+          TRUE,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_NATIVE_PROP, props);
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
@@ -756,8 +783,10 @@ gcv_map_editor_init (GcvMapEditor *self)
   GtkEventController *scroll_controller = NULL;
   GtkEventController *motion_controller = NULL;
 
-  self->border_gap = 2;
-  self->zoom       = 1.0;
+  self->border_gap        = 2;
+  self->zoom              = 1.0;
+  self->line_mode         = FALSE;
+  self->draw_after_cursor = TRUE;
 
   self->pointer_x = -1.0;
   self->pointer_y = -1.0;
@@ -889,18 +918,21 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
     { 1.0, { 0.1, 0.1, 0.1, 0.0 } },
   };
 
-  GcvMapEditor   *editor          = GCV_MAP_EDITOR (widget);
-  int             widget_width    = 0;
-  int             widget_height   = 0;
-  graphene_rect_t viewport        = { 0 };
-  graphene_rect_t extents         = { 0 };
-  double          tile_size       = 0.0;
-  int             map_tile_width  = 0;
-  int             map_tile_height = 0;
-  g_autoptr (GListStore) strokes  = NULL;
-  double  map_width               = 0.0;
-  double  map_height              = 0.0;
-  GdkRGBA widget_rgba             = { 0 };
+  GcvMapEditor   *editor                   = GCV_MAP_EDITOR (widget);
+  int             widget_width             = 0;
+  int             widget_height            = 0;
+  graphene_rect_t viewport                 = { 0 };
+  graphene_rect_t extents                  = { 0 };
+  double          tile_size                = 0.0;
+  g_autoptr (GListStore) union_model       = NULL;
+  guint cursor                             = 0;
+  guint cursor_len                         = 0;
+  int   map_tile_width                     = 0;
+  int   map_tile_height                    = 0;
+  g_autoptr (GListStore) map_strokes_model = NULL;
+  double  map_width                        = 0.0;
+  double  map_height                       = 0.0;
+  GdkRGBA widget_rgba                      = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -946,10 +978,17 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
   tile_size = BASE_TILE_SIZE * editor->zoom;
 
   g_object_get (
+      editor->handle,
+      "model", &union_model,
+      "cursor", &cursor,
+      "cursor-len", &cursor_len,
+      NULL);
+
+  g_object_get (
       editor->map,
       "width", &map_tile_width,
       "height", &map_tile_height,
-      "strokes", &strokes,
+      "strokes", &map_strokes_model,
       NULL);
   map_width  = (double) map_tile_width * tile_size;
   map_height = (double) map_tile_height * tile_size;
@@ -1028,7 +1067,9 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
       g_autoptr (GtkSnapshot) layouts = NULL;
 
       g_autoptr (GHashTable) texture_to_mask = NULL;
-      guint   n_strokes                      = 0;
+      guint   total_strokes                  = 0;
+      guint   total_map_strokes              = 0;
+      guint   total_drawn_strokes            = 0;
       GdkRGBA bg_rgba                        = { 0 };
 
       GHashTableIter iter = { 0 };
@@ -1047,7 +1088,12 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
       units           = gtk_snapshot_new ();
       layouts         = gtk_snapshot_new ();
       texture_to_mask = g_hash_table_new (g_direct_hash, g_direct_equal);
-      n_strokes       = g_list_model_get_n_items (G_LIST_MODEL (strokes));
+
+      total_strokes       = g_list_model_get_n_items (G_LIST_MODEL (union_model));
+      total_map_strokes   = g_list_model_get_n_items (G_LIST_MODEL (map_strokes_model));
+      total_drawn_strokes = editor->draw_after_cursor
+                                ? total_strokes
+                                : MIN (total_strokes, total_map_strokes + cursor_len);
 
       gtk_widget_get_color (GTK_WIDGET (editor), &widget_rgba);
       bg_rgba = (GdkRGBA) {
@@ -1059,7 +1105,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
       gtk_snapshot_push_mask (units, GSK_MASK_MODE_ALPHA);
 
-      for (guint i = 0; i < n_strokes; i++)
+      for (guint i = 0; i < total_drawn_strokes; i++)
         {
           g_autoptr (GcvItemStroke) stroke    = NULL;
           g_autoptr (GcvItem) item            = NULL;
@@ -1073,7 +1119,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           g_autoptr (PangoLayout) tile_layout = NULL;
           PangoRectangle tile_layout_rect     = { 0 };
 
-          stroke = g_list_model_get_item (G_LIST_MODEL (strokes), i);
+          stroke = g_list_model_get_item (G_LIST_MODEL (union_model), i);
           g_object_get (
               stroke,
               "item", &item,
@@ -1086,7 +1132,8 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
               "tile-height", &item_tile_height,
               NULL);
 
-          wants_layout = editor->zoom >= 0.5 &&
+          wants_layout = i < cursor + cursor_len &&
+                         editor->zoom >= 0.5 &&
                          (editor->zoom >= 3.5 ||
                           item_tile_width > 1 ||
                           item_tile_height > 1 ||
@@ -1133,29 +1180,55 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
                         units,
                         &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 },
                         &rect);
-                  else if (tile_texture != NULL)
+                  else
                     {
-                      GtkSnapshot *mask = NULL;
+                      graphene_rect_t draw_rect = rect;
 
-                      mask = g_hash_table_lookup (texture_to_mask, tile_texture);
-                      if (mask == NULL)
+                      if (i >= cursor && i < cursor + cursor_len)
                         {
-                          mask = gtk_snapshot_new ();
-                          g_hash_table_replace (texture_to_mask, tile_texture, mask);
+                          gtk_snapshot_append_color (
+                              regen,
+                              &(GdkRGBA) { 0.0, 0.0, 0.0, 1.0 },
+                              &draw_rect);
 
-                          gtk_snapshot_push_mask (mask, GSK_MASK_MODE_ALPHA);
+                          draw_rect.origin.x += tile_size * 0.2;
+                          draw_rect.origin.y += tile_size * 0.2;
+                          draw_rect.size.width -= tile_size * 0.4;
+                          draw_rect.size.height -= tile_size * 0.4;
                         }
 
-                      gtk_snapshot_append_color (
-                          mask,
-                          &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 },
-                          &rect);
+                      if (tile_texture != NULL)
+                        {
+                          GtkSnapshot *mask = NULL;
+
+                          mask = g_hash_table_lookup (texture_to_mask, tile_texture);
+                          if (mask == NULL)
+                            {
+                              mask = gtk_snapshot_new ();
+                              g_hash_table_replace (texture_to_mask, tile_texture, mask);
+
+                              gtk_snapshot_push_mask (mask, GSK_MASK_MODE_ALPHA);
+                            }
+
+                          gtk_snapshot_append_color (
+                              mask,
+                              i < cursor
+                                  ? &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
+                                  : (i < cursor + cursor_len
+                                         ? &(GdkRGBA) { 1.0, 1.0, 1.0, 0.9 }
+                                         : &(GdkRGBA) { 1.0, 1.0, 1.0, 0.3 }),
+                              &draw_rect);
+                        }
+                      else
+                        gtk_snapshot_append_color (
+                            regen,
+                            i < cursor
+                                ? &(GdkRGBA) { 0.1, 0.5, 1.0, 1.0 }
+                                : (i < cursor + cursor_len
+                                       ? &(GdkRGBA) { 0.1, 0.1, 1.0, 0.9 }
+                                       : &(GdkRGBA) { 0.1, 0.1, 1.0, 0.3 }),
+                            &draw_rect);
                     }
-                  else
-                    gtk_snapshot_append_color (
-                        regen,
-                        &(GdkRGBA) { 0.5, 0.6, 0.75, 1.0 },
-                        &rect);
 
                   if (wants_layout && tile_layout == NULL)
                     {
@@ -1229,8 +1302,8 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           gtk_snapshot_push_repeat (
               mask, &extents,
               &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
-          gtk_snapshot_append_texture (
-              mask, texture,
+          gtk_snapshot_append_scaled_texture (
+              mask, texture, GSK_SCALING_FILTER_NEAREST,
               &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
           gtk_snapshot_pop (mask);
 
