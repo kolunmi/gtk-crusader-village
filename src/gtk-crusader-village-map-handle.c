@@ -531,6 +531,7 @@ gcv_map_handle_clear_all (GcvMapHandle *self)
 
   g_list_store_remove_all (self->memory);
   g_list_store_remove_all (self->strokes);
+  g_list_store_remove_all (self->union_model);
 }
 
 static void
