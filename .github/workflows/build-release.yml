@@ -5,7 +5,7 @@ name: Build Windows Release
 
 on:
   push:
-    branches: [ main ] # Or your main/release branch
+    branches: [ master ] # Or your master/release branch
   workflow_dispatch: # Allows manual triggering
 
 jobs:
