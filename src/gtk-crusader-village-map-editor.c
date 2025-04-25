@@ -66,6 +66,8 @@ struct _GcvMapEditor
   double pointer_y;
   int    hover_x;
   int    hover_y;
+  int    real_hover_x;
+  int    real_hover_y;
   double canvas_x;
   double canvas_y;
 
@@ -84,7 +86,7 @@ struct _GcvMapEditor
   GtkGesture *zoom_gesture;
 
   GcvItemStroke *current_stroke;
-  GcvItemStroke *brush_stroke;
+  GArray        *stroke_tracker;
 
   guint8        *brush_mask;
   int            brush_width;
@@ -408,7 +410,7 @@ gcv_map_editor_dispose (GObject *object)
   g_clear_object (&self->hadjustment);
   g_clear_object (&self->vadjustment);
   g_clear_object (&self->current_stroke);
-  g_clear_object (&self->brush_stroke);
+  g_clear_pointer (&self->stroke_tracker, g_array_unref);
   g_clear_pointer (&self->tile_textures, g_hash_table_unref);
   g_clear_object (&self->bg_image_tex);
   g_clear_pointer (&self->render_cache, gsk_render_node_unref);
@@ -788,12 +790,16 @@ gcv_map_editor_init (GcvMapEditor *self)
   self->line_mode         = FALSE;
   self->draw_after_cursor = TRUE;
 
-  self->pointer_x = -1.0;
-  self->pointer_y = -1.0;
-  self->hover_x   = -1;
-  self->hover_y   = -1;
-  self->canvas_x  = -1.0;
-  self->canvas_y  = -1.0;
+  self->pointer_x    = -1.0;
+  self->pointer_y    = -1.0;
+  self->hover_x      = -1;
+  self->hover_y      = -1;
+  self->real_hover_x = -1;
+  self->real_hover_y = -1;
+  self->canvas_x     = -1.0;
+  self->canvas_y     = -1.0;
+
+  self->stroke_tracker = g_array_new (FALSE, FALSE, sizeof (GcvItemStrokeInstance));
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -1385,9 +1391,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
   if (!gtk_gesture_is_recognized (editor->drag_gesture) &&
       !gtk_gesture_is_recognized (editor->zoom_gesture) &&
-      !gtk_gesture_is_active (editor->cancel_gesture) &&
-      (editor->current_stroke != NULL ||
-       (editor->hover_x >= 0 && editor->hover_y >= 0)))
+      !gtk_gesture_is_active (editor->cancel_gesture))
     {
       g_autoptr (GcvItem) current_item = NULL;
       int item_tile_width              = 0;
@@ -1418,9 +1422,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           g_assert (current_item != NULL);
 
           g_object_get (
-              editor->brush_stroke != NULL
-                  ? editor->brush_stroke
-                  : editor->current_stroke,
+              editor->current_stroke,
               "instances", &instances,
               NULL);
 
@@ -1440,8 +1442,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
             }
         }
 
-      if (current_item != NULL &&
-          editor->hover_x >= 0 && editor->hover_y >= 0)
+      if (current_item != NULL)
         {
           if (item_tile_width == 1 &&
               item_tile_height == 1 &&
@@ -1450,8 +1451,8 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
               double top_left_x = 0.0;
               double top_left_y = 0.0;
 
-              top_left_x = (editor->hover_x - (double) (int) (editor->brush_width / 2)) * tile_size;
-              top_left_y = (editor->hover_y - (double) (int) (editor->brush_height / 2)) * tile_size;
+              top_left_x = (editor->real_hover_x - (double) (int) (editor->brush_width / 2)) * tile_size;
+              top_left_y = (editor->real_hover_y - (double) (int) (editor->brush_height / 2)) * tile_size;
 
               gtk_snapshot_save (snapshot);
               gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (top_left_x, top_left_y));
@@ -1466,10 +1467,10 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
               double rect_width  = 0;
               double rect_height = 0;
 
-              top_left_x  = (double) editor->hover_x * tile_size;
-              top_left_y  = (double) editor->hover_y * tile_size;
-              rect_width  = (double) MIN (item_tile_width, map_tile_width - editor->hover_x) * tile_size;
-              rect_height = (double) MIN (item_tile_height, map_tile_height - editor->hover_y) * tile_size;
+              top_left_x  = (double) editor->real_hover_x * tile_size;
+              top_left_y  = (double) editor->real_hover_y * tile_size;
+              rect_width  = (double) item_tile_width * tile_size;
+              rect_height = (double) item_tile_height * tile_size;
 
               if (editor->show_cursor_glow)
                 {
@@ -1812,7 +1813,7 @@ draw_gesture_begin (GtkGestureDrag *self,
       GCV_TYPE_ITEM_STROKE,
       "item", selected_item,
       NULL);
-  g_clear_object (&editor->brush_stroke);
+  g_array_set_size (editor->stroke_tracker, 0);
 
   draw_gesture_update (self, 0.0, 0.0, editor);
 
@@ -1835,7 +1836,6 @@ draw_gesture_update (GtkGestureDrag *gesture,
   int map_tile_height                    = 0;
   g_autoptr (GcvItem) item               = NULL;
   g_autoptr (GArray) instances           = NULL;
-  g_autoptr (GArray) brush_instances     = NULL;
   GcvItemKind           item_kind        = 0;
   int                   item_tile_width  = 0;
   int                   item_tile_height = 0;
@@ -1844,8 +1844,6 @@ draw_gesture_update (GtkGestureDrag *gesture,
   int                   dy               = 0;
   int                   divisor          = 0;
 
-  if (editor->hover_x < 0 || editor->hover_y < 0)
-    return;
   g_assert (editor->current_stroke != NULL);
 
   g_object_get (
@@ -1869,68 +1867,51 @@ draw_gesture_update (GtkGestureDrag *gesture,
       "tile-height", &item_tile_height,
       NULL);
 
-  if (instances->len == 0)
+  if (editor->stroke_tracker->len == 0)
     last_instance = (GcvItemStrokeInstance) {
-      .x = editor->hover_x,
-      .y = editor->hover_y
+      .x = editor->real_hover_x,
+      .y = editor->real_hover_y
     };
   else if (editor->line_mode)
     last_instance = g_array_index (
-        instances, GcvItemStrokeInstance, 0);
+        editor->stroke_tracker,
+        GcvItemStrokeInstance, 0);
   else
     last_instance = g_array_index (
-        instances, GcvItemStrokeInstance, instances->len - 1);
-
-  if (editor->brush_stroke == NULL &&
-      item_tile_height == 1 &&
-      item_tile_width == 1 &&
-      editor->brush_mask != NULL)
-    editor->brush_stroke = g_object_new (
-        GCV_TYPE_ITEM_STROKE,
-        "item", item,
-        NULL);
-
-  if (editor->brush_stroke != NULL)
-    g_object_get (
-        editor->brush_stroke,
-        "instances", &brush_instances,
-        NULL);
+        editor->stroke_tracker,
+        GcvItemStrokeInstance,
+        editor->stroke_tracker->len - 1);
 
   if (editor->line_mode)
     {
       g_array_set_size (instances, 0);
-      if (brush_instances != NULL)
-        g_array_set_size (brush_instances, 0);
+      g_array_set_size (editor->stroke_tracker, 0);
     }
 
-  dx = editor->hover_x - last_instance.x;
-  dy = editor->hover_y - last_instance.y;
+  dx = editor->real_hover_x - last_instance.x;
+  dy = editor->real_hover_y - last_instance.y;
   dx += CLAMP (dx, -1, 1);
   dy += CLAMP (dy, -1, 1);
   divisor = MAX (MAX (ABS (dx), ABS (dy)), 1);
 
   for (int i = 0; i < divisor; i++)
     {
-      int cx = 0;
-      int cy = 0;
+      GcvItemStrokeInstance instance = { 0 };
 
-      cx = last_instance.x + i * dx / divisor;
-      cy = last_instance.y + i * dy / divisor;
+      instance.x = last_instance.x + i * dx / divisor;
+      instance.y = last_instance.y + i * dy / divisor;
 
-      if (editor->brush_stroke != NULL)
+      g_array_append_val (editor->stroke_tracker, instance);
+
+      if (item_tile_height == 1 &&
+          item_tile_width == 1 &&
+          editor->brush_mask != NULL)
         {
           int bx = 0;
           int by = 0;
 
-          gcv_item_stroke_add_instance (
-              editor->current_stroke,
-              (GcvItemStrokeInstance) {
-                  .x = cx,
-                  .y = cy,
-              });
-
-          bx = cx - editor->brush_width / 2;
-          by = cy - editor->brush_height / 2;
+          bx = instance.x - editor->brush_width / 2;
+          by = instance.y - editor->brush_height / 2;
 
           for (int y = 0; y < editor->brush_height; y++)
             {
@@ -1966,7 +1947,7 @@ draw_gesture_update (GtkGestureDrag *gesture,
 
                   if (add)
                     gcv_item_stroke_add_instance (
-                        editor->brush_stroke,
+                        editor->current_stroke,
                         (GcvItemStrokeInstance) {
                             .x = bx + x,
                             .y = by + y,
@@ -1978,8 +1959,10 @@ draw_gesture_update (GtkGestureDrag *gesture,
         {
           gboolean add = TRUE;
 
-          if (cx + item_tile_width > map_tile_width ||
-              cy + item_tile_height > map_tile_height)
+          if (instance.x < 0 ||
+              instance.y < 0 ||
+              instance.x + item_tile_width > map_tile_width ||
+              instance.y + item_tile_height > map_tile_height)
             continue;
 
           for (int y = 0; y < item_tile_height; y++)
@@ -1988,7 +1971,7 @@ draw_gesture_update (GtkGestureDrag *gesture,
                 {
                   guint tile_idx = 0;
 
-                  tile_idx = (cy + y) * map_tile_width + (cx + x);
+                  tile_idx = (instance.x + y) * map_tile_width + (instance.y + x);
                   if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
                     {
                       /* can't place that there lord! */
@@ -2002,12 +1985,7 @@ draw_gesture_update (GtkGestureDrag *gesture,
             }
 
           if (add)
-            gcv_item_stroke_add_instance (
-                editor->current_stroke,
-                (GcvItemStrokeInstance) {
-                    .x = cx,
-                    .y = cy,
-                });
+            gcv_item_stroke_add_instance (editor->current_stroke, instance);
         }
     }
 }
@@ -2025,9 +2003,7 @@ draw_gesture_end (GtkGestureDrag *gesture,
     return;
 
   g_object_get (
-      editor->brush_stroke != NULL
-          ? editor->brush_stroke
-          : editor->current_stroke,
+      editor->current_stroke,
       "item", &item,
       "instances", &instances,
       NULL);
@@ -2042,9 +2018,7 @@ draw_gesture_end (GtkGestureDrag *gesture,
           NULL);
       g_list_store_append (
           strokes,
-          editor->brush_stroke != NULL
-              ? editor->brush_stroke
-              : editor->current_stroke);
+          editor->current_stroke);
 
       if (editor->settings != NULL)
         {
@@ -2073,7 +2047,7 @@ draw_gesture_end (GtkGestureDrag *gesture,
     }
 
   g_clear_object (&editor->current_stroke);
-  g_clear_object (&editor->brush_stroke);
+  g_array_set_size (editor->stroke_tracker, 0);
 
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
@@ -2417,18 +2391,18 @@ update_motion (GcvMapEditor *self,
                double        x,
                double        y)
 {
-  double   hscroll         = 0.0;
-  double   vscroll         = 0.0;
-  double   map_offset      = 0.0;
-  int      new_hover_x     = 0;
-  int      new_hover_y     = 0;
-  int      map_tile_width  = 0;
-  int      map_tile_height = 0;
-  gboolean was_invalid     = FALSE;
-  gboolean is_invalid      = FALSE;
-  gboolean x_changed       = FALSE;
-  gboolean y_changed       = FALSE;
-  gboolean redraw          = FALSE;
+  double hscroll         = 0.0;
+  double vscroll         = 0.0;
+  double map_offset      = 0.0;
+  int    new_hover_x     = 0;
+  int    new_hover_y     = 0;
+  int    map_tile_width  = 0;
+  int    map_tile_height = 0;
+  // gboolean was_invalid     = FALSE;
+  gboolean is_invalid = FALSE;
+  gboolean x_changed  = FALSE;
+  gboolean y_changed  = FALSE;
+  gboolean redraw     = FALSE;
 
   self->pointer_x = x;
   self->pointer_y = y;
@@ -2450,17 +2424,19 @@ update_motion (GcvMapEditor *self,
       "height", &map_tile_height,
       NULL);
 
-  was_invalid = self->hover_x < 0 || self->hover_y < 0;
-  is_invalid  = new_hover_x < 0 || new_hover_y < 0 ||
+  // was_invalid = self->hover_x < 0 || self->hover_y < 0;
+  is_invalid = new_hover_x < 0 || new_hover_y < 0 ||
                new_hover_x >= map_tile_width || new_hover_y >= map_tile_height;
+
+  x_changed = new_hover_x != self->real_hover_x;
+  y_changed = new_hover_y != self->real_hover_y;
+  redraw    = x_changed || y_changed;
+
+  self->real_hover_x = new_hover_x;
+  self->real_hover_y = new_hover_y;
 
   if (is_invalid)
     new_hover_x = new_hover_y = -1;
-
-  x_changed = new_hover_x != self->hover_x;
-  y_changed = new_hover_y != self->hover_y;
-  redraw    = (x_changed || y_changed) && (!was_invalid || !is_invalid);
-
   self->hover_x = new_hover_x;
   self->hover_y = new_hover_y;
 
