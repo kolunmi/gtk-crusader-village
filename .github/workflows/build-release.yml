@@ -134,20 +134,21 @@ jobs:
         echo "--- Pipeline finished. ---"
       id: deps
 
-    # Step 7: Prepare artifact directory using dynamic DLL list
+    # Step 7: Prepare artifact directory with correct structure
     - name: Prepare artifact directory
       run: |
         INSTALL_DIR="/mingw64"
         DEST_DIR="artifact"
-        DLL_LIST_FILE="dll_list.txt" # From previous step
+        DLL_LIST_FILE="dll_list.txt" # From step 6
 
         echo "Creating destination directories..."
         mkdir -p "${DEST_DIR}/bin"
-        mkdir -p "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" # <-- Added for pixbuf loaders
-        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
+        mkdir -p "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" # Standard pixbuf loader path
+        mkdir -p "${DEST_DIR}/etc/gtk-4.0"                       # Standard GTK settings path
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps" # Standard icon paths
         mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
-        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
-        mkdir -p "${DEST_DIR}/share/locale"
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"           # Standard GSettings path
+        mkdir -p "${DEST_DIR}/share/locale"                     # Standard locale path
         mkdir -p "${DEST_DIR}/share/metainfo"
         mkdir -p "${DEST_DIR}/share/applications"
         mkdir -p "${DEST_DIR}/share/dbus-1/services"
@@ -158,17 +159,14 @@ jobs:
         echo "Copying gdbus executable..."
         cp --verbose "${INSTALL_DIR}/bin/gdbus.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gdbus.exe not found."
 
-        echo "Copying compiled GSettings schemas..."
-        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/gschemas.compiled" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "ERROR: gschemas.compiled not found! GSettings will fail."
-
-        echo "Copying detected DLLs from ${DLL_LIST_FILE}..."
-        # ... (DLL copying loop remains the same) ...
+        echo "Copying detected runtime DLLs to bin..."
         if [ -f "$DLL_LIST_FILE" ]; then
           while IFS= read -r dll_path; do
             if [ -f "$dll_path" ]; then
               dll_basename=$(basename "$dll_path")
+              # Copy dependencies to bin (where exe looks), skip ones already copied
               if [[ "$dll_basename" != "gtk-crusader-village.exe" && "$dll_basename" != "gdbus.exe" ]]; then
-                 echo "Copying $dll_path"
+                 echo "Copying Dependency: $dll_path"
                  cp --verbose "$dll_path" "${DEST_DIR}/bin/"
               fi
             else
@@ -179,49 +177,55 @@ jobs:
           echo "Warning: ${DLL_LIST_FILE} not found. Cannot copy DLLs automatically."
         fi
 
-        # --- Copying GDK Pixbuf loaders and cache ---
-        echo "Copying GDK Pixbuf loaders..."
+        # --- Explicitly copy potentially missed critical DLLs to bin ---
+        echo "Explicitly copying potentially missed DLLs (librsvg, etc.) to bin..."
+        EXPLICIT_DLLS=( "librsvg-2" "libxml2" "libcroco" ) # Add others if needed
+        for lib in "${EXPLICIT_DLLS[@]}"; do
+          echo "Looking for explicit ${lib}*.dll in ${INSTALL_DIR}/bin/"
+          find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -vt "${DEST_DIR}/bin/" {} + || echo "Info: Explicit DLL ${lib}*.dll not found."
+        done
+
+        # --- Copy GDK Pixbuf loaders and cache to lib ---
+        echo "Copying GDK Pixbuf loaders to lib/..."
         if [ -d "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
-           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"*.dll "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || echo "Warning: Failed to copy pixbuf loaders."
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"*.dll "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"
         else
            echo "Warning: Pixbuf loaders source directory not found."
         fi
-        echo "Copying GDK Pixbuf loaders cache..."
+        echo "Copying GDK Pixbuf loaders cache to lib/..."
         if [ -f "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" ]; then
-           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || echo "Warning: Failed to copy loaders.cache"
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/"
         else
-           echo "Warning: loaders.cache not found in source. Pixbuf might not find loaders."
-           # Optionally run gdk-pixbuf-query-loaders in the artifact dir? Complex.
+           echo "Warning: loaders.cache not found. Pixbuf might not find loaders."
         fi
-        # --- End GDK Pixbuf ---
 
-        # --- Copying Icon Theme essentials ---
-        echo "Copying Hicolor icon theme index..."
-        if [ -f "${INSTALL_DIR}/share/icons/hicolor/index.theme" ]; then
-          cp --verbose "${INSTALL_DIR}/share/icons/hicolor/index.theme" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor index.theme."
-        else
-          echo "Warning: Hicolor index.theme not found in source."
-        fi
-        echo "Copying Hicolor icon theme cache..."
-        # This cache is generated by gtk4-update-icon-cache during install
-        if [ -f "${INSTALL_DIR}/share/icons/hicolor/icon-theme.cache" ]; then
-          cp --verbose "${INSTALL_DIR}/share/icons/hicolor/icon-theme.cache" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor icon-theme.cache."
-        else
-          echo "Warning: Hicolor icon-theme.cache not found in source. Icon lookup might be slow or fail."
-        fi
-        # --- End Icon Theme ---
-
-        # --- Copying other data files (remains the same) ---
-        echo "Copying other data files..."
-        # ... (rest of the copy commands for xml, svg, desktop, service, mo files) ...
+        # --- Copy GTK / Icon Theme / GSettings files to share and etc ---
+        echo "Copying compiled GSettings schemas to share/..."
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/gschemas.compiled" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "ERROR: gschemas.compiled not found!"
         cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema source xml not found."
-        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Scalable icon not found."
-        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon not found."
+
+        echo "Copying Hicolor icon theme index and cache to share/..."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/index.theme" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor index.theme."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/icon-theme.cache" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor icon-theme.cache."
+
+        echo "Copying GTK settings file to etc/..."
+        # Copy default GTK4 settings if they exist
+        if [ -f "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" ]; then
+            cp --verbose "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" "${DEST_DIR}/etc/gtk-4.0/"
+        else
+            echo "Warning: Default ${INSTALL_DIR}/etc/gtk-4.0/settings.ini not found."
+            # Optionally create a basic one? Only if necessary.
+        fi
+
+        # --- Copying other data files (App specific icons, metainfo, etc) to share ---
+        echo "Copying other data files to share/..."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: App Scalable icon not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: App Symbolic icon not found."
         cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
         cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
         cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
-        
-        echo "Copying locale files..."
+
+        echo "Copying locale files to share/..."
         if [ -d "${INSTALL_DIR}/share/locale" ]; then
           for langdir in "${INSTALL_DIR}"/share/locale/*; do
             lang=$(basename "$langdir")
