@@ -610,9 +610,9 @@ update_ui (GcvTimelineView *self)
   gtk_label_set_label (self->stats, buf);
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted);
-  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted);
-  gtk_widget_set_sensitive (GTK_WIDGET (self->playback), !lock_hinted);
-  gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && n_strokes > 0);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->playback), !lock_hinted && n_strokes > 1);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted && n_strokes > 0);
 
   gtk_button_set_label (
       self->playback,
