@@ -1438,7 +1438,9 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
             }
         }
 
-      if (current_item != NULL)
+      if (current_item != NULL &&
+          editor->real_hover_x != G_MAXINT &&
+          editor->real_hover_y != G_MAXINT)
         {
           if (item_tile_width == 1 &&
               item_tile_height == 1 &&
@@ -2187,9 +2189,8 @@ static void
 motion_leave (GtkEventControllerMotion *self,
               GcvMapEditor             *editor)
 {
-  gboolean redraw = FALSE;
-
-  redraw = editor->hover_x >= 0 || editor->hover_y >= 0;
+  editor->real_hover_x = G_MAXINT;
+  editor->real_hover_y = G_MAXINT;
 
   if (editor->hover_x >= 0)
     {
@@ -2216,8 +2217,7 @@ motion_leave (GtkEventControllerMotion *self,
       editor->canvas_y = editor->pointer_y;
     }
 
-  if (redraw)
-    gtk_widget_queue_draw (GTK_WIDGET (editor));
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
