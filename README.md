@@ -146,11 +146,6 @@ Full functionality (parsing `.map`, `.aiv` files) requires Python 3 and the `sou
         cd ..
         ```
 
-5.  **Deactivate Virtual Environment (Optional):**
-    ```
-    deactivate
-    ```
-
 6.  **Configure Path in App:**
     * Launch `GTK Crusader Village`.
     * Open **Preferences/Settings**.
