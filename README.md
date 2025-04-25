@@ -35,17 +35,17 @@ This option is for users who want to build the project themselves but prefer an 
 2.  **Clone the Repository:**
     * Open **Git Bash** (installed with Git) or Windows **Command Prompt** / **PowerShell**.
     * Clone this repository:
-        +++
+        ```
         git clone https://github.com/kolunmi/gtk-crusader-village.git
         cd gtk-crusader-village
-        +++
+        ```
 
 3.  **Run the Setup & Build Script:**
     * Locate the `setup_and_build.bat` script in the repository root directory you just cloned.
     * Double-click `setup_and_build.bat` or run it from your Command Prompt / PowerShell:
-        +++
+        ```
         setup_and_build.bat
-        +++
+        ```
     * A new MSYS2 window will open. This script automates the following:
         * Updating MSYS2 packages (`pacman`).
         * Installing all required C/GTK build dependencies (`pacman`).
@@ -59,9 +59,9 @@ This option is for users who want to build the project themselves but prefer an 
 4.  **Run the Application:**
     * Once the script finishes, the MSYS2 window should remain open. The application is built and installed.
     * In that same MSYS2 window, run the application:
-        +++
+        ```
         gtk-crusader-village.exe
-        +++
+        ```
 
 5.  **Configure Python Path:**
     * The helper script installed `sourcehold-maps` into the MSYS2 Python environment.
@@ -79,47 +79,47 @@ This option provides full control over the build process.
 2.  **Clone the Repository:**
     * Open **Git Bash**, **Command Prompt**, or **PowerShell**.
     * Clone this repository:
-        +++
+        ```
         git clone https://github.com/kolunmi/gtk-crusader-village.git
         cd gtk-crusader-village
-        +++
+        ```
 
 3.  **Update MSYS2 Packages:**
     * Open the **"MSYS2 MSYS"** shell from the Start Menu.
     * Run `pacman -Syu` (follow prompts, may need to close and run again).
-        +++
+        ```
         pacman -Syu
-        +++
+        ```
     * Run `pacman -Su` to ensure everything is updated.
-        +++
+        ```
         pacman -Su
-        +++
+        ```
     * **Close** the "MSYS2 MSYS" shell.
 
 4.  **Install Build Dependencies:**
     * Open the **"MSYS2 MinGW x64"** shell from the Start Menu. Navigate to the project directory: `cd /c/path/to/gtk-crusader-village` (adjust path as needed).
     * Install dependencies:
-        +++
+        ```
         pacman -S --needed --noconfirm git mingw-w64-x86_64-toolchain mingw-w64-x86_64-meson mingw-w64-x86_64-ninja mingw-w64-x86_64-python mingw-w64-x86_64-pkgconf mingw-w64-x86_64-gtk4 mingw-w64-x86_64-libadwaita mingw-w64-x86_64-json-glib mingw-w64-x86_64-gettext mingw-w64-x86_64-desktop-file-utils mingw-w64-x86_64-appstream mingw-w64-x86_64-python-pip
-        +++
+        ```
 
 5.  **Configure the Build:**
     * In the MSYS2 MinGW x64 shell (already in the project directory):
-        +++
+        ```
         meson setup build --prefix=/mingw64 --buildtype=release
-        +++
+        ```
 
 6.  **Compile the Project:**
     * In the same shell:
-        +++
+        ```
         ninja -C build
-        +++
+        ```
 
 7.  **Install the Project:**
     * In the same shell:
-        +++
+        ```
         ninja -C build install
-        +++
+        ```
         *(Ignore potential errors about `update-desktop-database`)*
 
 8.  **Set up Python Dependency:**
@@ -127,9 +127,9 @@ This option provides full control over the build process.
 
 9.  **Run the Application:**
     * In the MSYS2 MinGW x64 shell:
-        +++
+        ```
         gtk-crusader-village.exe
-        +++
+        ```
 
 10. **Configure Python Path:**
     * Launch the application.
@@ -156,21 +156,21 @@ For full functionality (parsing `.map`, `.aiv` files), this application requires
         3.  Extract the zip. Find the `.whl` file matching your Python/OS.
         4.  Open Windows Command Prompt or PowerShell (using your chosen Python).
         5.  Install the wheel:
-            +++
+            ```
             pip install path\to\your\downloaded\sourcehold_maps-XXXX.whl
-            +++
+            ```
 
     * **Method B (Source Code):**
         1.  Ensure Git is installed. Open Command Prompt or PowerShell.
         2.  Clone the repo:
-            +++
+            ```
             git clone https://github.com/sourcehold/sourcehold-maps.git
             cd sourcehold-maps
-            +++
+            ```
         3.  Install with pip (using your chosen Python):
-            +++
+            ```
             pip install .
-            +++
+            ```
 
 2.  **Configure Path in `GTK Crusader Village` Application:**
     * Launch `GTK Crusader Village` (use the MSYS2 MinGW x64 shell if you built it yourself).
@@ -183,11 +183,9 @@ For full functionality (parsing `.map`, `.aiv` files), this application requires
 
 ## Building (Linux)
 
-*(Original Linux instructions kept for reference)*
-
 These instructions are primarily for Linux distributions.
 
-+++
+```
 # Configure the build environment
 meson setup build --prefix=/usr/local --buildtype=release
 
@@ -196,7 +194,7 @@ ninja -C build
 
 # Install the project (optional)
 sudo ninja -C build install
-+++
+```
 
 ## This is a WIP
 
