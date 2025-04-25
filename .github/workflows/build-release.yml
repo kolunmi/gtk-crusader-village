@@ -138,40 +138,55 @@ jobs:
       run: |
         INSTALL_DIR="/mingw64"
         DEST_DIR="artifact"
-        DLL_LIST_FILE="dll_list.txt" # File containing needed DLL paths from previous step
+        DLL_LIST_FILE="dll_list.txt" # From previous step
 
         echo "Creating destination directories..."
         mkdir -p "${DEST_DIR}/bin"
         mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
         mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
-        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas" # Schema dir
         mkdir -p "${DEST_DIR}/share/locale"
         mkdir -p "${DEST_DIR}/share/metainfo"
         mkdir -p "${DEST_DIR}/share/applications"
         mkdir -p "${DEST_DIR}/share/dbus-1/services"
 
-        echo "Copying executable..."
+        echo "Copying main executable..."
         cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
+
+        echo "Copying gdbus executable..."
+        cp --verbose "${INSTALL_DIR}/bin/gdbus.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gdbus.exe not found in install prefix."
+
+        echo "Copying compiled GSettings schemas..."
+        # This file is critical for GSettings functionality
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/gschemas.compiled" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "ERROR: gschemas.compiled not found in install prefix! GSettings will fail."
 
         echo "Copying detected DLLs from ${DLL_LIST_FILE}..."
         if [ -f "$DLL_LIST_FILE" ]; then
           while IFS= read -r dll_path; do
             if [ -f "$dll_path" ]; then
-              echo "Copying $dll_path"
-              cp --verbose "$dll_path" "${DEST_DIR}/bin/"
+              # Avoid copying the main exe or gdbus again if ntldd listed them
+              dll_basename=$(basename "$dll_path")
+              if [[ "$dll_basename" != "gtk-crusader-village.exe" && "$dll_basename" != "gdbus.exe" ]]; then
+                 echo "Copying $dll_path"
+                 cp --verbose "$dll_path" "${DEST_DIR}/bin/"
+              fi
             else
               echo "Warning: DLL listed by ntldd not found: $dll_path"
             fi
           done < "$DLL_LIST_FILE"
         else
           echo "Warning: ${DLL_LIST_FILE} not found. Cannot copy DLLs automatically."
+          # Optionally fallback to hardcoded list or fail here if DLL list is essential
         fi
 
-        # --- Copying data files (remains the same) ---
-        echo "Copying data files..."
-        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema files not found."
+        # --- Copying other data files ---
+        echo "Copying other data files..."
+        # Copy GSettings source schema (optional, but good practice)
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema source xml not found."
+        # Copy icons
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Scalable icon not found."
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon not found."
+        # Copy other installed data files
         cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
         cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
         cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
@@ -180,7 +195,7 @@ jobs:
         if [ -d "${INSTALL_DIR}/share/locale" ]; then
           for langdir in "${INSTALL_DIR}"/share/locale/*; do
             lang=$(basename "$langdir")
-            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then # Check if directory name looks like a language code
               if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
                 mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
                 cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
