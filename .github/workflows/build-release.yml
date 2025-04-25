@@ -23,13 +23,13 @@ jobs:
       # with:
       #   submodules: 'recursive'
 
-    # Set up MSYS2 environment
+    # Step 2: Set up the MSYS2 environment
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64 # Use the MinGW64 environment
-        update: true # Update MSYS2 base packages
-        install: >- # Install dependencies using pacman
+        update: true # Update MSYS2 base packages first
+        install: >- # Install all necessary build dependencies using pacman (multi-line string)
           git
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-meson
@@ -42,8 +42,7 @@ jobs:
           mingw-w64-x86_64-gettext
           mingw-w64-x86_64-desktop-file-utils
           mingw-w64-x86_64-appstream
-          zip # Utility to create zip file
-        pacman-mirror: https://mirror.msys2.org/mingw/ # Optional: Specify mirror
+          zip # Utility needed for packaging the artifact later
 
     # Configure, compile, and install
     - name: Configure build
