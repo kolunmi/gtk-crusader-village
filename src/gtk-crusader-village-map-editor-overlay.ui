@@ -69,20 +69,6 @@
                 </child>
                 
                 <child>
-                  <object class="GtkButton" id="clear">
-                    <property name="has-tooltip">TRUE</property>
-                    <property name="tooltip-text">Clear</property>
-                    <property name="icon-name">edit-clear-all-symbolic</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="GtkSeparator">
-                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
-                  </object>
-                </child>
-                
-                <child>
                   <object class="GtkButton" id="undo">
                     <property name="has-tooltip">TRUE</property>
                     <property name="tooltip-text">Undo</property>

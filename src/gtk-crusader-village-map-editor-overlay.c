@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-map-editor-overlay.h"
 #include "gtk-crusader-village-map-editor.h"
 #include "gtk-crusader-village-map-handle.h"
@@ -49,7 +48,6 @@ struct _GcvMapEditorOverlay
   GtkToggleButton   *pencil;
   GtkToggleButton   *draw_line;
   GtkToggleButton   *draw_after_cursor;
-  GtkButton         *clear;
   GtkButton         *undo;
   GtkButton         *redo;
 };
@@ -95,11 +93,6 @@ line_mode_changed (GcvMapEditor        *editor,
                    GcvMapEditorOverlay *overlay);
 
 static void
-clear_final_submission (GcvDialogWindow     *dialog,
-                        GParamSpec          *pspec,
-                        GcvMapEditorOverlay *overlay);
-
-static void
 motion_enter (GtkEventControllerMotion *self,
               gdouble                   x,
               gdouble                   y,
@@ -114,10 +107,6 @@ motion_event (GtkEventControllerMotion *self,
 static void
 motion_leave (GtkEventControllerMotion *self,
               GcvMapEditorOverlay      *overlay);
-
-static void
-clear_clicked (GtkButton           *self,
-               GcvMapEditorOverlay *overlay);
 
 static void
 undo_clicked (GtkButton           *self,
@@ -266,7 +255,6 @@ gcv_map_editor_overlay_class_init (GcvMapEditorOverlayClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, pencil);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, draw_line);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, draw_after_cursor);
-  gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, clear);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, undo);
   gtk_widget_class_bind_template_child (widget_class, GcvMapEditorOverlay, redo);
 }
@@ -281,7 +269,6 @@ gcv_map_editor_overlay_init (GcvMapEditorOverlay *self)
   gtk_toggle_button_set_group (self->draw_line, self->pencil);
   gtk_toggle_button_set_active (self->pencil, TRUE);
 
-  g_signal_connect (self->clear, "clicked", G_CALLBACK (clear_clicked), self);
   g_signal_connect (self->undo, "clicked", G_CALLBACK (undo_clicked), self);
   g_signal_connect (self->redo, "clicked", G_CALLBACK (redo_clicked), self);
 
@@ -352,24 +339,6 @@ line_mode_changed (GcvMapEditor        *editor,
 }
 
 static void
-clear_final_submission (GcvDialogWindow     *dialog,
-                        GParamSpec          *pspec,
-                        GcvMapEditorOverlay *overlay)
-{
-  g_autoptr (GVariant) submission = NULL;
-  gboolean clear                  = FALSE;
-
-  g_object_get (
-      dialog,
-      "final-submission", &submission,
-      NULL);
-  g_variant_get (submission, "(b)", &clear);
-
-  if (clear)
-    gcv_map_handle_clear_all (overlay->handle);
-}
-
-static void
 motion_enter (GtkEventControllerMotion *self,
               gdouble                   x,
               gdouble                   y,
@@ -398,48 +367,6 @@ motion_leave (GtkEventControllerMotion *self,
   overlay->x = -1.0;
   overlay->y = -1.0;
   update_ui_opacity (overlay);
-}
-
-static void
-clear_clicked (GtkButton           *self,
-               GcvMapEditorOverlay *overlay)
-{
-  g_autoptr (GListModel) model = NULL;
-  guint n_strokes              = 0;
-
-  if (overlay->handle == NULL)
-    return;
-
-  g_object_get (
-      overlay->handle,
-      "model", &model,
-      NULL);
-  n_strokes = g_list_model_get_n_items (model);
-
-  if (n_strokes <= 5)
-    gcv_map_handle_clear_all (overlay->handle);
-  else
-    {
-      GtkWidget       *window               = NULL;
-      g_autofree char *body                 = NULL;
-      g_autoptr (GVariant) dialog_structure = NULL;
-      GcvDialogWindow *dialog               = NULL;
-
-      window = gtk_widget_get_ancestor (GTK_WIDGET (self), GTK_TYPE_WINDOW);
-      g_assert (window != NULL);
-
-      body             = g_strdup_printf ("You will clear all %d strokes. This action is irreversible.", n_strokes);
-      dialog_structure = g_variant_new_parsed ("{\"I want to clear the map\":<%b>}", TRUE);
-
-      dialog = gcv_dialog (
-          "Confirmation",
-          "Clear the Map?",
-          body,
-          GTK_WINDOW (window),
-          dialog_structure);
-
-      g_signal_connect (dialog, "notify::final-submission", G_CALLBACK (clear_final_submission), overlay);
-    }
 }
 
 static void
@@ -583,18 +510,12 @@ update_ui_for_model (GcvMapEditorOverlay *self)
 {
   if (self->model != NULL)
     {
-      guint n_strokes = 0;
-
-      n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
-
       gtk_widget_set_sensitive (GTK_WIDGET (self->undo), gcv_map_handle_can_undo (self->handle));
       gtk_widget_set_sensitive (GTK_WIDGET (self->redo), gcv_map_handle_can_redo (self->handle));
-      gtk_widget_set_sensitive (GTK_WIDGET (self->clear), n_strokes > 0);
     }
   else
     {
       gtk_widget_set_sensitive (GTK_WIDGET (self->undo), FALSE);
       gtk_widget_set_sensitive (GTK_WIDGET (self->redo), FALSE);
-      gtk_widget_set_sensitive (GTK_WIDGET (self->clear), FALSE);
     }
 }
