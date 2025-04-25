@@ -1,0 +1,154 @@
+# .github/workflows/build-release.yml
+# This workflow builds the project on Windows using MSYS2 and creates a distributable artifact.
+
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ main ] # Or your main/release branch
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0} # Run commands in MSYS2 shell by default
+
+    steps:
+    # Checkout the code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      # If you add git submodules later, uncomment this:
+      # with:
+      #   submodules: 'recursive'
+
+    # Set up MSYS2 environment
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64 # Use the MinGW64 environment
+        update: true # Update MSYS2 base packages
+        install: >- # Install dependencies using pacman
+          git
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-meson
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-python
+          mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-gtk4
+          mingw-w64-x86_64-libadwaita
+          mingw-w64-x86_64-json-glib
+          mingw-w64-x86_64-gettext
+          mingw-w64-x86_64-desktop-file-utils
+          mingw-w64-x86_64-appstream
+          zip # Utility to create zip file
+        pacman-mirror: https://mirror.msys2.org/mingw/ # Optional: Specify mirror
+
+    # Configure, compile, and install
+    - name: Configure build
+      run: meson setup build --prefix=/mingw64 --buildtype=release
+
+    - name: Compile project
+      run: ninja -C build
+
+    - name: Install project
+      run: ninja -C build install
+
+    # Package the installed files into a distributable format
+    - name: Prepare artifact directory
+      run: |
+        ARTIFACT_NAME="gtk-crusader-village-windows-x64"
+        INSTALL_DIR="/mingw64"
+        DEST_DIR="artifact"
+
+        mkdir -p "${DEST_DIR}/bin"
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
+        mkdir -p "${DEST_DIR}/share/locale"
+
+        echo "Copying executable..."
+        cp "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
+
+        echo "Copying essential DLLs..."
+        # This is a common pattern: copy DLLs based on direct dependencies of the exe and known GTK libs
+        # Use 'ldd' equivalent for Windows (like depends.exe or manual checking) for accuracy if needed.
+        # Copying directly from /mingw64/bin is common practice in MSYS2 workflows.
+        # List primary dependencies (adjust if needed)
+        NEEDED_DLLS=(
+          "libgtk-4" "libgdk-4" "libglib-2.0" "libgobject-2.0" "libgio-2.0"
+          "libcairo" "libcairo-gobject" "libpango-1.0" "libpangocairo-1.0"
+          "libpangoft2-1.0" "libpangowin32-1.0" "libgdk_pixbuf-2.0"
+          "libadwaita-1" "libjson-glib-1.0" "libintl"
+          # Core runtime DLLs
+          "libgcc_s_seh-1" "libstdc++-6" "libwinpthread-1"
+          # Common transitive dependencies (add more as needed)
+          "libpng16" "zlib1" "libffi" "libharfbuzz" "libfreetype" "libfontconfig"
+          "libexpat" "libepoxy" "libfribidi" "libdatrie" "libthai" "libgraphite2"
+          "libpixman-1" "libbrotlidec" "libbrotlicommon" "libbz2"
+        )
+        for lib in "${NEEDED_DLLS[@]}"; do
+          # Copy DLLs, being tolerant if one pattern doesn't match exactly (e.g., version numbers)
+          cp --verbose "${INSTALL_DIR}/bin/${lib}"*.dll "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: No DLL found matching ${lib}*.dll"
+        done
+        # Ensure critical MSVCRT is available? Usually handled by toolchain/system.
+
+        echo "Copying GSettings schema..."
+        # Be tolerant if file doesn't exist
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/am.kolunmi.GtkCrusaderVillage.gschema.xml" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema.xml not found."
+
+        echo "Copying icon..."
+        # Be tolerant if file doesn't exist
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/am.kolunmi.GtkCrusaderVillage.svg" "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Icon SVG not found."
+
+
+        echo "Copying locale files..."
+        if [ -d "${INSTALL_DIR}/share/locale" ]; then
+          for langdir in "${INSTALL_DIR}"/share/locale/*; do
+            lang=$(basename "$langdir")
+            if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
+              mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
+              cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
+            fi
+          done
+        fi
+
+        # Create a simple launcher script (optional)
+        # echo "@echo off" > "${DEST_DIR}/run.bat"
+        # echo "set PATH=%~dp0bin;%PATH%" >> "${DEST_DIR}/run.bat"
+        # echo "start \"GTK Crusader Village\" \"%~dp0bin\\gtk-crusader-village.exe\"" >> "${DEST_DIR}/run.bat"
+
+        echo "Creating archive..."
+        cd "${DEST_DIR}"
+        zip -r "../${ARTIFACT_NAME}.zip" *
+
+    # Upload the zipped artifact
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gtk-crusader-village-windows-x64
+        path: gtk-crusader-village-windows-x64.zip
+
+    # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
+    # - name: Create Release
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   id: create_release
+    #   uses: actions/create-release@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     tag_name: ${{ github.ref_name }}
+    #     release_name: Release ${{ github.ref_name }}
+    #     draft: false
+    #     prerelease: false # Set to true if it's a pre-release
+    #
+    # - name: Upload Release Asset
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_path: ./gtk-crusader-village-windows-x64.zip
+    #     asset_name: gtk-crusader-village-windows-x64.zip
+    #     asset_content_type: application/zip
