@@ -70,10 +70,40 @@ jobs:
     # Step 6: Prepare the artifact directory for distribution
     - name: Prepare artifact directory
       run: |
-        # ... (ARTIFACT_NAME, INSTALL_DIR, DEST_DIR, mkdir commands remain the same) ...
+        ARTIFACT_NAME="gtk-crusader-village-windows-x64"
+        INSTALL_DIR="/mingw64" # The *intended* install prefix within MSYS2
+        DEST_DIR="artifact"     # Directory to gather files for the artifact
+
+        echo "Creating destination directories..."
+        mkdir -p "${DEST_DIR}/bin"
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
+        mkdir -p "${DEST_DIR}/share/locale"
+        mkdir -p "${DEST_DIR}/share/metainfo"
+        mkdir -p "${DEST_DIR}/share/applications"
+        mkdir -p "${DEST_DIR}/share/dbus-1/services"
+
+        # --- Start Debugging ---
+        echo "-----------------------------------------------------"
+        echo "DEBUG INFO FOR STEP 6:"
+        echo "Current directory: $(pwd)"
+        echo "INSTALL_DIR variable is set to: ${INSTALL_DIR}"
+        echo ""
+        echo "Listing contents of INSTALL_DIR (${INSTALL_DIR}/bin/) ..."
+        ls -la "${INSTALL_DIR}/bin/"
+        echo ""
+        echo "Checking existence of EXE specifically at ${INSTALL_DIR}/bin/gtk-crusader-village.exe ..."
+        ls -l "${INSTALL_DIR}/bin/gtk-crusader-village.exe" || echo "*** EXECUTABLE NOT FOUND at ${INSTALL_DIR}/bin/gtk-crusader-village.exe ***"
+        echo ""
+        echo "Listing contents of /bin/ (for comparison)..."
+        ls -la /bin/
+        echo "-----------------------------------------------------"
+        # --- End Debugging ---
 
         echo "Copying executable..."
-        cp "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
+        # Use --verbose flag for cp to see what it's doing
+        cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
 
         echo "Copying essential DLLs..."
         NEEDED_DLLS=(
@@ -92,40 +122,29 @@ jobs:
           "zlib1" "libffi" "libexpat" "libdatrie" "libthai"
           "libbrotlidec" "libbrotlicommon" "libbz2" "libunistring"
           "libgraphene-1.0" "libgmodule-2.0"
-          # Added based on latest runtime errors (Apr 25, 2025):
-          "libiconv"      # provides libiconv-2.dll
-          "libdeflate"    # provides libdeflate.dll
-          "libjbig"       # provides libjbig-0.dll or similar
-          "libLerc"       # provides libLerc.dll or similar
+          # Added based on latest runtime errors:
+          "libiconv" "libdeflate" "libjbig" "libLerc"
         )
-        # De-duplicate and sort the list
         UNIQUE_NEEDED_DLLS=($(echo "${NEEDED_DLLS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-
         echo "DLLs to copy: ${UNIQUE_NEEDED_DLLS[@]}"
-
         for lib in "${UNIQUE_NEEDED_DLLS[@]}"; do
           echo "Looking for ${lib}*.dll in ${INSTALL_DIR}/bin/"
           find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -t "${DEST_DIR}/bin/" {} + || echo "Info: No DLL found matching ${lib}*.dll"
         done
 
         echo "Copying data files..."
-        # Copy GSettings schema
-        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/am.kolunmi.GtkCrusaderVillage.gschema.xml" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema.xml not found."
-        # Copy icons
-        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/am.kolunmi.GtkCrusaderVillage.svg" "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Icon SVG not found."
-        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/am.kolunmi.GtkCrusaderVillage-symbolic.svg" "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon SVG not found."
-        # Copy other installed data files
-        cp --verbose "${INSTALL_DIR}/share/metainfo/am.kolunmi.GtkCrusaderVillage.metainfo.xml" "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo.xml not found."
-        cp --verbose "${INSTALL_DIR}/share/applications/am.kolunmi.GtkCrusaderVillage.desktop" "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
-        cp --verbose "${INSTALL_DIR}/share/dbus-1/services/am.kolunmi.GtkCrusaderVillage.service" "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
-
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema files not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Scalable icon not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon SVG not found."
+        cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
+        cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
+        cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
 
         echo "Copying locale files..."
         if [ -d "${INSTALL_DIR}/share/locale" ]; then
           for langdir in "${INSTALL_DIR}"/share/locale/*; do
             lang=$(basename "$langdir")
-            # Check if it's likely a language code directory (e.g., xx or xx_YY)
-            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then # Check if directory name looks like a language code
               if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
                 mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
                 cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
