@@ -23,7 +23,7 @@ jobs:
       # with:
       #   submodules: 'recursive'
 
-    # Step 2: Set up the MSYS2 environment & Install Dependencies
+    # Step 2: Set up MSYS2 environment & Install Dependencies
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
@@ -44,6 +44,8 @@ jobs:
           mingw-w64-x86_64-appstream
           mingw-w64-x86_64-ntldd
           mingw-w64-x86_64-hicolor-icon-theme
+          mingw-w64-x86_64-librsvg
+          mingw-w64-x86_64-adwaita-icon-theme
 
     # Step 3: Configure build
     - name: Configure build
