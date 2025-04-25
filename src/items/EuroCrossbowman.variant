@@ -1,8 +1,8 @@
 {
-    "id": <0x5d>,
+    "id": <7>,
     "name": <"Crossbowman">,
     "description": <"[English Manual] \"These units are slow to move and reload and have a shorter range than archers. They are however very accurate and their deadly bolts can easily penetrate metal armor.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroCrossbowman.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroCrossbowman.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

@@ -2,9 +2,9 @@
     "id": <113>,
     "name": <"Square Tower">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Tower4.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Tower4.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <6>,
     "tile-height": <6>

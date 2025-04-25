@@ -2,8 +2,8 @@
     "id": <99>,
     "name": <"Pitch Ditch">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/PitchDitch.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/PitchDitch.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
     "kind": <"building">,
     "tile-width": <1>,
     "tile-height": <1>

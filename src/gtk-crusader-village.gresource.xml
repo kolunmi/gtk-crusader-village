@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/am/kolunmi/GtkCrusaderVillage">
+  <gresource prefix="/am/kolunmi/Gcv">
 
     <file>gtk/styles.css</file>
     <file>gtk/shc-light.css</file>
@@ -13,7 +13,9 @@
     <file preprocess="xml-stripblanks">icons/scalable/actions/pencil-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/shc.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/step-over-symbolic.svg</file>
-
+    <file preprocess="xml-stripblanks">icons/scalable/actions/eye-not-looking-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/eye-open-negative-filled-symbolic.svg</file>
+    
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
     
     <file preprocess="xml-stripblanks">gtk-crusader-village-window.ui</file>
@@ -26,6 +28,8 @@
     <file preprocess="xml-stripblanks">gtk-crusader-village-map-editor-status.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view.ui</file>
     <file preprocess="xml-stripblanks">gtk-crusader-village-timeline-view-item.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-brush-area.ui</file>
+    <file preprocess="xml-stripblanks">gtk-crusader-village-brush-area-item.ui</file>
 
     <!-- items -->
     <file>items/Apothecary.variant</file>
@@ -63,6 +67,7 @@
     <file>items/DunkingStool.variant</file>
     <file>items/EngineersGuild.variant</file>
     <file>items/Engineer.variant</file>
+    <file>items/EngineerWithOil.variant</file>
     <file>items/EuroArcher.variant</file>
     <file>items/EuroCrossbowman.variant</file>
     <file>items/EuroKnight.variant</file>
@@ -127,7 +132,12 @@
     <file>items/Trebuchet.variant</file>
     <file>items/Tunneler.variant</file>
     <file>items/TunnellersGuild.variant</file>
-    <file>items/WallStairs.variant</file>
+    <file>items/WallStairs1.variant</file>
+    <file>items/WallStairs2.variant</file>
+    <file>items/WallStairs3.variant</file>
+    <file>items/WallStairs4.variant</file>
+    <file>items/WallStairs5.variant</file>
+    <file>items/WallStairs6.variant</file>
     <file>items/WaterPot.variant</file>
     <file>items/Well.variant</file>
     <file>items/WheatFarm.variant</file>

@@ -24,11 +24,11 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA (gtk_crusader_village_item_area_get_type ())
+#define GCV_TYPE_ITEM_AREA (gcv_item_area_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemArea, gtk_crusader_village_item_area, GTK_CRUSADER_VILLAGE, ITEM_AREA, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvItemArea, gcv_item_area, GCV, ITEM_AREA, GcvUtilBin)
 
 void
-gtk_crusader_village_item_area_grab_search_focus (GtkCrusaderVillageItemArea *self);
+gcv_item_area_grab_search_focus (GcvItemArea *self);
 
 G_END_DECLS

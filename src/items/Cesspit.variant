@@ -2,9 +2,9 @@
     "id": <301>,
     "name": <"Cesspit">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Cesspit.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Cesspit.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <5>,
     "tile-height": <5>

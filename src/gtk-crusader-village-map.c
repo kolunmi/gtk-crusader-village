@@ -26,10 +26,10 @@
 #include "gtk-crusader-village-map.h"
 
 /* clang-format off */
-G_DEFINE_QUARK (gtk-crusader-village-map-error-quark, gtk_crusader_village_map_error);
+G_DEFINE_QUARK (gtk-crusader-village-map-error-quark, gcv_map_error);
 /* clang-format on */
 
-struct _GtkCrusaderVillageMap
+struct _GcvMap
 {
   GObject parent_instance;
 
@@ -40,7 +40,7 @@ struct _GtkCrusaderVillageMap
   GListStore *strokes;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageMap, gtk_crusader_village_map, G_TYPE_OBJECT)
+G_DEFINE_FINAL_TYPE (GcvMap, gcv_map, G_TYPE_OBJECT)
 
 enum
 {
@@ -58,8 +58,8 @@ static GParamSpec *props[LAST_PROP] = { 0 };
 
 typedef struct
 {
-  GtkCrusaderVillageItemStore *store;
-  char                        *python_exe;
+  GcvItemStore *store;
+  char         *python_exe;
 } LoadData;
 
 typedef struct
@@ -87,23 +87,23 @@ save_to_aiv_file_async_thread (GTask        *task,
                                GCancellable *cancellable);
 
 static void
-gtk_crusader_village_map_dispose (GObject *object)
+gcv_map_dispose (GObject *object)
 {
-  GtkCrusaderVillageMap *self = GTK_CRUSADER_VILLAGE_MAP (object);
+  GcvMap *self = GCV_MAP (object);
 
   g_clear_pointer (&self->name, g_free);
   g_clear_object (&self->strokes);
 
-  G_OBJECT_CLASS (gtk_crusader_village_map_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_map_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_map_get_property (GObject    *object,
-                                       guint       prop_id,
-                                       GValue     *value,
-                                       GParamSpec *pspec)
+gcv_map_get_property (GObject    *object,
+                      guint       prop_id,
+                      GValue     *value,
+                      GParamSpec *pspec)
 {
-  GtkCrusaderVillageMap *self = GTK_CRUSADER_VILLAGE_MAP (object);
+  GcvMap *self = GCV_MAP (object);
 
   switch (prop_id)
     {
@@ -125,12 +125,12 @@ gtk_crusader_village_map_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_map_set_property (GObject      *object,
-                                       guint         prop_id,
-                                       const GValue *value,
-                                       GParamSpec   *pspec)
+gcv_map_set_property (GObject      *object,
+                      guint         prop_id,
+                      const GValue *value,
+                      GParamSpec   *pspec)
 {
-  GtkCrusaderVillageMap *self = GTK_CRUSADER_VILLAGE_MAP (object);
+  GcvMap *self = GCV_MAP (object);
 
   switch (prop_id)
     {
@@ -150,13 +150,13 @@ gtk_crusader_village_map_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_map_class_init (GtkCrusaderVillageMapClass *klass)
+gcv_map_class_init (GcvMapClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_map_dispose;
-  object_class->get_property = gtk_crusader_village_map_get_property;
-  object_class->set_property = gtk_crusader_village_map_set_property;
+  object_class->dispose      = gcv_map_dispose;
+  object_class->get_property = gcv_map_get_property;
+  object_class->set_property = gcv_map_set_property;
 
   props[PROP_NAME] =
       g_param_spec_string (
@@ -194,65 +194,65 @@ gtk_crusader_village_map_class_init (GtkCrusaderVillageMapClass *klass)
 }
 
 static void
-gtk_crusader_village_map_init (GtkCrusaderVillageMap *self)
+gcv_map_init (GcvMap *self)
 {
   self->width   = 100;
   self->height  = 100;
-  self->strokes = g_list_store_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE);
+  self->strokes = g_list_store_new (GCV_TYPE_ITEM_STROKE);
 }
 
 void
-gtk_crusader_village_map_new_from_aiv_file_async (GFile                       *file,
-                                                  GtkCrusaderVillageItemStore *store,
-                                                  const char                  *python_exe,
-                                                  int                          io_priority,
-                                                  GCancellable                *cancellable,
-                                                  GAsyncReadyCallback          callback,
-                                                  gpointer                     user_data)
+gcv_map_new_from_aiv_file_async (GFile              *file,
+                                 GcvItemStore       *store,
+                                 const char         *python_exe,
+                                 int                 io_priority,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data)
 {
   g_autoptr (GTask) task = NULL;
   LoadData *data         = NULL;
 
   g_return_if_fail (G_IS_FILE (file));
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STORE (store));
+  g_return_if_fail (GCV_IS_ITEM_STORE (store));
   g_return_if_fail (python_exe != NULL);
 
   data             = g_new0 (typeof (*data), 1);
-  data->store      = gtk_crusader_village_item_store_dup (store);
+  data->store      = gcv_item_store_dup (store);
   data->python_exe = g_strdup (python_exe);
 
   task = g_task_new (file, cancellable, callback, user_data);
-  g_task_set_source_tag (task, gtk_crusader_village_map_new_from_aiv_file_async);
+  g_task_set_source_tag (task, gcv_map_new_from_aiv_file_async);
   g_task_set_task_data (task, data, destroy_load_data);
   g_task_set_priority (task, io_priority);
   g_task_set_check_cancellable (task, TRUE);
   g_task_run_in_thread (task, new_from_aiv_file_async_thread);
 }
 
-GtkCrusaderVillageMap *
-gtk_crusader_village_map_new_from_aiv_file_finish (GAsyncResult *result,
-                                                   GError      **error)
+GcvMap *
+gcv_map_new_from_aiv_file_finish (GAsyncResult *result,
+                                  GError      **error)
 {
   g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
-                            gtk_crusader_village_map_new_from_aiv_file_async,
+                            gcv_map_new_from_aiv_file_async,
                         NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 void
-gtk_crusader_village_map_save_to_aiv_file_async (GtkCrusaderVillageMap *self,
-                                                 GFile                 *file,
-                                                 const char            *python_exe,
-                                                 int                    io_priority,
-                                                 GCancellable          *cancellable,
-                                                 GAsyncReadyCallback    callback,
-                                                 gpointer               user_data)
+gcv_map_save_to_aiv_file_async (GcvMap             *self,
+                                GFile              *file,
+                                const char         *python_exe,
+                                int                 io_priority,
+                                GCancellable       *cancellable,
+                                GAsyncReadyCallback callback,
+                                gpointer            user_data)
 {
   g_autoptr (GTask) task = NULL;
   SaveData *data         = NULL;
 
-  g_return_if_fail (GTK_CRUSADER_VILLAGE_IS_MAP (self));
+  g_return_if_fail (GCV_IS_MAP (self));
   g_return_if_fail (G_IS_FILE (file));
   g_return_if_fail (python_exe != NULL);
 
@@ -265,7 +265,7 @@ gtk_crusader_village_map_save_to_aiv_file_async (GtkCrusaderVillageMap *self,
     g_ptr_array_index (data->strokes, i) = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
 
   task = g_task_new (file, cancellable, callback, user_data);
-  g_task_set_source_tag (task, gtk_crusader_village_map_save_to_aiv_file_async);
+  g_task_set_source_tag (task, gcv_map_save_to_aiv_file_async);
   g_task_set_task_data (task, data, destroy_save_data);
   g_task_set_priority (task, io_priority);
   g_task_set_check_cancellable (task, TRUE);
@@ -273,11 +273,11 @@ gtk_crusader_village_map_save_to_aiv_file_async (GtkCrusaderVillageMap *self,
 }
 
 gboolean
-gtk_crusader_village_map_save_to_aiv_file_finish (GAsyncResult *result,
-                                                  GError      **error)
+gcv_map_save_to_aiv_file_finish (GAsyncResult *result,
+                                 GError      **error)
 {
   g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
-                            gtk_crusader_village_map_save_to_aiv_file_async,
+                            gcv_map_save_to_aiv_file_async,
                         FALSE);
 
   return g_task_propagate_boolean (G_TASK (result), error);
@@ -311,7 +311,7 @@ new_from_aiv_file_async_thread (GTask        *task,
 {
   GFile    *file                              = object;
   LoadData *data                              = task_data;
-  g_autoptr (GtkCrusaderVillageMap) map       = NULL;
+  g_autoptr (GcvMap) map                      = NULL;
   g_autoptr (GError) local_error              = NULL;
   g_autoptr (GFile) tmp_file                  = NULL;
   g_autoptr (GFileIOStream) tmp_file_iostream = NULL;
@@ -324,12 +324,13 @@ new_from_aiv_file_async_thread (GTask        *task,
   JsonNode *root                              = NULL;
   g_autoptr (GVariant) variant                = NULL;
   g_autoptr (GVariantIter) frames_iter        = NULL;
+  g_autoptr (GVariantIter) misc_iter          = NULL;
   gint64 pause_delay_amount                   = 0;
 
   if (g_task_return_error_if_cancelled (task))
     return;
 
-  map       = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_MAP, NULL);
+  map       = g_object_new (GCV_TYPE_MAP, NULL);
   map->name = g_file_get_basename (file);
 
   tmp_file = g_file_new_tmp (NULL, &tmp_file_iostream, &local_error);
@@ -372,18 +373,20 @@ new_from_aiv_file_async_thread (GTask        *task,
     goto err_inval;
   if (!g_variant_lookup (variant, "frames", "av", &frames_iter))
     goto err_inval;
+  if (!g_variant_lookup (variant, "miscItems", "av", &misc_iter))
+    goto err_inval;
 
   for (;;)
     {
-      g_autoptr (GVariant) frame                      = NULL;
-      gint64 id                                       = 0;
-      g_autoptr (GtkCrusaderVillageItem) item         = NULL;
-      int item_tile_width                             = 0;
-      int item_tile_height                            = 0;
-      int item_tile_offset_x                          = 0;
-      int item_tile_offset_y                          = 0;
-      g_autoptr (GVariantIter) instances_iter         = NULL;
-      g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
+      g_autoptr (GVariant) frame              = NULL;
+      gint64 id                               = 0;
+      g_autoptr (GcvItem) item                = NULL;
+      int item_tile_width                     = 0;
+      int item_tile_height                    = 0;
+      int item_tile_offset_x                  = 0;
+      int item_tile_offset_y                  = 0;
+      g_autoptr (GVariantIter) instances_iter = NULL;
+      g_autoptr (GcvItemStroke) stroke        = NULL;
 
       if (!g_variant_iter_next (frames_iter, "v", &frame))
         break;
@@ -392,7 +395,7 @@ new_from_aiv_file_async_thread (GTask        *task,
 
       if (!g_variant_lookup (frame, "itemType", "x", &id))
         goto err_inval;
-      item = gtk_crusader_village_item_store_query_id (data->store, id);
+      item = gcv_item_store_query_id (data->store, id);
       if (item == NULL)
         continue;
       g_object_get (
@@ -407,7 +410,7 @@ new_from_aiv_file_async_thread (GTask        *task,
         goto err_inval;
 
       stroke = g_object_new (
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+          GCV_TYPE_ITEM_STROKE,
           "item", item,
           NULL);
       for (;;)
@@ -421,13 +424,49 @@ new_from_aiv_file_async_thread (GTask        *task,
             goto err_inval;
 
           tile = g_variant_get_int64 (tile_variant);
-          gtk_crusader_village_item_stroke_add_instance (
+          gcv_item_stroke_add_instance (
               stroke,
-              (GtkCrusaderVillageItemStrokeInstance) {
+              (GcvItemStrokeInstance) {
                   tile % 100,
                   tile / 100,
               });
         }
+
+      g_list_store_append (G_LIST_STORE (map->strokes), stroke);
+    }
+
+  for (;;)
+    {
+      g_autoptr (GVariant) unit        = NULL;
+      gint64 id                        = 0;
+      g_autoptr (GcvItem) item         = NULL;
+      gint64 tile                      = 0;
+      g_autoptr (GcvItemStroke) stroke = NULL;
+
+      if (!g_variant_iter_next (misc_iter, "v", &unit))
+        break;
+      if (!g_variant_is_of_type (unit, G_VARIANT_TYPE_DICTIONARY))
+        goto err_inval;
+
+      if (!g_variant_lookup (unit, "itemType", "x", &id))
+        goto err_inval;
+      item = gcv_item_store_query_id (data->store, id);
+      if (item == NULL)
+        continue;
+
+      if (!g_variant_lookup (unit, "positionOfset", "x", &tile))
+        goto err_inval;
+
+      stroke = g_object_new (
+          GCV_TYPE_ITEM_STROKE,
+          "item", item,
+          NULL);
+      gcv_item_stroke_add_instance (
+          stroke,
+          (GcvItemStrokeInstance) {
+              tile % 100,
+              tile / 100,
+          });
 
       g_list_store_append (G_LIST_STORE (map->strokes), stroke);
     }
@@ -442,16 +481,16 @@ err:
 err_sourcehold:
   g_task_return_new_error_literal (
       task,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED,
+      GCV_MAP_ERROR,
+      GCV_MAP_ERROR_SOURCEHOLD_FAILED,
       "The Sourcehold process terminated abnormally");
   goto done;
 
 err_inval:
   g_task_return_new_error_literal (
       task,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR_INVALID_JSON_STRUCTURE,
+      GCV_MAP_ERROR,
+      GCV_MAP_ERROR_INVALID_JSON_STRUCTURE,
       "JSON structure is invalid");
   goto done;
 
@@ -495,14 +534,18 @@ save_to_aiv_file_async_thread (GTask        *task,
   G_STMT_END
 
   WRITE ("{\"frames\":[");
+  WRITE ("{\"itemType\":%d,\"tilePositionOfsets\":[%d],\"shouldPause\":false}",
+         61 /* KEEP2 */, 100 * 43 + 43);
+
   if (data->strokes->len > 0)
     {
       for (guint i = 0; i < data->strokes->len; i++)
         {
-          GtkCrusaderVillageItemStroke *stroke    = NULL;
-          g_autoptr (GtkCrusaderVillageItem) item = NULL;
-          g_autoptr (GArray) instances            = NULL;
-          int id                                  = 0;
+          GcvItemStroke *stroke        = NULL;
+          g_autoptr (GcvItem) item     = NULL;
+          g_autoptr (GArray) instances = NULL;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
 
           stroke = g_ptr_array_index (data->strokes, i);
           g_object_get (
@@ -513,24 +556,76 @@ save_to_aiv_file_async_thread (GTask        *task,
           g_object_get (
               item,
               "id", &id,
+              "kind", &kind,
               NULL);
 
-          WRITE ("{\"itemType\":%d,\"tilePositionOfsets\":[", id);
+          if (kind == GCV_ITEM_KIND_UNIT)
+            continue;
+
+          WRITE (",{\"itemType\":%d,\"tilePositionOfsets\":[", id);
           if (instances->len > 0)
             {
               for (guint j = 0; j < instances->len; j++)
                 {
-                  GtkCrusaderVillageItemStrokeInstance *instance = NULL;
+                  GcvItemStrokeInstance *instance = NULL;
 
-                  instance = &g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
+                  instance = &g_array_index (instances, GcvItemStrokeInstance, j);
                   WRITE (j < instances->len - 1 ? "%d," : "%d", 100 * instance->y + instance->x);
                 }
             }
-          WRITE (i < data->strokes->len - 1 ? "],\"shouldPause\":false}," : "],\"shouldPause\":false}");
+          WRITE ("],\"shouldPause\":false}");
         }
     }
-  WRITE ("],\"miscItems\":[],\"pauseDelayAmount\":100}");
 
+  WRITE ("],\"miscItems\":[");
+
+  if (data->strokes->len > 0)
+    {
+      g_autoptr (GHashTable) unit_counts = NULL;
+
+      unit_counts = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+      for (guint i = 0, written = 0; i < data->strokes->len; i++)
+        {
+          GcvItemStroke *stroke        = NULL;
+          g_autoptr (GcvItem) item     = NULL;
+          g_autoptr (GArray) instances = NULL;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
+          guint       count            = 0;
+
+          stroke = g_ptr_array_index (data->strokes, i);
+          g_object_get (
+              stroke,
+              "item", &item,
+              "instances", &instances,
+              NULL);
+          g_object_get (
+              item,
+              "id", &id,
+              "kind", &kind,
+              NULL);
+
+          if (kind != GCV_ITEM_KIND_UNIT)
+            continue;
+
+          count = GPOINTER_TO_UINT (g_hash_table_lookup (unit_counts, GINT_TO_POINTER (id)));
+          for (guint j = 0; j < instances->len; j++)
+            {
+              GcvItemStrokeInstance *instance = NULL;
+
+              instance = &g_array_index (instances, GcvItemStrokeInstance, j);
+
+              if (written++ > 0)
+                WRITE (",");
+              WRITE ("{\"itemType\":%d,\"positionOfset\":%d,\"number\":%d}",
+                     id, 100 * instance->y + instance->x, count + j);
+            }
+          g_hash_table_replace (unit_counts, GINT_TO_POINTER (id), GUINT_TO_POINTER (count + instances->len));
+        }
+    }
+
+  WRITE ("],\"pauseDelayAmount\":100,\"extra\":{}}");
   WRITE ("\n");
 #undef WRITE
 
@@ -570,8 +665,8 @@ err:
 err_sourcehold:
   g_task_return_new_error_literal (
       task,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR,
-      GTK_CRUSADER_VILLAGE_MAP_ERROR_SOURCEHOLD_FAILED,
+      GCV_MAP_ERROR,
+      GCV_MAP_ERROR_SOURCEHOLD_FAILED,
       "The Sourcehold process terminated abnormally");
   goto done;
 

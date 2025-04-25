@@ -24,8 +24,8 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_TIMELINE_VIEW (gtk_crusader_village_timeline_view_get_type ())
+#define GCV_TYPE_TIMELINE_VIEW (gcv_timeline_view_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageTimelineView, gtk_crusader_village_timeline_view, GTK_CRUSADER_VILLAGE, TIMELINE_VIEW, GtkCrusaderVillageUtilBin)
+G_DECLARE_FINAL_TYPE (GcvTimelineView, gcv_timeline_view, GCV, TIMELINE_VIEW, GcvUtilBin)
 
 G_END_DECLS

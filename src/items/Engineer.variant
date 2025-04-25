@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Engineer">,
     "description": <"[English Manual] \"These are perhaps the most versatile and useful unit in the game. They are required to build and man all of your siege equipment in and out of the castle. These units are trained in the engineer's guild.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Engineer.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Engineer.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

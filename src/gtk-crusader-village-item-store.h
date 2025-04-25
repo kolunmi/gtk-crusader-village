@@ -24,18 +24,18 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE (gtk_crusader_village_item_store_get_type ())
+#define GCV_TYPE_ITEM_STORE (gcv_item_store_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemStore, gtk_crusader_village_item_store, GTK_CRUSADER_VILLAGE, ITEM_STORE, GObject)
+G_DECLARE_FINAL_TYPE (GcvItemStore, gcv_item_store, GCV, ITEM_STORE, GObject)
 
 void
-gtk_crusader_village_item_store_read_resources (GtkCrusaderVillageItemStore *self);
+gcv_item_store_read_resources (GcvItemStore *self);
 
-GtkCrusaderVillageItem *
-gtk_crusader_village_item_store_query_id (GtkCrusaderVillageItemStore *self,
-                                          int                          id);
+GcvItem *
+gcv_item_store_query_id (GcvItemStore *self,
+                         int           id);
 
-GtkCrusaderVillageItemStore *
-gtk_crusader_village_item_store_dup (GtkCrusaderVillageItemStore *self);
+GcvItemStore *
+gcv_item_store_dup (GcvItemStore *self);
 
 G_END_DECLS

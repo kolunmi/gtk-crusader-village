@@ -25,33 +25,33 @@
 #include "gtk-crusader-village-item.h"
 
 G_DEFINE_ENUM_TYPE (
-    GtkCrusaderVillageItemKind,
-    gtk_crusader_village_item_kind,
-    G_DEFINE_ENUM_VALUE (GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING, "building"),
-    G_DEFINE_ENUM_VALUE (GTK_CRUSADER_VILLAGE_ITEM_KIND_UNIT, "unit"),
-    G_DEFINE_ENUM_VALUE (GTK_CRUSADER_VILLAGE_ITEM_KIND_WALL, "wall"),
-    G_DEFINE_ENUM_VALUE (GTK_CRUSADER_VILLAGE_ITEM_KIND_MOAT, "moat"))
+    GcvItemKind,
+    gcv_item_kind,
+    G_DEFINE_ENUM_VALUE (GCV_ITEM_KIND_BUILDING, "building"),
+    G_DEFINE_ENUM_VALUE (GCV_ITEM_KIND_UNIT, "unit"),
+    G_DEFINE_ENUM_VALUE (GCV_ITEM_KIND_WALL, "wall"),
+    G_DEFINE_ENUM_VALUE (GCV_ITEM_KIND_MOAT, "moat"))
 
-struct _GtkCrusaderVillageItem
+struct _GcvItem
 {
   GObject parent_instance;
 
-  int                        id;
-  char                      *name;
-  char                      *description;
-  char                      *thumbnail_resource;
-  char                      *section_icon_resource;
-  char                      *tile_resource;
-  GtkCrusaderVillageItemKind kind;
-  int                        tile_width;
-  int                        tile_height;
-  int                        tile_offset_x;
-  int                        tile_offset_y;
+  int         id;
+  char       *name;
+  char       *description;
+  char       *thumbnail_resource;
+  char       *section_icon_resource;
+  char       *tile_resource;
+  GcvItemKind kind;
+  int         tile_width;
+  int         tile_height;
+  int         tile_offset_x;
+  int         tile_offset_y;
 
   guint tile_resource_hash;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItem, gtk_crusader_village_item, G_TYPE_OBJECT)
+G_DEFINE_FINAL_TYPE (GcvItem, gcv_item, G_TYPE_OBJECT)
 
 enum
 {
@@ -75,9 +75,9 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_item_dispose (GObject *object)
+gcv_item_dispose (GObject *object)
 {
-  GtkCrusaderVillageItem *self = GTK_CRUSADER_VILLAGE_ITEM (object);
+  GcvItem *self = GCV_ITEM (object);
 
   g_clear_pointer (&self->name, g_free);
   g_clear_pointer (&self->description, g_free);
@@ -85,16 +85,16 @@ gtk_crusader_village_item_dispose (GObject *object)
   g_clear_pointer (&self->section_icon_resource, g_free);
   g_clear_pointer (&self->tile_resource, g_free);
 
-  G_OBJECT_CLASS (gtk_crusader_village_item_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_item_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_item_get_property (GObject    *object,
-                                        guint       prop_id,
-                                        GValue     *value,
-                                        GParamSpec *pspec)
+gcv_item_get_property (GObject    *object,
+                       guint       prop_id,
+                       GValue     *value,
+                       GParamSpec *pspec)
 {
-  GtkCrusaderVillageItem *self = GTK_CRUSADER_VILLAGE_ITEM (object);
+  GcvItem *self = GCV_ITEM (object);
 
   switch (prop_id)
     {
@@ -137,12 +137,12 @@ gtk_crusader_village_item_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_item_set_property (GObject      *object,
-                                        guint         prop_id,
-                                        const GValue *value,
-                                        GParamSpec   *pspec)
+gcv_item_set_property (GObject      *object,
+                       guint         prop_id,
+                       const GValue *value,
+                       GParamSpec   *pspec)
 {
-  GtkCrusaderVillageItem *self = GTK_CRUSADER_VILLAGE_ITEM (object);
+  GcvItem *self = GCV_ITEM (object);
 
   switch (prop_id)
     {
@@ -194,13 +194,13 @@ gtk_crusader_village_item_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
+gcv_item_class_init (GcvItemClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_item_dispose;
-  object_class->get_property = gtk_crusader_village_item_get_property;
-  object_class->set_property = gtk_crusader_village_item_set_property;
+  object_class->dispose      = gcv_item_dispose;
+  object_class->get_property = gcv_item_get_property;
+  object_class->set_property = gcv_item_set_property;
 
   props[PROP_ID] =
       g_param_spec_int (
@@ -255,8 +255,8 @@ gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
           "kind",
           "Kind",
           "The item type",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_KIND,
-          GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING,
+          GCV_TYPE_ITEM_KIND,
+          GCV_ITEM_KIND_BUILDING,
           G_PARAM_READWRITE);
 
   props[PROP_TILE_WIDTH] =
@@ -295,17 +295,17 @@ gtk_crusader_village_item_class_init (GtkCrusaderVillageItemClass *klass)
 }
 
 static void
-gtk_crusader_village_item_init (GtkCrusaderVillageItem *self)
+gcv_item_init (GcvItem *self)
 {
-  self->kind        = GTK_CRUSADER_VILLAGE_ITEM_KIND_BUILDING;
+  self->kind        = GCV_ITEM_KIND_BUILDING;
   self->tile_width  = 1;
   self->tile_height = 1;
 }
 
 static void
-gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageItem *self,
-                                                           int                     prop_id,
-                                                           GVariant               *variant)
+gcv_item_set_property_from_variant_inner (GcvItem  *self,
+                                          int       prop_id,
+                                          GVariant *variant)
 {
 #define WARN_INVALID_TYPE(need)                                                \
   g_critical ("%s: property \"%s\" needs type " G_STRINGIFY (need) ", got %s", \
@@ -345,7 +345,7 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
           GEnumValue *enum_value            = NULL;
 
           variant_string = g_variant_get_string (variant, NULL);
-          enum_class     = g_type_class_ref (GTK_CRUSADER_VILLAGE_TYPE_ITEM_KIND);
+          enum_class     = g_type_class_ref (GCV_TYPE_ITEM_KIND);
           enum_value     = g_enum_get_value_by_nick (enum_class, variant_string);
 
           if (enum_value != NULL)
@@ -368,16 +368,16 @@ gtk_crusader_village_item_set_property_from_variant_inner (GtkCrusaderVillageIte
 #undef RECEIVE_VARIANT
 }
 
-GtkCrusaderVillageItem *
-gtk_crusader_village_item_new_for_resource (const char *resource_path,
-                                            GError    **error)
+GcvItem *
+gcv_item_new_for_resource (const char *resource_path,
+                           GError    **error)
 {
-  GError *local_error                     = NULL;
-  g_autoptr (GBytes) bytes                = NULL;
-  gsize       local_size                  = 0;
-  const char *resource_data               = NULL;
-  g_autoptr (GVariant) data_variant       = NULL;
-  g_autoptr (GtkCrusaderVillageItem) item = NULL;
+  GError *local_error               = NULL;
+  g_autoptr (GBytes) bytes          = NULL;
+  gsize       local_size            = 0;
+  const char *resource_data         = NULL;
+  g_autoptr (GVariant) data_variant = NULL;
+  g_autoptr (GcvItem) item          = NULL;
 
   g_return_val_if_fail (resource_path != NULL, NULL);
 
@@ -397,7 +397,7 @@ gtk_crusader_village_item_new_for_resource (const char *resource_path,
       return NULL;
     }
 
-  item = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM, NULL);
+  item = g_object_new (GCV_TYPE_ITEM, NULL);
 
   /* TODO: maybe add real errors and improve feedback
    * through gui if custom items are ever a thing.
@@ -415,7 +415,7 @@ gtk_crusader_village_item_new_for_resource (const char *resource_path,
           if (!g_variant_iter_next (&iter, "{sv}", &key, &value))
             break;
 
-          gtk_crusader_village_item_set_property_from_variant (item, key, value);
+          gcv_item_set_property_from_variant (item, key, value);
         }
     }
 
@@ -423,9 +423,9 @@ gtk_crusader_village_item_new_for_resource (const char *resource_path,
 }
 
 void
-gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *self,
-                                                     const char             *property,
-                                                     GVariant               *variant)
+gcv_item_set_property_from_variant (GcvItem    *self,
+                                    const char *property,
+                                    GVariant   *variant)
 {
   gboolean found = FALSE;
 
@@ -433,7 +433,7 @@ gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *sel
     {
       if (g_strcmp0 (property, props[prop_id]->name) == 0)
         {
-          gtk_crusader_village_item_set_property_from_variant_inner (self, prop_id, variant);
+          gcv_item_set_property_from_variant_inner (self, prop_id, variant);
           found = TRUE;
           break;
         }
@@ -444,17 +444,17 @@ gtk_crusader_village_item_set_property_from_variant (GtkCrusaderVillageItem *sel
 }
 
 const char *
-gtk_crusader_village_item_get_name (GtkCrusaderVillageItem *self)
+gcv_item_get_name (GcvItem *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self), NULL);
+  g_return_val_if_fail (GCV_IS_ITEM (self), NULL);
 
-  return GUINT_TO_POINTER (self->name);
+  return self->name;
 }
 
 gpointer
-gtk_crusader_village_item_get_tile_resource_hash (GtkCrusaderVillageItem *self)
+gcv_item_get_tile_resource_hash (GcvItem *self)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM (self), NULL);
+  g_return_val_if_fail (GCV_IS_ITEM (self), NULL);
 
   return GUINT_TO_POINTER (self->tile_resource_hash);
 }

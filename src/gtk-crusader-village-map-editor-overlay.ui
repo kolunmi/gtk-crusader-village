@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageMapEditorOverlay" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvMapEditorOverlay" parent="GcvUtilBin">
     <property name="child">
       <object class="GtkOverlay" id="overlay">
 
@@ -45,6 +45,20 @@
                         <property name="icon-name">draw-line-symbolic</property>
                       </object>
                     </child>
+                  </object>
+                </child>
+                
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+                  </object>
+                </child>
+                
+                <child>
+                  <object class="GtkToggleButton" id="draw_after_cursor">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Whether the editor draws all strokes regardless of the cursor position</property>
+                    <property name="icon-name">eye-open-negative-filled-symbolic</property>
                   </object>
                 </child>
 

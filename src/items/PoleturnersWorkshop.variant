@@ -2,9 +2,9 @@
     "id": <82>,
     "name": <"Poleturner's Workshop">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/PoleturnersWorkshop.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/shield.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/shop.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/PoleturnersWorkshop.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/shield.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/shop.png">,
     "kind": <"building">,
     "tile-width": <4>,
     "tile-height": <4>

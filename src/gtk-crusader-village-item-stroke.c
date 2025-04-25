@@ -23,17 +23,17 @@
 #include "gtk-crusader-village-item-stroke.h"
 #include "gtk-crusader-village-item.h"
 
-struct _GtkCrusaderVillageItemStroke
+struct _GcvItemStroke
 {
   GObject parent_instance;
 
-  GtkCrusaderVillageItem *item;
-  int                     item_tile_width;
-  int                     item_tile_height;
-  GArray                 *instances;
+  GcvItem *item;
+  int      item_tile_width;
+  int      item_tile_height;
+  GArray  *instances;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageItemStroke, gtk_crusader_village_item_stroke, G_TYPE_OBJECT)
+G_DEFINE_FINAL_TYPE (GcvItemStroke, gcv_item_stroke, G_TYPE_OBJECT)
 
 enum
 {
@@ -48,23 +48,23 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_item_stroke_dispose (GObject *object)
+gcv_item_stroke_dispose (GObject *object)
 {
-  GtkCrusaderVillageItemStroke *self = GTK_CRUSADER_VILLAGE_ITEM_STROKE (object);
+  GcvItemStroke *self = GCV_ITEM_STROKE (object);
 
   g_clear_object (&self->item);
   g_clear_pointer (&self->instances, g_array_unref);
 
-  G_OBJECT_CLASS (gtk_crusader_village_item_stroke_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_item_stroke_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_item_stroke_get_property (GObject    *object,
-                                               guint       prop_id,
-                                               GValue     *value,
-                                               GParamSpec *pspec)
+gcv_item_stroke_get_property (GObject    *object,
+                              guint       prop_id,
+                              GValue     *value,
+                              GParamSpec *pspec)
 {
-  GtkCrusaderVillageItemStroke *self = GTK_CRUSADER_VILLAGE_ITEM_STROKE (object);
+  GcvItemStroke *self = GCV_ITEM_STROKE (object);
 
   switch (prop_id)
     {
@@ -80,12 +80,12 @@ gtk_crusader_village_item_stroke_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_item_stroke_set_property (GObject      *object,
-                                               guint         prop_id,
-                                               const GValue *value,
-                                               GParamSpec   *pspec)
+gcv_item_stroke_set_property (GObject      *object,
+                              guint         prop_id,
+                              const GValue *value,
+                              GParamSpec   *pspec)
 {
-  GtkCrusaderVillageItemStroke *self = GTK_CRUSADER_VILLAGE_ITEM_STROKE (object);
+  GcvItemStroke *self = GCV_ITEM_STROKE (object);
 
   switch (prop_id)
     {
@@ -105,27 +105,27 @@ gtk_crusader_village_item_stroke_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_item_stroke_class_init (GtkCrusaderVillageItemStrokeClass *klass)
+gcv_item_stroke_class_init (GcvItemStrokeClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_item_stroke_dispose;
-  object_class->get_property = gtk_crusader_village_item_stroke_get_property;
-  object_class->set_property = gtk_crusader_village_item_stroke_set_property;
+  object_class->dispose      = gcv_item_stroke_dispose;
+  object_class->get_property = gcv_item_stroke_get_property;
+  object_class->set_property = gcv_item_stroke_set_property;
 
   props[PROP_ITEM] =
       g_param_spec_object (
           "item",
           "Item",
           "The item used for this stroke",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM,
+          GCV_TYPE_ITEM,
           G_PARAM_READWRITE);
 
   props[PROP_INSTANCES] =
       g_param_spec_boxed (
           "instances",
           "Instances",
-          "An array of `GtkCrusaderVillageItemStrokeInstance`s "
+          "An array of `GcvItemStrokeInstance`s "
           "representing the area of this stroke",
           G_TYPE_ARRAY,
           G_PARAM_READABLE);
@@ -134,9 +134,9 @@ gtk_crusader_village_item_stroke_class_init (GtkCrusaderVillageItemStrokeClass *
 }
 
 static void
-gtk_crusader_village_item_stroke_init (GtkCrusaderVillageItemStroke *self)
+gcv_item_stroke_init (GcvItemStroke *self)
 {
-  self->instances = g_array_new (FALSE, TRUE, sizeof (GtkCrusaderVillageItemStrokeInstance));
+  self->instances = g_array_new (FALSE, TRUE, sizeof (GcvItemStrokeInstance));
 }
 
 static inline gboolean
@@ -174,18 +174,18 @@ rect_insersects (int ax,
 
 /* We trust that the caller won't pass an invalid instance */
 gboolean
-gtk_crusader_village_item_stroke_add_instance (GtkCrusaderVillageItemStroke        *self,
-                                               GtkCrusaderVillageItemStrokeInstance instance)
+gcv_item_stroke_add_instance (GcvItemStroke        *self,
+                              GcvItemStrokeInstance instance)
 {
-  g_return_val_if_fail (GTK_CRUSADER_VILLAGE_IS_ITEM_STROKE (self), FALSE);
+  g_return_val_if_fail (GCV_IS_ITEM_STROKE (self), FALSE);
   g_return_val_if_fail (self->item != NULL, FALSE);
 
   for (guint i = 0; i < self->instances->len; i++)
     {
-      GtkCrusaderVillageItemStrokeInstance check      = { 0 };
-      gboolean                             intersects = FALSE;
+      GcvItemStrokeInstance check      = { 0 };
+      gboolean              intersects = FALSE;
 
-      check      = g_array_index (self->instances, GtkCrusaderVillageItemStrokeInstance, i);
+      check      = g_array_index (self->instances, GcvItemStrokeInstance, i);
       intersects = rect_insersects (
           check.x, check.y, self->item_tile_width, self->item_tile_height,
           instance.x, instance.y, self->item_tile_width, self->item_tile_height);

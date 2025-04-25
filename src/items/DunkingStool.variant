@@ -2,9 +2,9 @@
     "id": <311>,
     "name": <"Dunking Stool">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/DunkingStool.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/DunkingStool.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <5>,
     "tile-height": <5>

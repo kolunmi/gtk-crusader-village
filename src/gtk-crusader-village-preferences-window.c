@@ -33,15 +33,15 @@
 
 /* TODO: perhaps read from schema instead */
 static const char *theme_choices[] = {
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT] = "shc-default",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_LIGHT]   = "shc-light",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK]    = "shc-dark",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT]     = "default",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT]       = "light",
-  [GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK]        = "dark",
+  [GCV_THEME_OPTION_SHC_DEFAULT] = "shc-default",
+  [GCV_THEME_OPTION_SHC_LIGHT]   = "shc-light",
+  [GCV_THEME_OPTION_SHC_DARK]    = "shc-dark",
+  [GCV_THEME_OPTION_DEFAULT]     = "default",
+  [GCV_THEME_OPTION_LIGHT]       = "light",
+  [GCV_THEME_OPTION_DARK]        = "dark",
 };
 
-struct _GtkCrusaderVillagePreferencesWindow
+struct _GcvPreferencesWindow
 {
   GtkWindow parent_instance;
 
@@ -59,7 +59,7 @@ struct _GtkCrusaderVillagePreferencesWindow
   GtkButton *background_clear;
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_TYPE_WINDOW)
+G_DEFINE_FINAL_TYPE (GcvPreferencesWindow, gcv_preferences_window, GTK_TYPE_WINDOW)
 
 enum
 {
@@ -73,22 +73,22 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-setting_changed (GSettings                           *self,
-                 gchar                               *key,
-                 GtkCrusaderVillagePreferencesWindow *window);
+setting_changed (GSettings            *self,
+                 gchar                *key,
+                 GcvPreferencesWindow *window);
 
 static void
-ui_changed (GtkWidget                           *widget,
-            GParamSpec                          *pspec,
-            GtkCrusaderVillagePreferencesWindow *window);
+ui_changed (GtkWidget            *widget,
+            GParamSpec           *pspec,
+            GcvPreferencesWindow *window);
 
 static void
-background_button_clicked (GtkButton                           *self,
-                           GtkCrusaderVillagePreferencesWindow *window);
+background_button_clicked (GtkButton            *self,
+                           GcvPreferencesWindow *window);
 
 static void
-background_clear_clicked (GtkButton                           *self,
-                          GtkCrusaderVillagePreferencesWindow *window);
+background_clear_clicked (GtkButton            *self,
+                          GcvPreferencesWindow *window);
 
 static void
 image_dialog_finish_cb (GObject      *source_object,
@@ -96,45 +96,45 @@ image_dialog_finish_cb (GObject      *source_object,
                         gpointer      data);
 
 static void
-read_theme (GtkCrusaderVillagePreferencesWindow *self,
-            GSettings                           *settings,
-            const char                          *key);
+read_theme (GcvPreferencesWindow *self,
+            GSettings            *settings,
+            const char           *key);
 
 static void
-write_theme (GtkCrusaderVillagePreferencesWindow *self,
-             GSettings                           *settings,
-             const char                          *key);
+write_theme (GcvPreferencesWindow *self,
+             GSettings            *settings,
+             const char           *key);
 
 static void
-read_python_install (GtkCrusaderVillagePreferencesWindow *self,
-                     GSettings                           *settings,
-                     const char                          *key);
+read_python_install (GcvPreferencesWindow *self,
+                     GSettings            *settings,
+                     const char           *key);
 
 static void
-read_background_image (GtkCrusaderVillagePreferencesWindow *self,
-                       GSettings                           *settings,
-                       const char                          *key);
+read_background_image (GcvPreferencesWindow *self,
+                       GSettings            *settings,
+                       const char           *key);
 
 static void
-gtk_crusader_village_preferences_window_dispose (GObject *object)
+gcv_preferences_window_dispose (GObject *object)
 {
-  GtkCrusaderVillagePreferencesWindow *self = GTK_CRUSADER_VILLAGE_PREFERENCES_WINDOW (object);
+  GcvPreferencesWindow *self = GCV_PREFERENCES_WINDOW (object);
 
   if (self->settings != NULL)
     g_signal_handlers_disconnect_by_func (
         self->settings, setting_changed, self);
   g_clear_object (&self->settings);
 
-  G_OBJECT_CLASS (gtk_crusader_village_preferences_window_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_preferences_window_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_preferences_window_get_property (GObject    *object,
-                                                      guint       prop_id,
-                                                      GValue     *value,
-                                                      GParamSpec *pspec)
+gcv_preferences_window_get_property (GObject    *object,
+                                     guint       prop_id,
+                                     GValue     *value,
+                                     GParamSpec *pspec)
 {
-  GtkCrusaderVillagePreferencesWindow *self = GTK_CRUSADER_VILLAGE_PREFERENCES_WINDOW (object);
+  GcvPreferencesWindow *self = GCV_PREFERENCES_WINDOW (object);
 
   switch (prop_id)
     {
@@ -147,12 +147,12 @@ gtk_crusader_village_preferences_window_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_preferences_window_set_property (GObject      *object,
-                                                      guint         prop_id,
-                                                      const GValue *value,
-                                                      GParamSpec   *pspec)
+gcv_preferences_window_set_property (GObject      *object,
+                                     guint         prop_id,
+                                     const GValue *value,
+                                     GParamSpec   *pspec)
 {
-  GtkCrusaderVillagePreferencesWindow *self = GTK_CRUSADER_VILLAGE_PREFERENCES_WINDOW (object);
+  GcvPreferencesWindow *self = GCV_PREFERENCES_WINDOW (object);
 
   switch (prop_id)
     {
@@ -181,14 +181,14 @@ gtk_crusader_village_preferences_window_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreferencesWindowClass *klass)
+gcv_preferences_window_class_init (GcvPreferencesWindowClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_preferences_window_dispose;
-  object_class->get_property = gtk_crusader_village_preferences_window_get_property;
-  object_class->set_property = gtk_crusader_village_preferences_window_set_property;
+  object_class->dispose      = gcv_preferences_window_dispose;
+  object_class->get_property = gcv_preferences_window_get_property;
+  object_class->set_property = gcv_preferences_window_set_property;
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -200,22 +200,22 @@ gtk_crusader_village_preferences_window_class_init (GtkCrusaderVillagePreference
 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-preferences-window.ui");
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, theme);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_grid);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_gradient);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, show_cursor_glow);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, python_install);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_label);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_button);
-  gtk_widget_class_bind_template_child (widget_class, GtkCrusaderVillagePreferencesWindow, background_clear);
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-preferences-window.ui");
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, theme);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_grid);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_gradient);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_cursor_glow);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_install);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_label);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_button);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_clear);
 }
 
 static void
-gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindow *self)
+gcv_preferences_window_init (GcvPreferencesWindow *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-  gtk_crusader_village_register_themed_window (GTK_WINDOW (self), TRUE);
+  gcv_register_themed_window (GTK_WINDOW (self), TRUE);
 
   g_signal_connect (self->theme, "notify::selected-item",
                     G_CALLBACK (ui_changed), self);
@@ -235,9 +235,9 @@ gtk_crusader_village_preferences_window_init (GtkCrusaderVillagePreferencesWindo
 }
 
 static void
-setting_changed (GSettings                           *self,
-                 gchar                               *key,
-                 GtkCrusaderVillagePreferencesWindow *window)
+setting_changed (GSettings            *self,
+                 gchar                *key,
+                 GcvPreferencesWindow *window)
 {
   if (g_strcmp0 (key, KEY_THEME) == 0)
     read_theme (window, self, key);
@@ -254,9 +254,9 @@ setting_changed (GSettings                           *self,
 }
 
 static void
-ui_changed (GtkWidget                           *widget,
-            GParamSpec                          *pspec,
-            GtkCrusaderVillagePreferencesWindow *window)
+ui_changed (GtkWidget            *widget,
+            GParamSpec           *pspec,
+            GcvPreferencesWindow *window)
 {
   if (window->settings == NULL)
     return;
@@ -278,8 +278,8 @@ ui_changed (GtkWidget                           *widget,
 }
 
 static void
-background_button_clicked (GtkButton                           *self,
-                           GtkCrusaderVillagePreferencesWindow *window)
+background_button_clicked (GtkButton            *self,
+                           GcvPreferencesWindow *window)
 {
   g_autoptr (GtkFileDialog) file_dialog = NULL;
   g_autoptr (GtkFileFilter) filter      = NULL;
@@ -295,8 +295,8 @@ background_button_clicked (GtkButton                           *self,
 }
 
 static void
-background_clear_clicked (GtkButton                           *self,
-                          GtkCrusaderVillagePreferencesWindow *window)
+background_clear_clicked (GtkButton            *self,
+                          GcvPreferencesWindow *window)
 {
   g_settings_set_string (window->settings, KEY_BACKGROUND_IMAGE, "");
 }
@@ -306,9 +306,9 @@ image_dialog_finish_cb (GObject      *source_object,
                         GAsyncResult *res,
                         gpointer      data)
 {
-  GtkCrusaderVillagePreferencesWindow *self = data;
-  g_autoptr (GError) local_error            = NULL;
-  g_autoptr (GFile) file                    = NULL;
+  GcvPreferencesWindow *self     = data;
+  g_autoptr (GError) local_error = NULL;
+  g_autoptr (GFile) file         = NULL;
 
   file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
 
@@ -320,7 +320,7 @@ image_dialog_finish_cb (GObject      *source_object,
       g_settings_set_string (self->settings, KEY_BACKGROUND_IMAGE, path);
     }
   else
-    gtk_crusader_village_dialog (
+    gcv_dialog (
         "An Error Occurred",
         "Could not retrieve image from disk.",
         local_error->message,
@@ -328,8 +328,8 @@ image_dialog_finish_cb (GObject      *source_object,
 }
 
 void
-gtk_crusader_village_preferences_window_spawn (GSettings *settings,
-                                               GtkWindow *parent)
+gcv_preferences_window_spawn (GSettings *settings,
+                              GtkWindow *parent)
 {
   GtkWindow *window = NULL;
 
@@ -337,7 +337,7 @@ gtk_crusader_village_preferences_window_spawn (GSettings *settings,
   g_return_if_fail (GTK_IS_WINDOW (parent));
 
   window = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_PREFERENCES_WINDOW,
+      GCV_TYPE_PREFERENCES_WINDOW,
       "settings", settings,
       NULL);
 
@@ -346,23 +346,23 @@ gtk_crusader_village_preferences_window_spawn (GSettings *settings,
 }
 
 static void
-read_theme (GtkCrusaderVillagePreferencesWindow *self,
-            GSettings                           *settings,
-            const char                          *key)
+read_theme (GcvPreferencesWindow *self,
+            GSettings            *settings,
+            const char           *key)
 {
   g_autofree char *theme     = NULL;
-  guint            theme_idx = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
+  guint            theme_idx = GCV_THEME_OPTION_DEFAULT;
 
   theme     = g_settings_get_string (settings, key);
-  theme_idx = gtk_crusader_village_theme_str_to_enum (theme);
+  theme_idx = gcv_theme_str_to_enum (theme);
 
   gtk_drop_down_set_selected (self->theme, theme_idx);
 }
 
 static void
-write_theme (GtkCrusaderVillagePreferencesWindow *self,
-             GSettings                           *settings,
-             const char                          *key)
+write_theme (GcvPreferencesWindow *self,
+             GSettings            *settings,
+             const char           *key)
 {
   guint idx = 0;
 
@@ -373,9 +373,9 @@ write_theme (GtkCrusaderVillagePreferencesWindow *self,
 }
 
 static void
-read_python_install (GtkCrusaderVillagePreferencesWindow *self,
-                     GSettings                           *settings,
-                     const char                          *key)
+read_python_install (GcvPreferencesWindow *self,
+                     GSettings            *settings,
+                     const char           *key)
 {
   g_autofree char *path = NULL;
 
@@ -384,9 +384,9 @@ read_python_install (GtkCrusaderVillagePreferencesWindow *self,
 }
 
 static void
-read_background_image (GtkCrusaderVillagePreferencesWindow *self,
-                       GSettings                           *settings,
-                       const char                          *key)
+read_background_image (GcvPreferencesWindow *self,
+                       GSettings            *settings,
+                       const char           *key)
 {
   g_autofree char *path = NULL;
 
@@ -396,7 +396,7 @@ read_background_image (GtkCrusaderVillagePreferencesWindow *self,
 
 /* I don't like this whole setup */
 int
-gtk_crusader_village_theme_str_to_enum (const char *theme)
+gcv_theme_str_to_enum (const char *theme)
 {
   for (int i = 0; i < G_N_ELEMENTS (theme_choices); i++)
     {
@@ -404,5 +404,5 @@ gtk_crusader_village_theme_str_to_enum (const char *theme)
         return i;
     }
 
-  return GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
+  return GCV_THEME_OPTION_DEFAULT;
 }

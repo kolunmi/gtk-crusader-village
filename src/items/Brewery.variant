@@ -2,9 +2,9 @@
     "id": <76>,
     "name": <"Brewery">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Brewery.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/sickle.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Brewery.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/sickle.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <4>,
     "tile-height": <4>

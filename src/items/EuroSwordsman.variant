@@ -1,8 +1,8 @@
 {
-    "id": <0x5d>,
+    "id": <11>,
     "name": <"European Swordsman">,
     "description": <"[English Manual] \"These are your elite foot soldiers. Their heavy armor makes them the slowest unit in the game but when they reach their target they prove devastating. They have both great offensive and defensive capabilities.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroSwordsman.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroSwordsman.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

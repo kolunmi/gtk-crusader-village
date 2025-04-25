@@ -32,8 +32,8 @@ apply_css (GtkSettings *settings,
            GtkWindow   *window);
 
 void
-gtk_crusader_village_register_themed_window (GtkWindow *window,
-                                             gboolean   animated)
+gcv_register_themed_window (GtkWindow *window,
+                            gboolean   animated)
 {
   GtkSettings *settings = NULL;
 

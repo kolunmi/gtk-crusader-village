@@ -2,9 +2,9 @@
     "id": <89>,
     "name": <"Tunnellers Guild">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/TunnellersGuild.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/wood.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/TunnellersGuild.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <5>,
     "tile-height": <10>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageItemArea" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvItemArea" parent="GcvUtilBin">
     <property name="width-request">350</property>
     <property name="child">
       <object class="GtkBox">

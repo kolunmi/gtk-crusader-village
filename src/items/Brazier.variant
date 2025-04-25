@@ -1,10 +1,10 @@
 {
-    "id": <0x5d>,
+    "id": <20>,
     "name": <"Brazier">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/Brazier.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "kind": <"building">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/Brazier.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "kind": <"unit">,
     "tile-width": <1>,
     "tile-height": <1>
 }

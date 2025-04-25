@@ -2,9 +2,9 @@
     "id": <166>,
     "name": <"Communal Garden">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/CommunalGarden.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/CommunalGarden.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <2>,
     "tile-height": <2>

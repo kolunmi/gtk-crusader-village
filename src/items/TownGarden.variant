@@ -2,9 +2,9 @@
     "id": <169>,
     "name": <"Town Garden">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/TownGarden.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/TownGarden.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <4>,
     "tile-height": <4>

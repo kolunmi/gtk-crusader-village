@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageTimelineViewItem" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvTimelineViewItem" parent="GcvUtilBin">
     <property name="child">
       <object class="GtkCenterBox">
         <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
@@ -11,6 +11,14 @@
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
             <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
+            <child>
+              <object class="GtkImage" id="invisible_indicator">
+                <property name="margin-start">5</property>
+                <property name="margin-end">10</property>
+                <property name="visible">FALSE</property>
+                <property name="icon-name">eye-not-looking-symbolic</property>
+              </object>
+            </child>
             <child>
               <object class="GtkImage" id="overwrite_indicator">
                 <property name="margin-start">5</property>

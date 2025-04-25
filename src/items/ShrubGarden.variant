@@ -2,9 +2,9 @@
     "id": <0>,
     "name": <"Shrub Garden">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ShrubGarden.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/house.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/ShrubGarden.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/house.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <2>,
     "tile-height": <2>

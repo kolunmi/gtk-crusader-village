@@ -24,11 +24,11 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_APPLICATION (gtk_crusader_village_application_get_type ())
+#define GCV_TYPE_APPLICATION (gcv_application_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageApplication, gtk_crusader_village_application, GTK_CRUSADER_VILLAGE, APPLICATION, GtkApplication)
+G_DECLARE_FINAL_TYPE (GcvApplication, gcv_application, GCV, APPLICATION, GtkApplication)
 
-GtkCrusaderVillageApplication *gtk_crusader_village_application_new (const char       *application_id,
-                                                                     GApplicationFlags flags);
+GcvApplication *gcv_application_new (const char       *application_id,
+                                     GApplicationFlags flags);
 
 G_END_DECLS

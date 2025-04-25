@@ -1,8 +1,8 @@
 {
-    "id": <0x5d>,
+    "id": <16>,
     "name": <"Arabian Archer">,
     "description": <"[English Manual] \"These units are similar to their European counterparts and are relatively cheap to hire.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/ArabArcher.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/arab_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/ArabArcher.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/arab_sword.png">,
     "kind": <"unit">
 }

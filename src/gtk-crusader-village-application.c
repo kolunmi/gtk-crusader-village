@@ -24,9 +24,12 @@
 #include <glib/gi18n.h>
 
 #include "gtk-crusader-village-application.h"
+#include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-dialog-window.h"
+#include "gtk-crusader-village-image-mask-brush.h"
 #include "gtk-crusader-village-map.h"
 #include "gtk-crusader-village-preferences-window.h"
+#include "gtk-crusader-village-square-brush.h"
 #include "gtk-crusader-village-window.h"
 
 #if defined(__APPLE__) || defined(G_OS_WIN32)
@@ -39,17 +42,19 @@
 #define PORTAL_SETTINGS_INTERFACE "org.freedesktop.portal.Settings"
 #define PORTAL_ERROR_NOT_FOUND    "org.freedesktop.portal.Error.NotFound"
 static void
-init_portal (GtkCrusaderVillageApplication *self);
+init_portal (GcvApplication *self);
 #endif
 
-struct _GtkCrusaderVillageApplication
+struct _GcvApplication
 {
   GtkApplication parent_instance;
 
   GSettings *settings;
   int        theme_setting;
 
-  GtkCrusaderVillageItemStore *item_store;
+  GcvItemStore *item_store;
+
+  GListStore *brush_store;
 
   GtkCssProvider *custom_css;
   GtkCssProvider *shc_theme_light_css;
@@ -61,7 +66,7 @@ struct _GtkCrusaderVillageApplication
 #endif
 };
 
-G_DEFINE_FINAL_TYPE (GtkCrusaderVillageApplication, gtk_crusader_village_application, GTK_TYPE_APPLICATION)
+G_DEFINE_FINAL_TYPE (GcvApplication, gcv_application, GTK_TYPE_APPLICATION)
 
 enum
 {
@@ -75,26 +80,26 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-theme_changed (GSettings                     *self,
-               char                          *key,
-               GtkCrusaderVillageApplication *application);
+theme_changed (GSettings      *self,
+               char           *key,
+               GcvApplication *application);
 
 static void
-read_theme_from_settings (GtkCrusaderVillageApplication *self);
+read_theme_from_settings (GcvApplication *self);
 
 static void
-apply_gtk_theme (GtkCrusaderVillageApplication *self);
+apply_gtk_theme (GcvApplication *self);
 
 static void
-ensure_settings (GtkCrusaderVillageApplication *self);
+ensure_settings (GcvApplication *self);
 
 static void
-gtk_crusader_village_application_get_property (GObject    *object,
-                                               guint       prop_id,
-                                               GValue     *value,
-                                               GParamSpec *pspec)
+gcv_application_get_property (GObject    *object,
+                              guint       prop_id,
+                              GValue     *value,
+                              GParamSpec *pspec)
 {
-  GtkCrusaderVillageApplication *self = GTK_CRUSADER_VILLAGE_APPLICATION (object);
+  GcvApplication *self = GCV_APPLICATION (object);
 
   switch (prop_id)
     {
@@ -108,12 +113,12 @@ gtk_crusader_village_application_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_application_set_property (GObject      *object,
-                                               guint         prop_id,
-                                               const GValue *value,
-                                               GParamSpec   *pspec)
+gcv_application_set_property (GObject      *object,
+                              guint         prop_id,
+                              const GValue *value,
+                              GParamSpec   *pspec)
 {
-  GtkCrusaderVillageApplication *self = GTK_CRUSADER_VILLAGE_APPLICATION (object);
+  GcvApplication *self = GCV_APPLICATION (object);
 
   switch (prop_id)
     {
@@ -122,24 +127,24 @@ gtk_crusader_village_application_set_property (GObject      *object,
     }
 }
 
-GtkCrusaderVillageApplication *
-gtk_crusader_village_application_new (const char       *application_id,
-                                      GApplicationFlags flags)
+GcvApplication *
+gcv_application_new (const char       *application_id,
+                     GApplicationFlags flags)
 {
   g_return_val_if_fail (application_id != NULL, NULL);
 
   return g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_APPLICATION,
+      GCV_TYPE_APPLICATION,
       "application-id", application_id,
       "flags", flags,
-      "resource-base-path", "/am/kolunmi/GtkCrusaderVillage",
+      "resource-base-path", "/am/kolunmi/Gcv",
       NULL);
 }
 
 static void
-gtk_crusader_village_application_dispose (GObject *object)
+gcv_application_dispose (GObject *object)
 {
-  GtkCrusaderVillageApplication *self = GTK_CRUSADER_VILLAGE_APPLICATION (object);
+  GcvApplication *self = GCV_APPLICATION (object);
 
 #ifdef USE_THEME_PORTAL
   g_clear_object (&self->settings_portal);
@@ -151,32 +156,33 @@ gtk_crusader_village_application_dispose (GObject *object)
   g_clear_object (&self->settings);
 
   g_clear_object (&self->item_store);
+  g_clear_object (&self->brush_store);
 
   g_clear_object (&self->custom_css);
   g_clear_object (&self->shc_theme_light_css);
   g_clear_object (&self->shc_theme_dark_css);
 
-  G_OBJECT_CLASS (gtk_crusader_village_application_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gcv_application_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_application_activate (GApplication *app)
+gcv_application_activate (GApplication *app)
 {
-  GtkCrusaderVillageApplication *self   = GTK_CRUSADER_VILLAGE_APPLICATION (app);
-  GtkWindow                     *window = NULL;
+  GcvApplication *self   = GCV_APPLICATION (app);
+  GtkWindow      *window = NULL;
 
   self->custom_css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (self->custom_css, "/am/kolunmi/GtkCrusaderVillage/gtk/styles.css");
+  gtk_css_provider_load_from_resource (self->custom_css, "/am/kolunmi/Gcv/gtk/styles.css");
   gtk_style_context_add_provider_for_display (
       gdk_display_get_default (),
       GTK_STYLE_PROVIDER (self->custom_css),
       GTK_STYLE_PROVIDER_PRIORITY_USER);
 
   self->shc_theme_light_css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (self->shc_theme_light_css, "/am/kolunmi/GtkCrusaderVillage/gtk/shc-light.css");
+  gtk_css_provider_load_from_resource (self->shc_theme_light_css, "/am/kolunmi/Gcv/gtk/shc-light.css");
 
   self->shc_theme_dark_css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (self->shc_theme_dark_css, "/am/kolunmi/GtkCrusaderVillage/gtk/shc-dark.css");
+  gtk_css_provider_load_from_resource (self->shc_theme_dark_css, "/am/kolunmi/Gcv/gtk/shc-dark.css");
 
 #ifdef USE_THEME_PORTAL
   init_portal (self);
@@ -187,9 +193,10 @@ gtk_crusader_village_application_activate (GApplication *app)
 
   if (window == NULL)
     window = g_object_new (
-        GTK_CRUSADER_VILLAGE_TYPE_WINDOW,
+        GCV_TYPE_WINDOW,
         "application", app,
         "item-store", self->item_store,
+        "brush-store", self->brush_store,
         "settings", self->settings,
         NULL);
 
@@ -200,16 +207,16 @@ gtk_crusader_village_application_activate (GApplication *app)
 }
 
 static void
-gtk_crusader_village_application_class_init (GtkCrusaderVillageApplicationClass *klass)
+gcv_application_class_init (GcvApplicationClass *klass)
 {
   GObjectClass      *object_class = G_OBJECT_CLASS (klass);
   GApplicationClass *app_class    = G_APPLICATION_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_application_dispose;
-  object_class->get_property = gtk_crusader_village_application_get_property;
-  object_class->set_property = gtk_crusader_village_application_set_property;
+  object_class->dispose      = gcv_application_dispose;
+  object_class->get_property = gcv_application_get_property;
+  object_class->set_property = gcv_application_set_property;
 
-  app_class->activate = gtk_crusader_village_application_activate;
+  app_class->activate = gcv_application_activate;
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -222,8 +229,25 @@ gtk_crusader_village_application_class_init (GtkCrusaderVillageApplicationClass 
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
+static void
+gcv_application_subwindow (GSimpleAction *action,
+                           GVariant      *parameter,
+                           gpointer       user_data)
+{
+  GcvApplication *self   = user_data;
+  GtkWindow      *window = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (!GCV_IS_WINDOW (window))
+    return;
+
+  gcv_window_add_subwindow_viewport (
+      GCV_WINDOW (window));
+}
+
 static char *
-get_python_install (GtkCrusaderVillageApplication *self)
+get_python_install (GcvApplication *self)
 {
   g_autofree char *python_install = NULL;
 
@@ -250,12 +274,12 @@ load_map_finish_cb (GObject      *source_object,
                     GAsyncResult *res,
                     gpointer      data)
 {
-  GtkCrusaderVillageApplication *self   = data;
-  g_autoptr (GError) error              = NULL;
-  g_autoptr (GtkCrusaderVillageMap) map = NULL;
-  GtkWindow *window                     = NULL;
+  GcvApplication *self     = data;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GcvMap) map   = NULL;
+  GtkWindow *window        = NULL;
 
-  map    = gtk_crusader_village_map_new_from_aiv_file_finish (res, &error);
+  map    = gcv_map_new_from_aiv_file_finish (res, &error);
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
   if (map != NULL)
@@ -264,7 +288,7 @@ load_map_finish_cb (GObject      *source_object,
         "map", map,
         NULL);
   else
-    gtk_crusader_village_dialog (
+    gcv_dialog (
         "An Error Occurred",
         "Could not parse file from disk.",
         error->message,
@@ -281,10 +305,10 @@ load_dialog_finish_cb (GObject      *source_object,
                        GAsyncResult *res,
                        gpointer      data)
 {
-  GtkCrusaderVillageApplication *self = data;
-  g_autoptr (GError) local_error      = NULL;
-  GtkWindow *window                   = NULL;
-  g_autoptr (GFile) file              = NULL;
+  GcvApplication *self           = data;
+  g_autoptr (GError) local_error = NULL;
+  GtkWindow *window              = NULL;
+  g_autoptr (GFile) file         = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
   file   = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
@@ -296,11 +320,11 @@ load_dialog_finish_cb (GObject      *source_object,
       python_exe = get_python_install (self);
 
       if (python_exe != NULL)
-        gtk_crusader_village_map_new_from_aiv_file_async (
+        gcv_map_new_from_aiv_file_async (
             file, self->item_store, python_exe, G_PRIORITY_DEFAULT,
             NULL, load_map_finish_cb, self);
       else
-        gtk_crusader_village_dialog (
+        gcv_dialog (
             "Cannot Proceed",
             "Sourcehold Python Installation Not Configured",
             INSTALLATION_WARNING_TEXT,
@@ -308,7 +332,7 @@ load_dialog_finish_cb (GObject      *source_object,
     }
   else
     {
-      gtk_crusader_village_dialog (
+      gcv_dialog (
           "An Error Occurred",
           "Could not load file from disk.",
           local_error->message,
@@ -321,14 +345,14 @@ load_dialog_finish_cb (GObject      *source_object,
 }
 
 static void
-gtk_crusader_village_application_load (GSimpleAction *action,
-                                       GVariant      *parameter,
-                                       gpointer       user_data)
+gcv_application_load (GSimpleAction *action,
+                      GVariant      *parameter,
+                      gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self       = user_data;
-  GtkWindow                     *window     = NULL;
-  gboolean                       busy       = FALSE;
-  g_autofree char               *python_exe = NULL;
+  GcvApplication  *self       = user_data;
+  GtkWindow       *window     = NULL;
+  gboolean         busy       = FALSE;
+  g_autofree char *python_exe = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
@@ -359,7 +383,7 @@ gtk_crusader_village_application_load (GSimpleAction *action,
           NULL);
     }
   else
-    gtk_crusader_village_dialog (
+    gcv_dialog (
         "Import Error",
         "Sourcehold Python Installation Not Configured",
         INSTALLATION_WARNING_TEXT,
@@ -371,16 +395,16 @@ save_map_finish_cb (GObject      *source_object,
                     GAsyncResult *res,
                     gpointer      data)
 {
-  GtkCrusaderVillageApplication *self = data;
-  g_autoptr (GError) error            = NULL;
-  gboolean   result                   = FALSE;
-  GtkWindow *window                   = NULL;
+  GcvApplication *self     = data;
+  g_autoptr (GError) error = NULL;
+  gboolean   result        = FALSE;
+  GtkWindow *window        = NULL;
 
-  result = gtk_crusader_village_map_save_to_aiv_file_finish (res, &error);
+  result = gcv_map_save_to_aiv_file_finish (res, &error);
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
   if (!result)
-    gtk_crusader_village_dialog (
+    gcv_dialog (
         "An Error Occurred",
         "Could not save AIV to disk.",
         error->message,
@@ -397,10 +421,10 @@ save_dialog_finish_cb (GObject      *source_object,
                        GAsyncResult *res,
                        gpointer      data)
 {
-  GtkCrusaderVillageApplication *self = data;
-  g_autoptr (GError) local_error      = NULL;
-  GtkWindow *window                   = NULL;
-  g_autoptr (GFile) file              = NULL;
+  GcvApplication *self           = data;
+  g_autoptr (GError) local_error = NULL;
+  GtkWindow *window              = NULL;
+  g_autoptr (GFile) file         = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
   file   = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (source_object), res, &local_error);
@@ -413,19 +437,19 @@ save_dialog_finish_cb (GObject      *source_object,
 
       if (python_exe != NULL)
         {
-          g_autoptr (GtkCrusaderVillageMap) map = NULL;
+          g_autoptr (GcvMap) map = NULL;
 
           g_object_get (
               window,
               "map", &map,
               NULL);
 
-          gtk_crusader_village_map_save_to_aiv_file_async (
+          gcv_map_save_to_aiv_file_async (
               map, file, python_exe, G_PRIORITY_DEFAULT,
               NULL, save_map_finish_cb, self);
         }
       else
-        gtk_crusader_village_dialog (
+        gcv_dialog (
             "Cannot Proceed",
             "Sourcehold Python Installation Not Configured",
             INSTALLATION_WARNING_TEXT,
@@ -433,7 +457,7 @@ save_dialog_finish_cb (GObject      *source_object,
     }
   else
     {
-      gtk_crusader_village_dialog (
+      gcv_dialog (
           "An Error Occurred",
           "Could not save file to disk.",
           local_error->message,
@@ -446,14 +470,14 @@ save_dialog_finish_cb (GObject      *source_object,
 }
 
 static void
-gtk_crusader_village_application_export (GSimpleAction *action,
-                                         GVariant      *parameter,
-                                         gpointer       user_data)
+gcv_application_export (GSimpleAction *action,
+                        GVariant      *parameter,
+                        gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self       = user_data;
-  GtkWindow                     *window     = NULL;
-  gboolean                       busy       = FALSE;
-  g_autofree char               *python_exe = NULL;
+  GcvApplication  *self       = user_data;
+  GtkWindow       *window     = NULL;
+  gboolean         busy       = FALSE;
+  g_autofree char *python_exe = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
@@ -484,7 +508,7 @@ gtk_crusader_village_application_export (GSimpleAction *action,
           NULL);
     }
   else
-    gtk_crusader_village_dialog (
+    gcv_dialog (
         "Export Error",
         "Sourcehold Python Installation Not Configured",
         INSTALLATION_WARNING_TEXT,
@@ -492,22 +516,22 @@ gtk_crusader_village_application_export (GSimpleAction *action,
 }
 
 static void
-gtk_crusader_village_application_preferences (GSimpleAction *action,
-                                              GVariant      *parameter,
-                                              gpointer       user_data)
+gcv_application_preferences (GSimpleAction *action,
+                             GVariant      *parameter,
+                             gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self   = user_data;
-  GtkWindow                     *window = NULL;
+  GcvApplication *self   = user_data;
+  GtkWindow      *window = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
-  gtk_crusader_village_preferences_window_spawn (self->settings, window);
+  gcv_preferences_window_spawn (self->settings, window);
 }
 
 static void
-greeting_submission (GtkCrusaderVillageDialogWindow *dialog,
-                     GParamSpec                     *pspec,
-                     GtkCrusaderVillageApplication  *application)
+greeting_submission (GcvDialogWindow *dialog,
+                     GParamSpec      *pspec,
+                     GcvApplication  *application)
 {
   g_autoptr (GVariant) submission = NULL;
   gboolean show_startup_greeting  = FALSE;
@@ -552,11 +576,11 @@ static const char *sketches[] = {
   "🏰 <a href=\"https://fireflyworlds.com/\">Support Firefly Studios!</a>"
 
 static void
-do_greeting (GtkCrusaderVillageApplication *self)
+do_greeting (GcvApplication *self)
 {
-  GtkWindow *window                      = NULL;
-  g_autoptr (GVariant) dialog_structure  = NULL;
-  GtkCrusaderVillageDialogWindow *dialog = NULL;
+  GtkWindow *window                     = NULL;
+  g_autoptr (GVariant) dialog_structure = NULL;
+  GcvDialogWindow *dialog               = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
@@ -564,7 +588,7 @@ do_greeting (GtkCrusaderVillageApplication *self)
       "{\"Show this dialog on startup\":<%b>}",
       g_settings_get_boolean (self->settings, "show-startup-greeting"));
 
-  dialog = gtk_crusader_village_dialog (
+  dialog = gcv_dialog (
       "Welcome",
       "Welcome",
       GREETING_TEXT,
@@ -580,32 +604,32 @@ do_greeting (GtkCrusaderVillageApplication *self)
 }
 
 static void
-installation_warning_submission (GtkCrusaderVillageDialogWindow *dialog,
-                                 GParamSpec                     *pspec,
-                                 GtkCrusaderVillageApplication  *application)
+installation_warning_submission (GcvDialogWindow *dialog,
+                                 GParamSpec      *pspec,
+                                 GcvApplication  *application)
 {
   do_greeting (application);
 }
 
 static void
-gtk_crusader_village_application_greeting_action (GSimpleAction *action,
-                                                  GVariant      *parameter,
-                                                  gpointer       user_data)
+gcv_application_greeting_action (GSimpleAction *action,
+                                 GVariant      *parameter,
+                                 gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self       = user_data;
-  g_autofree char               *python_exe = NULL;
+  GcvApplication  *self       = user_data;
+  g_autofree char *python_exe = NULL;
 
   python_exe = get_python_install (self);
   if (python_exe != NULL)
     do_greeting (self);
   else
     {
-      GtkWindow                      *window = NULL;
-      GtkCrusaderVillageDialogWindow *dialog = NULL;
+      GtkWindow       *window = NULL;
+      GcvDialogWindow *dialog = NULL;
 
       window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
-      dialog = gtk_crusader_village_dialog (
+      dialog = gcv_dialog (
           "Warning",
           "Sourcehold Python Installation Not Configured",
           INSTALLATION_WARNING_TEXT,
@@ -637,13 +661,13 @@ gtk_crusader_village_application_greeting_action (GSimpleAction *action,
   "SPDX-License-Identifier: GPL-3.0-or-later"
 
 static void
-gtk_crusader_village_application_about_action (GSimpleAction *action,
-                                               GVariant      *parameter,
-                                               gpointer       user_data)
+gcv_application_about_action (GSimpleAction *action,
+                              GVariant      *parameter,
+                              gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self    = user_data;
-  GtkWindow                     *window  = NULL;
-  g_autofree char               *message = NULL;
+  GcvApplication  *self    = user_data;
+  GtkWindow       *window  = NULL;
+  g_autofree char *message = NULL;
 
   window = gtk_application_get_active_window (GTK_APPLICATION (self));
 
@@ -658,7 +682,7 @@ gtk_crusader_village_application_about_action (GSimpleAction *action,
       gtk_get_minor_version (),
       gtk_get_micro_version ());
 
-  gtk_crusader_village_dialog (
+  gcv_dialog (
       "About",
       "GTK Crusader Village",
       message,
@@ -666,33 +690,79 @@ gtk_crusader_village_application_about_action (GSimpleAction *action,
 }
 
 static void
-gtk_crusader_village_application_quit_action (GSimpleAction *action,
-                                              GVariant      *parameter,
-                                              gpointer       user_data)
+gcv_application_quit_action (GSimpleAction *action,
+                             GVariant      *parameter,
+                             gpointer       user_data)
 {
-  GtkCrusaderVillageApplication *self = user_data;
+  GcvApplication *self = user_data;
 
-  g_assert (GTK_CRUSADER_VILLAGE_IS_APPLICATION (self));
+  g_assert (GCV_IS_APPLICATION (self));
 
   g_application_quit (G_APPLICATION (self));
 }
 
 static const GActionEntry app_actions[] = {
-  {        "quit",     gtk_crusader_village_application_quit_action },
-  {       "about",    gtk_crusader_village_application_about_action },
-  {    "greeting", gtk_crusader_village_application_greeting_action },
-  { "preferences",     gtk_crusader_village_application_preferences },
-  {      "export",          gtk_crusader_village_application_export },
-  {        "load",            gtk_crusader_village_application_load },
+  {        "quit",     gcv_application_quit_action },
+  {       "about",    gcv_application_about_action },
+  {    "greeting", gcv_application_greeting_action },
+  { "preferences",     gcv_application_preferences },
+  {      "export",          gcv_application_export },
+  {        "load",            gcv_application_load },
+  {   "subwindow",       gcv_application_subwindow },
 };
 
 static void
-gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
+brushes_changed (GListModel     *self,
+                 guint           position,
+                 guint           removed,
+                 guint           added,
+                 GcvApplication *application)
 {
-  self->theme_setting = GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT;
+  guint n_items                    = 0;
+  g_autoptr (GStrvBuilder) builder = NULL;
+  g_auto (GStrv) strv              = NULL;
 
-  self->item_store = g_object_new (GTK_CRUSADER_VILLAGE_TYPE_ITEM_STORE, NULL);
-  gtk_crusader_village_item_store_read_resources (self->item_store);
+  if (application->settings == NULL)
+    return;
+
+  n_items = g_list_model_get_n_items (self);
+  builder = g_strv_builder_new ();
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr (GcvBrushable) brush = NULL;
+      g_autofree char *path          = NULL;
+
+      brush = g_list_model_get_item (self, i);
+      if (!GCV_IS_IMAGE_MASK_BRUSH (brush))
+        continue;
+
+      path = gcv_brushable_get_file (brush);
+
+      if (path != NULL)
+        g_strv_builder_take (builder, g_steal_pointer (&path));
+    }
+  strv = g_strv_builder_end (builder);
+
+  g_settings_set_strv (application->settings,
+                       "image-brushes",
+                       (const char *const *) strv);
+}
+
+static void
+gcv_application_init (GcvApplication *self)
+{
+  g_autoptr (GcvSquareBrush) default_brush = NULL;
+
+  self->theme_setting = GCV_THEME_OPTION_DEFAULT;
+
+  self->item_store = g_object_new (GCV_TYPE_ITEM_STORE, NULL);
+  gcv_item_store_read_resources (self->item_store);
+
+  self->brush_store = g_list_store_new (GCV_TYPE_BRUSHABLE);
+  default_brush     = g_object_new (GCV_TYPE_SQUARE_BRUSH, NULL);
+  g_list_store_append (self->brush_store, default_brush);
+  g_signal_connect (self->brush_store, "items-changed",
+                    G_CALLBACK (brushes_changed), self);
 
   g_action_map_add_action_entries (
       G_ACTION_MAP (self),
@@ -724,42 +794,46 @@ gtk_crusader_village_application_init (GtkCrusaderVillageApplication *self)
       GTK_APPLICATION (self),
       "app.preferences",
       (const char *[]) { "<primary>p", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.subwindow",
+      (const char *[]) { "<primary>w", NULL });
 }
 
 static void
-theme_changed (GSettings                     *self,
-               char                          *key,
-               GtkCrusaderVillageApplication *application)
+theme_changed (GSettings      *self,
+               char           *key,
+               GcvApplication *application)
 {
   read_theme_from_settings (application);
 }
 
 static void
-read_theme_from_settings (GtkCrusaderVillageApplication *self)
+read_theme_from_settings (GcvApplication *self)
 {
   g_autofree char *theme = NULL;
 
   theme               = g_settings_get_string (self->settings, "theme");
-  self->theme_setting = gtk_crusader_village_theme_str_to_enum (theme);
+  self->theme_setting = gcv_theme_str_to_enum (theme);
 
   apply_gtk_theme (self);
 }
 
 static void
-apply_gtk_theme (GtkCrusaderVillageApplication *self)
+apply_gtk_theme (GcvApplication *self)
 {
   gboolean    dark    = FALSE;
   GdkDisplay *display = NULL;
 
 #ifdef USE_THEME_PORTAL
-  dark = (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK ||
-          self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK) ||
-         ((self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT ||
-           self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT) &&
+  dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
+          self->theme_setting == GCV_THEME_OPTION_DARK) ||
+         ((self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
+           self->theme_setting == GCV_THEME_OPTION_DEFAULT) &&
           self->portal_wants_dark);
 #else
-  dark = (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK ||
-          self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK);
+  dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
+          self->theme_setting == GCV_THEME_OPTION_DARK);
 #endif
 
   g_object_set (
@@ -772,9 +846,9 @@ apply_gtk_theme (GtkCrusaderVillageApplication *self)
   gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_light_css));
   gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_dark_css));
 
-  if (self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT ||
-      self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_LIGHT ||
-      self->theme_setting == GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK)
+  if (self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
+      self->theme_setting == GCV_THEME_OPTION_SHC_LIGHT ||
+      self->theme_setting == GCV_THEME_OPTION_SHC_DARK)
     {
       gtk_style_context_add_provider_for_display (
           display,
@@ -791,9 +865,31 @@ apply_gtk_theme (GtkCrusaderVillageApplication *self)
 }
 
 static void
-ensure_settings (GtkCrusaderVillageApplication *self)
+load_brush_finished_cb (GObject      *source_object,
+                        GAsyncResult *res,
+                        gpointer      data)
 {
-  const char *app_id = NULL;
+  GcvApplication *self                = data;
+  g_autoptr (GError) local_error      = NULL;
+  g_autoptr (GcvImageMaskBrush) brush = NULL;
+
+  brush = gcv_image_mask_brush_new_from_file_finish (
+      res, &local_error);
+  if (brush != NULL)
+    {
+      g_signal_handlers_block_by_func (self->brush_store, brushes_changed, self);
+      g_list_store_append (self->brush_store, brush);
+      g_signal_handlers_unblock_by_func (self->brush_store, brushes_changed, self);
+    }
+  else
+    g_critical ("Could not load cached image file for brush: %s", local_error->message);
+}
+
+static void
+ensure_settings (GcvApplication *self)
+{
+  const char *app_id     = NULL;
+  g_auto (GStrv) brushes = NULL;
 
   if (self->settings != NULL)
     return;
@@ -806,15 +902,26 @@ ensure_settings (GtkCrusaderVillageApplication *self)
   g_signal_connect (self->settings, "changed::theme",
                     G_CALLBACK (theme_changed), self);
   read_theme_from_settings (self);
+
+  brushes = g_settings_get_strv (self->settings, "image-brushes");
+  for (char **path = brushes; *path != NULL; path++)
+    {
+      g_autoptr (GFile) file = NULL;
+
+      file = g_file_new_for_path (*path);
+      /* TODO consider cancellables in case job lasts longer than object? */
+      gcv_image_mask_brush_new_from_file_async (
+          file, G_PRIORITY_DEFAULT, NULL, load_brush_finished_cb, self);
+    }
 }
 
 #ifdef USE_THEME_PORTAL
 static gboolean
-read_setting (GtkCrusaderVillageApplication *self,
-              const char                    *schema,
-              const char                    *name,
-              const char                    *type,
-              GVariant                     **out)
+read_setting (GcvApplication *self,
+              const char     *schema,
+              const char     *name,
+              const char     *type,
+              GVariant      **out)
 {
   GError       *error = NULL;
   GVariant     *ret;
@@ -909,11 +1016,11 @@ is_dark (GVariant *variant)
 }
 
 static void
-changed_cb (GDBusProxy                    *proxy,
-            const char                    *sender_name,
-            const char                    *signal_name,
-            GVariant                      *parameters,
-            GtkCrusaderVillageApplication *self)
+changed_cb (GDBusProxy     *proxy,
+            const char     *sender_name,
+            const char     *signal_name,
+            GVariant       *parameters,
+            GcvApplication *self)
 {
   const char *namespace;
   const char *name;
@@ -933,7 +1040,7 @@ changed_cb (GDBusProxy                    *proxy,
 }
 
 static void
-init_portal (GtkCrusaderVillageApplication *self)
+init_portal (GcvApplication *self)
 {
   g_autoptr (GError) error     = NULL;
   g_autoptr (GVariant) variant = NULL;

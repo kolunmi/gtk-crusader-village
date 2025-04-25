@@ -2,9 +2,9 @@
     "id": <145>,
     "name": <"Small Stone Gatehouse NS">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/SmallStoneGatehouse.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/tower.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/stone.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/SmallStoneGatehouse.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <5>,
     "tile-height": <5>

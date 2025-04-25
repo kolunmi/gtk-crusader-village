@@ -24,18 +24,18 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE (gtk_crusader_village_item_stroke_get_type ())
+#define GCV_TYPE_ITEM_STROKE (gcv_item_stroke_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageItemStroke, gtk_crusader_village_item_stroke, GTK_CRUSADER_VILLAGE, ITEM_STROKE, GObject)
+G_DECLARE_FINAL_TYPE (GcvItemStroke, gcv_item_stroke, GCV, ITEM_STROKE, GObject)
 
 typedef struct
 {
   int x;
   int y;
-} GtkCrusaderVillageItemStrokeInstance;
+} GcvItemStrokeInstance;
 
 gboolean
-gtk_crusader_village_item_stroke_add_instance (GtkCrusaderVillageItemStroke        *self,
-                                               GtkCrusaderVillageItemStrokeInstance instance);
+gcv_item_stroke_add_instance (GcvItemStroke        *self,
+                              GcvItemStrokeInstance instance);
 
 G_END_DECLS

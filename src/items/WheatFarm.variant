@@ -2,9 +2,9 @@
     "id": <70>,
     "name": <"Wheat Farm">,
     "description": <"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/WheatFarm.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/apple.png">,
-    "tile-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/tiles/dirt.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/WheatFarm.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/apple.png">,
+    "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <9>,
     "tile-height": <9>

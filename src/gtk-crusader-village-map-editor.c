@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "gtk-crusader-village-brush-area.h"
+#include "gtk-crusader-village-brushable.h"
 #include "gtk-crusader-village-dialog-window.h"
 #include "gtk-crusader-village-item-area.h"
 #include "gtk-crusader-village-item-stroke.h"
@@ -30,7 +32,7 @@
 
 #define BASE_TILE_SIZE 16.0
 
-struct _GtkCrusaderVillageMapEditor
+struct _GcvMapEditor
 {
   GtkWidget parent_instance;
 
@@ -41,19 +43,21 @@ struct _GtkCrusaderVillageMapEditor
   gboolean   show_grid;
   gboolean   show_gradient;
   gboolean   show_cursor_glow;
-  char      *background_image;
 
-  GtkCrusaderVillageMap       *map;
-  GtkCrusaderVillageMapHandle *handle;
+  GcvMap       *map;
+  GcvMapHandle *handle;
 
-  GtkCrusaderVillageItemArea *item_area;
-  int                         border_gap;
-  gboolean                    line_mode;
+  GcvItemArea  *item_area;
+  GcvBrushArea *brush_area;
+
+  int      border_gap;
+  gboolean line_mode;
+  gboolean draw_after_cursor;
 
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
-  graphene_rect_t render_cache_extents;
-  GdkTexture     *background_image_tex;
+  graphene_rect_t viewport;
+  GdkTexture     *bg_image_tex;
 
   double   zoom;
   gboolean queue_center;
@@ -62,6 +66,8 @@ struct _GtkCrusaderVillageMapEditor
   double pointer_y;
   int    hover_x;
   int    hover_y;
+  int    real_hover_x;
+  int    real_hover_y;
   double canvas_x;
   double canvas_y;
 
@@ -79,14 +85,21 @@ struct _GtkCrusaderVillageMapEditor
   GtkGesture *cancel_gesture;
   GtkGesture *zoom_gesture;
 
-  GtkCrusaderVillageItemStroke *current_stroke;
+  GcvItemStroke *current_stroke;
+  GArray        *stroke_tracker;
+
+  guint8        *brush_mask;
+  int            brush_width;
+  int            brush_height;
+  GskRenderNode *brush_node;
+  GtkAdjustment *brush_adjustment;
 };
 
 static void scrollable_iface_init (GtkScrollableInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (
-    GtkCrusaderVillageMapEditor,
-    gtk_crusader_village_map_editor,
+    GcvMapEditor,
+    gcv_map_editor,
     GTK_TYPE_WIDGET,
     G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, scrollable_iface_init))
 
@@ -95,17 +108,15 @@ enum
   PROP_0,
 
   PROP_SETTINGS,
-
   PROP_MAP_HANDLE,
   PROP_ITEM_AREA,
-
+  PROP_BRUSH_AREA,
   PROP_BORDER_GAP,
-
   PROP_HOVER_X,
   PROP_HOVER_Y,
   PROP_DRAWING,
-
   PROP_LINE_MODE,
+  PROP_DRAW_AFTER_CURSOR,
 
   LAST_NATIVE_PROP,
 
@@ -120,23 +131,23 @@ enum
 static GParamSpec *props[LAST_PROP] = { 0 };
 
 static void
-gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
-                                         GtkOrientation orientation,
-                                         int            for_size,
-                                         int           *minimum,
-                                         int           *natural,
-                                         int           *minimum_baseline,
-                                         int           *natural_baseline);
+gcv_map_editor_measure (GtkWidget     *widget,
+                        GtkOrientation orientation,
+                        int            for_size,
+                        int           *minimum,
+                        int           *natural,
+                        int           *minimum_baseline,
+                        int           *natural_baseline);
 
 static void
-gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
-                                               int        widget_width,
-                                               int        widget_height,
-                                               int        baseline);
+gcv_map_editor_size_allocate (GtkWidget *widget,
+                              int        widget_width,
+                              int        widget_height,
+                              int        baseline);
 
 static void
-gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
-                                          GtkSnapshot *snapshot);
+gcv_map_editor_snapshot (GtkWidget   *widget,
+                         GtkSnapshot *snapshot);
 
 static void
 back_page_cb (GtkWidget  *widget,
@@ -174,164 +185,192 @@ jump_to_search_cb (GtkWidget  *widget,
                    GVariant   *parameter);
 
 static void
-dark_theme_changed (GtkSettings                 *settings,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor);
+dark_theme_changed (GtkSettings  *settings,
+                    GParamSpec   *pspec,
+                    GcvMapEditor *editor);
 
 static void
-show_grid_changed (GSettings                   *self,
-                   gchar                       *key,
-                   GtkCrusaderVillageMapEditor *editor);
+show_grid_changed (GSettings    *self,
+                   gchar        *key,
+                   GcvMapEditor *editor);
 
 static void
-show_gradient_changed (GSettings                   *self,
-                       gchar                       *key,
-                       GtkCrusaderVillageMapEditor *editor);
+show_gradient_changed (GSettings    *self,
+                       gchar        *key,
+                       GcvMapEditor *editor);
 
 static void
-show_cursor_glow_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor);
+show_cursor_glow_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor);
 
 static void
-background_image_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor);
+background_image_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor);
 
 static void
-adjustment_value_changed (GtkAdjustment               *adjustment,
-                          GtkCrusaderVillageMapEditor *text_view);
+adjustment_value_changed (GtkAdjustment *adjustment,
+                          GcvMapEditor  *text_view);
 
 static void
-drag_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+drag_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-drag_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor);
+drag_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor);
 
 static void
-drag_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor);
+drag_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor);
 
 static void
-drag_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor);
+drag_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor);
 
 static void
-drag_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor);
+drag_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor);
 
 static void
-draw_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+draw_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-draw_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor);
+draw_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor);
 
 static void
-draw_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor);
+draw_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor);
 
 static void
-draw_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor);
+draw_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor);
 
 static void
-draw_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor);
+draw_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor);
 
 static void
-cancel_gesture_begin_gesture (GtkGesture                  *self,
-                              GdkEventSequence            *sequence,
-                              GtkCrusaderVillageMapEditor *editor);
+cancel_gesture_begin_gesture (GtkGesture       *self,
+                              GdkEventSequence *sequence,
+                              GcvMapEditor     *editor);
 
 static void
-cancel_gesture_end_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor);
+cancel_gesture_end_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor);
 
 static void
-zoom_gesture_begin (GtkGesture                  *self,
-                    GdkEventSequence            *sequence,
-                    GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_begin (GtkGesture       *self,
+                    GdkEventSequence *sequence,
+                    GcvMapEditor     *editor);
 
 static void
-zoom_gesture_scale_changed (GtkGestureZoom              *self,
-                            double                       scale,
-                            GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_scale_changed (GtkGestureZoom *self,
+                            double          scale,
+                            GcvMapEditor   *editor);
 
 static void
-zoom_gesture_end (GtkGesture                  *self,
-                  GdkEventSequence            *sequence,
-                  GtkCrusaderVillageMapEditor *editor);
+zoom_gesture_end (GtkGesture       *self,
+                  GdkEventSequence *sequence,
+                  GcvMapEditor     *editor);
 
 static gboolean
-scroll_event (GtkEventControllerScroll    *self,
-              double                       dx,
-              double                       dy,
-              GtkCrusaderVillageMapEditor *editor);
+scroll_event (GtkEventControllerScroll *self,
+              double                    dx,
+              double                    dy,
+              GcvMapEditor             *editor);
 
 static void
-motion_enter (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor);
+motion_enter (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor);
 
 static void
-motion_event (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor);
+motion_event (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor);
 
 static void
-motion_leave (GtkEventControllerMotion    *self,
-              GtkCrusaderVillageMapEditor *editor);
+motion_leave (GtkEventControllerMotion *self,
+              GcvMapEditor             *editor);
 
 static void
-selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageMapEditor *editor);
-static void
-grid_changed (GtkCrusaderVillageMapHandle *handle,
-              GParamSpec                  *pspec,
-              GtkCrusaderVillageMapEditor *editor);
+selected_item_changed (GcvItemArea  *item_area,
+                       GParamSpec   *pspec,
+                       GcvMapEditor *editor);
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                GParamSpec                  *pspec,
-                GtkCrusaderVillageMapEditor *editor);
+selected_brush_changed (GcvBrushArea *brush_area,
+                        GParamSpec   *pspec,
+                        GcvMapEditor *editor);
 
 static void
-update_scrollable (GtkCrusaderVillageMapEditor *self,
-                   gboolean                     center);
+selected_brush_adjustment_value_changed (GtkAdjustment *adjustment,
+                                         GcvMapEditor  *editor);
 
 static void
-update_motion (GtkCrusaderVillageMapEditor *self,
-               double                       x,
-               double                       y);
+grid_changed (GcvMapHandle *handle,
+              GParamSpec   *pspec,
+              GcvMapEditor *editor);
 
 static void
-gtk_crusader_village_map_editor_dispose (GObject *object)
+cursor_changed (GcvMapHandle *handle,
+                GParamSpec   *pspec,
+                GcvMapEditor *editor);
+
+static void
+update_scrollable (GcvMapEditor *self,
+                   gboolean      center);
+
+static void
+update_motion (GcvMapEditor *self,
+               double        x,
+               double        y);
+
+static void
+read_brush (GcvMapEditor *self,
+            gboolean      different);
+
+static void
+read_background_image (GcvMapEditor *self);
+
+static void
+background_texture_load_async_thread (GTask        *task,
+                                      gpointer      object,
+                                      gpointer      task_data,
+                                      GCancellable *cancellable);
+
+static void
+background_texture_load_finish_cb (GObject      *source_object,
+                                   GAsyncResult *res,
+                                   gpointer      data);
+
+static void
+gcv_map_editor_dispose (GObject *object)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   g_signal_handlers_disconnect_by_func (
       self->gtk_settings, dark_theme_changed, self);
@@ -348,7 +387,6 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
           self->settings, background_image_changed, self);
     }
   g_clear_object (&self->settings);
-  g_clear_pointer (&self->background_image, g_free);
 
   if (self->handle != NULL)
     {
@@ -360,24 +398,39 @@ gtk_crusader_village_map_editor_dispose (GObject *object)
   g_clear_object (&self->handle);
   g_clear_object (&self->map);
 
+  if (self->item_area != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->item_area, selected_item_changed, self);
   g_clear_object (&self->item_area);
+  if (self->brush_area != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->brush_area, selected_brush_changed, self);
+  g_clear_object (&self->brush_area);
+
   g_clear_object (&self->hadjustment);
   g_clear_object (&self->vadjustment);
   g_clear_object (&self->current_stroke);
-
+  g_clear_pointer (&self->stroke_tracker, g_array_unref);
   g_clear_pointer (&self->tile_textures, g_hash_table_unref);
-  g_clear_object (&self->background_image_tex);
+  g_clear_object (&self->bg_image_tex);
+  g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+  g_clear_pointer (&self->brush_node, gsk_render_node_unref);
 
-  G_OBJECT_CLASS (gtk_crusader_village_map_editor_parent_class)->dispose (object);
+  if (self->brush_adjustment != NULL)
+    g_signal_handlers_disconnect_by_func (
+        self->brush_adjustment, selected_brush_adjustment_value_changed, self);
+  g_clear_object (&self->brush_adjustment);
+
+  G_OBJECT_CLASS (gcv_map_editor_parent_class)->dispose (object);
 }
 
 static void
-gtk_crusader_village_map_editor_get_property (GObject    *object,
-                                              guint       prop_id,
-                                              GValue     *value,
-                                              GParamSpec *pspec)
+gcv_map_editor_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   switch (prop_id)
     {
@@ -389,6 +442,9 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
       break;
     case PROP_ITEM_AREA:
       g_value_set_object (value, self->item_area);
+      break;
+    case PROP_BRUSH_AREA:
+      g_value_set_object (value, self->brush_area);
       break;
     case PROP_BORDER_GAP:
       g_value_set_int (value, self->border_gap);
@@ -404,6 +460,9 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
       break;
     case PROP_LINE_MODE:
       g_value_set_boolean (value, self->line_mode);
+      break;
+    case PROP_DRAW_AFTER_CURSOR:
+      g_value_set_boolean (value, self->draw_after_cursor);
       break;
     case PROP_HADJUSTMENT:
       g_value_set_object (value, self->hadjustment);
@@ -424,12 +483,12 @@ gtk_crusader_village_map_editor_get_property (GObject    *object,
 }
 
 static void
-gtk_crusader_village_map_editor_set_property (GObject      *object,
-                                              guint         prop_id,
-                                              const GValue *value,
-                                              GParamSpec   *pspec)
+gcv_map_editor_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (object);
+  GcvMapEditor *self = GCV_MAP_EDITOR (object);
 
   switch (prop_id)
     {
@@ -457,15 +516,10 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
           g_signal_connect (self->settings, "changed::background-image",
                             G_CALLBACK (background_image_changed), self);
 
-          g_clear_pointer (&self->background_image, g_free);
-
           self->show_grid        = g_settings_get_boolean (self->settings, "show-grid");
           self->show_gradient    = g_settings_get_boolean (self->settings, "show-gradient");
           self->show_cursor_glow = g_settings_get_boolean (self->settings, "show-cursor-glow");
-
-          self->background_image = g_settings_get_string (self->settings, "background-image");
-          if (self->background_image[0] == '\0')
-            g_clear_pointer (&self->background_image, g_free);
+          read_background_image (self);
         }
       else
         {
@@ -513,9 +567,22 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
       g_clear_object (&self->item_area);
 
       self->item_area = g_value_dup_object (value);
-      if (self->item_area)
+      if (self->item_area != NULL)
         g_signal_connect (self->item_area, "notify::selected-item",
                           G_CALLBACK (selected_item_changed), self);
+      break;
+
+    case PROP_BRUSH_AREA:
+      if (self->brush_area != NULL)
+        g_signal_handlers_disconnect_by_func (
+            self->brush_area, selected_brush_changed, self);
+      g_clear_object (&self->brush_area);
+
+      self->brush_area = g_value_dup_object (value);
+      if (self->brush_area != NULL)
+        g_signal_connect (self->brush_area, "notify::selected-brush",
+                          G_CALLBACK (selected_brush_changed), self);
+      read_brush (self, TRUE);
       break;
 
     case PROP_BORDER_GAP:
@@ -525,6 +592,20 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
 
     case PROP_LINE_MODE:
       self->line_mode = g_value_get_boolean (value);
+      break;
+
+    case PROP_DRAW_AFTER_CURSOR:
+      {
+        gboolean new_val = FALSE;
+
+        new_val = g_value_get_boolean (value);
+        if (self->draw_after_cursor != new_val)
+          {
+            self->draw_after_cursor = new_val;
+            g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+            gtk_widget_queue_draw (GTK_WIDGET (self));
+          }
+      }
       break;
 
     case PROP_HADJUSTMENT:
@@ -587,14 +668,14 @@ gtk_crusader_village_map_editor_set_property (GObject      *object,
 }
 
 static void
-gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *klass)
+gcv_map_editor_class_init (GcvMapEditorClass *klass)
 {
   GObjectClass   *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose      = gtk_crusader_village_map_editor_dispose;
-  object_class->get_property = gtk_crusader_village_map_editor_get_property;
-  object_class->set_property = gtk_crusader_village_map_editor_set_property;
+  object_class->dispose      = gcv_map_editor_dispose;
+  object_class->get_property = gcv_map_editor_get_property;
+  object_class->set_property = gcv_map_editor_set_property;
 
   props[PROP_SETTINGS] =
       g_param_spec_object (
@@ -609,7 +690,7 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "map-handle",
           "Map Handle",
           "The map handle this view is editing through",
-          GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE,
+          GCV_TYPE_MAP_HANDLE,
           G_PARAM_READWRITE);
 
   props[PROP_ITEM_AREA] =
@@ -617,7 +698,15 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           "item-area",
           "Item Area",
           "The item area to use for tracking the current brush",
-          GTK_CRUSADER_VILLAGE_TYPE_ITEM_AREA,
+          GCV_TYPE_ITEM_AREA,
+          G_PARAM_READWRITE);
+
+  props[PROP_BRUSH_AREA] =
+      g_param_spec_object (
+          "brush-area",
+          "Brush Area",
+          "The brush area to use for tracking the current brush",
+          GCV_TYPE_BRUSH_AREA,
           G_PARAM_READWRITE);
 
   props[PROP_BORDER_GAP] =
@@ -660,6 +749,14 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
           FALSE,
           G_PARAM_READWRITE);
 
+  props[PROP_DRAW_AFTER_CURSOR] =
+      g_param_spec_boolean (
+          "draw-after-cursor",
+          "Draw After Cursor",
+          "Whether this widget draws all strokes regardless of the map handle's cursor position",
+          TRUE,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_NATIVE_PROP, props);
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
@@ -667,11 +764,11 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
   g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
   g_object_class_override_property (object_class, PROP_VSCROLL_POLICY, "vscroll-policy");
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/GtkCrusaderVillage/gtk-crusader-village-map-editor.ui");
+  gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-map-editor.ui");
 
-  widget_class->measure       = gtk_crusader_village_map_editor_measure;
-  widget_class->size_allocate = gtk_crusader_village_map_editor_size_allocate;
-  widget_class->snapshot      = gtk_crusader_village_map_editor_snapshot;
+  widget_class->measure       = gcv_map_editor_measure;
+  widget_class->size_allocate = gcv_map_editor_size_allocate;
+  widget_class->snapshot      = gcv_map_editor_snapshot;
 
   gtk_widget_class_install_action (widget_class, "back-page", NULL, back_page_cb);
   gtk_widget_class_install_action (widget_class, "back-one", NULL, back_one_cb);
@@ -683,20 +780,26 @@ gtk_crusader_village_map_editor_class_init (GtkCrusaderVillageMapEditorClass *kl
 }
 
 static void
-gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
+gcv_map_editor_init (GcvMapEditor *self)
 {
   GtkEventController *scroll_controller = NULL;
   GtkEventController *motion_controller = NULL;
 
-  self->border_gap = 2;
-  self->zoom       = 1.0;
+  self->border_gap        = 2;
+  self->zoom              = 1.0;
+  self->line_mode         = FALSE;
+  self->draw_after_cursor = TRUE;
 
-  self->pointer_x = -1.0;
-  self->pointer_y = -1.0;
-  self->hover_x   = -1;
-  self->hover_y   = -1;
-  self->canvas_x  = -1.0;
-  self->canvas_y  = -1.0;
+  self->pointer_x    = -1.0;
+  self->pointer_y    = -1.0;
+  self->hover_x      = -1;
+  self->hover_y      = -1;
+  self->real_hover_x = -1;
+  self->real_hover_y = -1;
+  self->canvas_x     = -1.0;
+  self->canvas_y     = -1.0;
+
+  self->stroke_tracker = g_array_new (FALSE, FALSE, sizeof (GcvItemStrokeInstance));
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -756,19 +859,19 @@ gtk_crusader_village_map_editor_init (GtkCrusaderVillageMapEditor *self)
 }
 
 static void
-gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
-                                         GtkOrientation orientation,
-                                         int            for_size,
-                                         int           *minimum,
-                                         int           *natural,
-                                         int           *minimum_baseline,
-                                         int           *natural_baseline)
+gcv_map_editor_measure (GtkWidget     *widget,
+                        GtkOrientation orientation,
+                        int            for_size,
+                        int           *minimum,
+                        int           *natural,
+                        int           *minimum_baseline,
+                        int           *natural_baseline)
 {
-  GtkCrusaderVillageMapEditor *editor         = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  int                          map_width      = 0;
-  int                          map_height     = 0;
-  int                          dimension      = 0;
-  double                       minimum_double = 0.0;
+  GcvMapEditor *editor         = GCV_MAP_EDITOR (widget);
+  int           map_width      = 0;
+  int           map_height     = 0;
+  int           dimension      = 0;
+  double        minimum_double = 0.0;
 
   if (editor->map == NULL)
     {
@@ -791,20 +894,23 @@ gtk_crusader_village_map_editor_measure (GtkWidget     *widget,
 }
 
 static void
-gtk_crusader_village_map_editor_size_allocate (GtkWidget *widget,
-                                               int        widget_width,
-                                               int        widget_height,
-                                               int        baseline)
+gcv_map_editor_size_allocate (GtkWidget *widget,
+                              int        widget_width,
+                              int        widget_height,
+                              int        baseline)
 {
-  GtkCrusaderVillageMapEditor *editor = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *editor = GCV_MAP_EDITOR (widget);
 
   update_scrollable (editor, FALSE);
 }
 
 static void
-gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
-                                          GtkSnapshot *snapshot)
+gcv_map_editor_snapshot (GtkWidget   *widget,
+                         GtkSnapshot *snapshot)
 {
+#define BORDER_WIDTH(w)           ((float[4]) { (w), (w), (w), (w) })
+#define BORDER_COLOR_LITERAL(...) ((GdkRGBA[4]) { __VA_ARGS__, __VA_ARGS__, __VA_ARGS__, __VA_ARGS__ })
+
   const GskColorStop bg_radial_gradient_color_stops[2] = {
     { 0.25, { 0.75, 0.55, 0.80, 1.0 } },
     {  1.0, { 0.90, 0.75, 0.80, 1.0 } },
@@ -818,17 +924,21 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
     { 1.0, { 0.1, 0.1, 0.1, 0.0 } },
   };
 
-  GtkCrusaderVillageMapEditor *editor          = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  int                          widget_width    = 0;
-  int                          widget_height   = 0;
-  graphene_rect_t              viewport        = { 0 };
-  double                       tile_size       = 0.0;
-  int                          map_tile_width  = 0;
-  int                          map_tile_height = 0;
-  g_autoptr (GListStore) strokes               = NULL;
-  double  map_width                            = 0.0;
-  double  map_height                           = 0.0;
-  GdkRGBA widget_rgba                          = { 0 };
+  GcvMapEditor   *editor                   = GCV_MAP_EDITOR (widget);
+  int             widget_width             = 0;
+  int             widget_height            = 0;
+  graphene_rect_t viewport                 = { 0 };
+  graphene_rect_t extents                  = { 0 };
+  double          tile_size                = 0.0;
+  g_autoptr (GListStore) union_model       = NULL;
+  guint cursor                             = 0;
+  guint cursor_len                         = 0;
+  int   map_tile_width                     = 0;
+  int   map_tile_height                    = 0;
+  g_autoptr (GListStore) map_strokes_model = NULL;
+  double  map_width                        = 0.0;
+  double  map_height                       = 0.0;
+  GdkRGBA widget_rgba                      = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -861,20 +971,31 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           NULL);
 
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-value_x, -value_y));
-      viewport = GRAPHENE_RECT_INIT (value_x, value_y, (float) widget_width, (float) widget_height);
+      viewport = extents = GRAPHENE_RECT_INIT (value_x, value_y, (float) widget_width, (float) widget_height);
     }
   else
-    viewport = GRAPHENE_RECT_INIT (0, 0, (float) widget_width, (float) widget_height);
+    viewport = extents = GRAPHENE_RECT_INIT (0, 0, (float) widget_width, (float) widget_height);
+
+  viewport.origin.x /= editor->zoom;
+  viewport.origin.y /= editor->zoom;
+  viewport.size.width /= editor->zoom;
+  viewport.size.height /= editor->zoom;
 
   tile_size = BASE_TILE_SIZE * editor->zoom;
+
+  g_object_get (
+      editor->handle,
+      "model", &union_model,
+      "cursor", &cursor,
+      "cursor-len", &cursor_len,
+      NULL);
 
   g_object_get (
       editor->map,
       "width", &map_tile_width,
       "height", &map_tile_height,
-      "strokes", &strokes,
+      "strokes", &map_strokes_model,
       NULL);
-
   map_width  = (double) map_tile_width * tile_size;
   map_height = (double) map_tile_height * tile_size;
 
@@ -883,10 +1004,18 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       &GRAPHENE_POINT_INIT (
           (double) editor->border_gap * tile_size,
           (double) editor->border_gap * tile_size));
-  viewport.origin.x -= (double) editor->border_gap * tile_size;
-  viewport.origin.y -= (double) editor->border_gap * tile_size;
+  viewport.origin.x -= (double) editor->border_gap * BASE_TILE_SIZE;
+  viewport.origin.y -= (double) editor->border_gap * BASE_TILE_SIZE;
+  extents.origin.x -= (double) editor->border_gap * tile_size;
+  extents.origin.y -= (double) editor->border_gap * tile_size;
 
-  if (editor->show_gradient)
+  if (editor->bg_image_tex != NULL)
+    gtk_snapshot_append_scaled_texture (
+        snapshot,
+        editor->bg_image_tex,
+        GSK_SCALING_FILTER_NEAREST,
+        &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
+  else if (editor->show_gradient)
     gtk_snapshot_append_radial_gradient (
         snapshot,
         &GRAPHENE_RECT_INIT (0, 0, map_width, map_height),
@@ -895,60 +1024,17 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
         editor->dark_theme ? bg_radial_gradient_color_stops_dark : bg_radial_gradient_color_stops,
         editor->dark_theme ? G_N_ELEMENTS (bg_radial_gradient_color_stops_dark) : G_N_ELEMENTS (bg_radial_gradient_color_stops));
 
-  if (editor->background_image != NULL &&
-      editor->background_image_tex == NULL)
-    {
-      g_autoptr (GError) local_error = NULL;
-
-      editor->background_image_tex = gdk_texture_new_from_filename (editor->background_image, &local_error);
-      g_clear_pointer (&editor->background_image, g_free);
-
-      if (editor->background_image_tex == NULL)
-        {
-          GtkWidget      *app_window  = NULL;
-          GtkApplication *application = NULL;
-          GtkWindow      *window      = NULL;
-
-          app_window = gtk_widget_get_ancestor (GTK_WIDGET (editor), GTK_TYPE_WINDOW);
-          g_assert (app_window != NULL);
-
-          application = gtk_window_get_application (GTK_WINDOW (app_window));
-          window      = gtk_application_get_active_window (application);
-
-          gtk_crusader_village_dialog (
-              "Error",
-              "Could not load background image ",
-              local_error->message,
-              window, NULL);
-
-          if (editor->settings != NULL)
-            g_settings_set_string (editor->settings, "background-image", "");
-        }
-    }
-
-  if (editor->background_image_tex != NULL)
-    gtk_snapshot_append_scaled_texture (
-        snapshot,
-        editor->background_image_tex,
-        GSK_SCALING_FILTER_NEAREST,
-        &GRAPHENE_RECT_INIT (0, 0, map_width, map_height));
-
   if (editor->show_grid)
     {
       gtk_snapshot_push_repeat (
           snapshot,
           &GRAPHENE_RECT_INIT (0, 0, map_width, map_height),
           &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size));
-
-#define BORDER_WIDTH(w)           ((float[4]) { (w), (w), (w), (w) })
-#define BORDER_COLOR_LITERAL(...) ((GdkRGBA[4]) { __VA_ARGS__, __VA_ARGS__, __VA_ARGS__, __VA_ARGS__ })
-
       gtk_snapshot_append_border (
           snapshot,
           &GSK_ROUNDED_RECT_INIT (0, 0, tile_size, tile_size),
           BORDER_WIDTH (BASE_TILE_SIZE / 32.0 * editor->zoom),
           BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
-
       gtk_snapshot_pop (snapshot);
     }
 
@@ -961,33 +1047,59 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
       BASE_TILE_SIZE * 2.0 * editor->zoom);
 
   if (editor->render_cache == NULL ||
-      !graphene_rect_contains_rect (&editor->render_cache_extents, &viewport))
+      editor->viewport.origin.x > viewport.origin.x ||
+      editor->viewport.origin.y > viewport.origin.y ||
+      editor->viewport.origin.x + editor->viewport.size.width < viewport.origin.x + viewport.size.width ||
+      editor->viewport.origin.y + editor->viewport.size.height < viewport.origin.y + viewport.size.height)
     {
       g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
-      editor->render_cache_extents = GRAPHENE_RECT_INIT (
-          viewport.origin.x - viewport.size.width,
-          viewport.origin.y - viewport.size.height,
-          viewport.size.width * 4,
-          viewport.size.height * 4);
+
+      editor->viewport = GRAPHENE_RECT_INIT (
+          viewport.origin.x - viewport.size.width / 2.0,
+          viewport.origin.y - viewport.size.height / 2.0,
+          viewport.size.width * 2.0,
+          viewport.size.height * 2.0);
+      extents = GRAPHENE_RECT_INIT (
+          extents.origin.x - extents.size.width / 2.0,
+          extents.origin.y - extents.size.height / 2.0,
+          extents.size.width * 2.0,
+          extents.size.height * 2.0);
     }
 
   if (editor->render_cache == NULL)
     {
-      g_autoptr (GtkSnapshot) regen                = NULL;
-      g_autoptr (GtkSnapshot) layouts              = NULL;
-      g_autoptr (GHashTable) texture_to_mask       = NULL;
-      guint          n_strokes                     = 0;
-      GdkRGBA        bg_rgba                       = { 0 };
-      GHashTableIter iter                          = { 0 };
-      g_autoptr (GskRenderNode) layouts_node       = NULL;
-      g_autoptr (GskPathBuilder) keep_path_builder = NULL;
-      g_autoptr (GskPath) keep_path                = NULL;
-      g_autoptr (GskStroke) keep_stroke            = NULL;
+      g_autoptr (GtkSnapshot) regen   = NULL;
+      g_autoptr (GtkSnapshot) units   = NULL;
+      g_autoptr (GtkSnapshot) layouts = NULL;
+
+      g_autoptr (GHashTable) texture_to_mask = NULL;
+      guint   total_strokes                  = 0;
+      guint   total_map_strokes              = 0;
+      guint   total_drawn_strokes            = 0;
+      GdkRGBA bg_rgba                        = { 0 };
+
+      GHashTableIter iter = { 0 };
+
+      g_autoptr (GskRenderNode) units_node   = NULL;
+      g_autoptr (GskRenderNode) layouts_node = NULL;
+
+      g_autoptr (GskPathBuilder) keep_path_builder  = NULL;
+      g_autoptr (GskPath) keep_path                 = NULL;
+      g_autoptr (GskStroke) keep_stroke             = NULL;
+      g_autoptr (GskPathBuilder) units_path_builder = NULL;
+      g_autoptr (GskPath) units_path                = NULL;
+      g_autoptr (GskStroke) units_stroke            = NULL;
 
       regen           = gtk_snapshot_new ();
+      units           = gtk_snapshot_new ();
       layouts         = gtk_snapshot_new ();
       texture_to_mask = g_hash_table_new (g_direct_hash, g_direct_equal);
-      n_strokes       = g_list_model_get_n_items (G_LIST_MODEL (strokes));
+
+      total_strokes       = g_list_model_get_n_items (G_LIST_MODEL (union_model));
+      total_map_strokes   = g_list_model_get_n_items (G_LIST_MODEL (map_strokes_model));
+      total_drawn_strokes = editor->draw_after_cursor
+                                ? total_strokes
+                                : MIN (total_strokes, total_map_strokes + cursor_len);
 
       gtk_widget_get_color (GTK_WIDGET (editor), &widget_rgba);
       bg_rgba = (GdkRGBA) {
@@ -997,20 +1109,23 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
         .alpha = 0.75,
       };
 
-      for (guint i = 0; i < n_strokes; i++)
-        {
-          g_autoptr (GtkCrusaderVillageItemStroke) stroke = NULL;
-          g_autoptr (GtkCrusaderVillageItem) item         = NULL;
-          g_autoptr (GArray) instances                    = NULL;
-          int         item_tile_width                     = 0;
-          int         item_tile_height                    = 0;
-          gpointer    tile_hash                           = NULL;
-          GdkTexture *tile_texture                        = NULL;
-          gboolean    wants_layout                        = FALSE;
-          g_autoptr (PangoLayout) tile_layout             = NULL;
-          PangoRectangle tile_layout_rect                 = { 0 };
+      gtk_snapshot_push_mask (units, GSK_MASK_MODE_ALPHA);
 
-          stroke = g_list_model_get_item (G_LIST_MODEL (strokes), i);
+      for (guint i = 0; i < total_drawn_strokes; i++)
+        {
+          g_autoptr (GcvItemStroke) stroke    = NULL;
+          g_autoptr (GcvItem) item            = NULL;
+          g_autoptr (GArray) instances        = NULL;
+          int         item_tile_width         = 0;
+          int         item_tile_height        = 0;
+          GcvItemKind item_kind               = 0;
+          gpointer    tile_hash               = NULL;
+          GdkTexture *tile_texture            = NULL;
+          gboolean    wants_layout            = FALSE;
+          g_autoptr (PangoLayout) tile_layout = NULL;
+          PangoRectangle tile_layout_rect     = { 0 };
+
+          stroke = g_list_model_get_item (G_LIST_MODEL (union_model), i);
           g_object_get (
               stroke,
               "item", &item,
@@ -1018,68 +1133,108 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
               NULL);
           g_object_get (
               item,
+              "kind", &item_kind,
               "tile-width", &item_tile_width,
               "tile-height", &item_tile_height,
               NULL);
 
-          wants_layout = editor->zoom >= 3.5 ||
-                         item_tile_width > 1 || item_tile_height > 1;
+          wants_layout = i < cursor + cursor_len &&
+                         editor->zoom >= 0.5 &&
+                         (editor->zoom >= 3.5 ||
+                          item_tile_width > 1 ||
+                          item_tile_height > 1 ||
+                          item_kind == GCV_ITEM_KIND_UNIT);
 
-          tile_hash = gtk_crusader_village_item_get_tile_resource_hash (item);
-          if (tile_hash != NULL)
+          if (item_kind != GCV_ITEM_KIND_UNIT)
             {
-              tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
-              if (tile_texture == NULL)
+              tile_hash = gcv_item_get_tile_resource_hash (item);
+              if (tile_hash != NULL)
                 {
-                  g_autofree char *tile_resource = NULL;
+                  tile_texture = g_hash_table_lookup (editor->tile_textures, tile_hash);
+                  if (tile_texture == NULL)
+                    {
+                      g_autofree char *tile_resource = NULL;
 
-                  g_object_get (
-                      item,
-                      "tile-resource", &tile_resource,
-                      NULL);
+                      g_object_get (
+                          item,
+                          "tile-resource", &tile_resource,
+                          NULL);
 
-                  tile_texture = gdk_texture_new_from_resource (tile_resource);
-                  g_hash_table_replace (editor->tile_textures, tile_hash, tile_texture);
+                      tile_texture = gdk_texture_new_from_resource (tile_resource);
+                      g_hash_table_replace (editor->tile_textures, tile_hash, tile_texture);
+                    }
                 }
             }
 
           for (guint j = 0; j < instances->len; j++)
             {
-              GtkCrusaderVillageItemStrokeInstance instance = { 0 };
-              graphene_rect_t                      rect     = { 0 };
+              GcvItemStrokeInstance instance = { 0 };
+              graphene_rect_t       rect     = { 0 };
 
-              instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, j);
-              rect     = GRAPHENE_RECT_INIT (
+              instance = g_array_index (instances, GcvItemStrokeInstance, j);
+
+              rect = GRAPHENE_RECT_INIT (
                   instance.x * tile_size - 1.0,
                   instance.y * tile_size - 1.0,
                   item_tile_width * tile_size + 2.0,
                   item_tile_height * tile_size + 2.0);
 
-              if (graphene_rect_intersection (&editor->render_cache_extents, &rect, NULL))
+              if (graphene_rect_intersection (&extents, &rect, NULL))
                 {
-                  if (tile_texture != NULL)
+                  if (item_kind == GCV_ITEM_KIND_UNIT)
+                    gtk_snapshot_append_color (
+                        units,
+                        &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 },
+                        &rect);
+                  else
                     {
-                      GtkSnapshot *mask = NULL;
+                      graphene_rect_t draw_rect = rect;
 
-                      mask = g_hash_table_lookup (texture_to_mask, tile_texture);
-                      if (mask == NULL)
+                      if (i >= cursor && i < cursor + cursor_len)
                         {
-                          mask = gtk_snapshot_new ();
-                          g_hash_table_replace (texture_to_mask, tile_texture, mask);
+                          gtk_snapshot_append_color (
+                              regen,
+                              &(GdkRGBA) { 0.0, 0.0, 0.0, 1.0 },
+                              &draw_rect);
 
-                          gtk_snapshot_push_mask (mask, GSK_MASK_MODE_ALPHA);
+                          draw_rect.origin.x += tile_size * 0.2;
+                          draw_rect.origin.y += tile_size * 0.2;
+                          draw_rect.size.width -= tile_size * 0.4;
+                          draw_rect.size.height -= tile_size * 0.4;
                         }
 
-                      gtk_snapshot_append_color (
-                          mask,
-                          &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 },
-                          &rect);
+                      if (tile_texture != NULL)
+                        {
+                          GtkSnapshot *mask = NULL;
+
+                          mask = g_hash_table_lookup (texture_to_mask, tile_texture);
+                          if (mask == NULL)
+                            {
+                              mask = gtk_snapshot_new ();
+                              g_hash_table_replace (texture_to_mask, tile_texture, mask);
+
+                              gtk_snapshot_push_mask (mask, GSK_MASK_MODE_ALPHA);
+                            }
+
+                          gtk_snapshot_append_color (
+                              mask,
+                              i < cursor
+                                  ? &(GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
+                                  : (i < cursor + cursor_len
+                                         ? &(GdkRGBA) { 1.0, 1.0, 1.0, 0.9 }
+                                         : &(GdkRGBA) { 1.0, 1.0, 1.0, 0.3 }),
+                              &draw_rect);
+                        }
+                      else
+                        gtk_snapshot_append_color (
+                            regen,
+                            i < cursor
+                                ? &(GdkRGBA) { 0.1, 0.5, 1.0, 1.0 }
+                                : (i < cursor + cursor_len
+                                       ? &(GdkRGBA) { 0.1, 0.1, 1.0, 0.9 }
+                                       : &(GdkRGBA) { 0.1, 0.1, 1.0, 0.3 }),
+                            &draw_rect);
                     }
-                  else
-                    gtk_snapshot_append_color (
-                        regen,
-                        &(GdkRGBA) { 0.5, 0.6, 0.75, 1.0 },
-                        &rect);
 
                   if (wants_layout && tile_layout == NULL)
                     {
@@ -1087,7 +1242,7 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
                       char        buf[256]  = { 0 };
                       const char *ptr       = NULL;
 
-                      item_name = gtk_crusader_village_item_get_name (item);
+                      item_name = gcv_item_get_name (item);
 
                       if (editor->zoom >= 4.5)
                         {
@@ -1151,10 +1306,10 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
           gtk_snapshot_pop (mask);
 
           gtk_snapshot_push_repeat (
-              mask, &editor->render_cache_extents,
+              mask, &extents,
               &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
-          gtk_snapshot_append_texture (
-              mask, texture,
+          gtk_snapshot_append_scaled_texture (
+              mask, texture, GSK_SCALING_FILTER_NEAREST,
               &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size / 2));
           gtk_snapshot_pop (mask);
 
@@ -1198,6 +1353,32 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
               ? &(const GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
               : &(const GdkRGBA) { 0.0, 0.0, 0.0, 1.0 });
 
+      units_path_builder = gsk_path_builder_new ();
+      gsk_path_builder_add_circle (
+          units_path_builder,
+          &GRAPHENE_POINT_INIT (tile_size / 2.0, tile_size / 2.0),
+          tile_size / 3.0);
+      units_path = gsk_path_builder_free_to_path (g_steal_pointer (&units_path_builder));
+
+      units_stroke = gsk_stroke_new (tile_size * 0.15);
+      gsk_stroke_set_dash (units_stroke, (const float[]) { tile_size * 0.25, tile_size * 0.1 }, 2);
+      gsk_stroke_set_line_cap (units_stroke, GSK_LINE_CAP_BUTT);
+
+      gtk_snapshot_pop (units);
+      gtk_snapshot_push_repeat (
+          units, &extents,
+          &GRAPHENE_RECT_INIT (0, 0, tile_size, tile_size));
+      gtk_snapshot_append_stroke (
+          units, units_path, units_stroke,
+          editor->dark_theme
+              ? &(const GdkRGBA) { 1.0, 0.25, 0.75, 1.0 }
+              : &(const GdkRGBA) { 0.75, 0.25, 1.0, 1.0 });
+      gtk_snapshot_pop (units);
+      gtk_snapshot_pop (units);
+      units_node = gtk_snapshot_to_node (units);
+      if (units_node != NULL)
+        gtk_snapshot_append_node (regen, units_node);
+
       layouts_node = gtk_snapshot_to_node (layouts);
       if (layouts_node != NULL)
         gtk_snapshot_append_node (regen, layouts_node);
@@ -1210,13 +1391,11 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
   if (!gtk_gesture_is_recognized (editor->drag_gesture) &&
       !gtk_gesture_is_recognized (editor->zoom_gesture) &&
-      !gtk_gesture_is_active (editor->cancel_gesture) &&
-      (editor->current_stroke != NULL ||
-       (editor->hover_x >= 0 && editor->hover_y >= 0)))
+      !gtk_gesture_is_active (editor->cancel_gesture))
     {
-      g_autoptr (GtkCrusaderVillageItem) current_item = NULL;
-      int item_tile_width                             = 0;
-      int item_tile_height                            = 0;
+      g_autoptr (GcvItem) current_item = NULL;
+      int item_tile_width              = 0;
+      int item_tile_height             = 0;
 
       if (editor->current_stroke != NULL)
         g_object_get (
@@ -1249,9 +1428,9 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
 
           for (guint i = 0; i < instances->len; i++)
             {
-              GtkCrusaderVillageItemStrokeInstance instance = { 0 };
+              GcvItemStrokeInstance instance = { 0 };
 
-              instance = g_array_index (instances, GtkCrusaderVillageItemStrokeInstance, i);
+              instance = g_array_index (instances, GcvItemStrokeInstance, i);
               gtk_snapshot_append_color (
                   snapshot,
                   &(GdkRGBA) { 0.2, 0.37, 0.9, 0.5 },
@@ -1263,51 +1442,69 @@ gtk_crusader_village_map_editor_snapshot (GtkWidget   *widget,
             }
         }
 
-      if (current_item != NULL &&
-          editor->hover_x >= 0 && editor->hover_y >= 0)
+      if (current_item != NULL)
         {
-          double top_left_x  = 0.0;
-          double top_left_y  = 0.0;
-          double rect_width  = 0;
-          double rect_height = 0;
-
-          top_left_x  = (double) editor->hover_x * tile_size;
-          top_left_y  = (double) editor->hover_y * tile_size;
-          rect_width  = (double) MIN (item_tile_width, map_tile_width - editor->hover_x) * tile_size;
-          rect_height = (double) MIN (item_tile_height, map_tile_height - editor->hover_y) * tile_size;
-
-          if (editor->show_cursor_glow)
+          if (item_tile_width == 1 &&
+              item_tile_height == 1 &&
+              editor->brush_node != NULL)
             {
-              double center_x        = 0.0;
-              double center_y        = 0.0;
-              double glow_top_left_x = 0.0;
-              double glow_top_left_y = 0.0;
-              double glow_width      = 0.0;
-              double glow_height     = 0.0;
+              double top_left_x = 0.0;
+              double top_left_y = 0.0;
 
-              center_x        = top_left_x + rect_width / 2.0;
-              center_y        = top_left_y + rect_height / 2.0;
-              glow_top_left_x = MIN (top_left_x, center_x - BASE_TILE_SIZE * 4.0);
-              glow_top_left_y = MIN (top_left_y, center_y - BASE_TILE_SIZE * 4.0);
-              glow_width      = MAX (rect_width, (center_x + BASE_TILE_SIZE * 4.0) - glow_top_left_x);
-              glow_height     = MAX (rect_height, (center_y + BASE_TILE_SIZE * 4.0) - glow_top_left_y);
+              top_left_x = (editor->real_hover_x - (double) (int) (editor->brush_width / 2)) * tile_size;
+              top_left_y = (editor->real_hover_y - (double) (int) (editor->brush_height / 2)) * tile_size;
 
-              gtk_snapshot_append_radial_gradient (
-                  snapshot,
-                  &GRAPHENE_RECT_INIT (glow_top_left_x, glow_top_left_y, glow_width, glow_height),
-                  &GRAPHENE_POINT_INIT (center_x, center_y),
-                  glow_width / 2.0, glow_height / 2.0, 0.0, 1.0,
-                  cursor_radial_gradient_color_stops,
-                  G_N_ELEMENTS (cursor_radial_gradient_color_stops));
+              gtk_snapshot_save (snapshot);
+              gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (top_left_x, top_left_y));
+              gtk_snapshot_scale (snapshot, tile_size, tile_size);
+              gtk_snapshot_append_node (snapshot, editor->brush_node);
+              gtk_snapshot_restore (snapshot);
             }
+          else
+            {
+              double top_left_x  = 0.0;
+              double top_left_y  = 0.0;
+              double rect_width  = 0;
+              double rect_height = 0;
 
-          gtk_snapshot_append_border (
-              snapshot,
-              &GSK_ROUNDED_RECT_INIT (top_left_x, top_left_y, rect_width, rect_height),
-              BORDER_WIDTH (BASE_TILE_SIZE / 8.0 * editor->zoom),
-              editor->dark_theme
-                  ? BORDER_COLOR_LITERAL ({ 1.0, 1.0, 1.0, 1.0 })
-                  : BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
+              top_left_x  = (double) editor->real_hover_x * tile_size;
+              top_left_y  = (double) editor->real_hover_y * tile_size;
+              rect_width  = (double) item_tile_width * tile_size;
+              rect_height = (double) item_tile_height * tile_size;
+
+              if (editor->show_cursor_glow)
+                {
+                  double center_x        = 0.0;
+                  double center_y        = 0.0;
+                  double glow_top_left_x = 0.0;
+                  double glow_top_left_y = 0.0;
+                  double glow_width      = 0.0;
+                  double glow_height     = 0.0;
+
+                  center_x        = top_left_x + rect_width / 2.0;
+                  center_y        = top_left_y + rect_height / 2.0;
+                  glow_top_left_x = MIN (top_left_x, center_x - BASE_TILE_SIZE * 4.0);
+                  glow_top_left_y = MIN (top_left_y, center_y - BASE_TILE_SIZE * 4.0);
+                  glow_width      = MAX (rect_width, (center_x + BASE_TILE_SIZE * 4.0) - glow_top_left_x);
+                  glow_height     = MAX (rect_height, (center_y + BASE_TILE_SIZE * 4.0) - glow_top_left_y);
+
+                  gtk_snapshot_append_radial_gradient (
+                      snapshot,
+                      &GRAPHENE_RECT_INIT (glow_top_left_x, glow_top_left_y, glow_width, glow_height),
+                      &GRAPHENE_POINT_INIT (center_x, center_y),
+                      glow_width / 2.0, glow_height / 2.0, 0.0, 1.0,
+                      cursor_radial_gradient_color_stops,
+                      G_N_ELEMENTS (cursor_radial_gradient_color_stops));
+                }
+
+              gtk_snapshot_append_border (
+                  snapshot,
+                  &GSK_ROUNDED_RECT_INIT (top_left_x, top_left_y, rect_width, rect_height),
+                  BORDER_WIDTH (BASE_TILE_SIZE / 8.0 * editor->zoom),
+                  editor->dark_theme
+                      ? BORDER_COLOR_LITERAL ({ 1.0, 1.0, 1.0, 1.0 })
+                      : BORDER_COLOR_LITERAL ({ 0.0, 0.0, 0.0, 1.0 }));
+            }
         }
     }
 
@@ -1332,8 +1529,8 @@ back_page_cb (GtkWidget  *widget,
               const char *action_name,
               GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1356,8 +1553,8 @@ back_one_cb (GtkWidget  *widget,
              const char *action_name,
              GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1380,8 +1577,8 @@ forward_one_cb (GtkWidget  *widget,
                 const char *action_name,
                 GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1401,8 +1598,8 @@ forward_page_cb (GtkWidget  *widget,
                  const char *action_name,
                  GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self   = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
-  guint                        cursor = 0;
+  GcvMapEditor *self   = GCV_MAP_EDITOR (widget);
+  guint         cursor = 0;
 
   if (self->handle == NULL)
     return;
@@ -1422,7 +1619,7 @@ beginning_cb (GtkWidget  *widget,
               const char *action_name,
               GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->handle == NULL)
     return;
@@ -1438,7 +1635,7 @@ end_cb (GtkWidget  *widget,
         const char *action_name,
         GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->handle == NULL)
     return;
@@ -1454,79 +1651,76 @@ jump_to_search_cb (GtkWidget  *widget,
                    const char *action_name,
                    GVariant   *parameter)
 {
-  GtkCrusaderVillageMapEditor *self = GTK_CRUSADER_VILLAGE_MAP_EDITOR (widget);
+  GcvMapEditor *self = GCV_MAP_EDITOR (widget);
 
   if (self->item_area == NULL)
     return;
 
-  gtk_crusader_village_item_area_grab_search_focus (self->item_area);
+  gcv_item_area_grab_search_focus (self->item_area);
 }
 
 static void
-dark_theme_changed (GtkSettings                 *settings,
-                    GParamSpec                  *pspec,
-                    GtkCrusaderVillageMapEditor *editor)
+dark_theme_changed (GtkSettings  *settings,
+                    GParamSpec   *pspec,
+                    GcvMapEditor *editor)
 {
   g_object_get (
       settings,
       "gtk-application-prefer-dark-theme", &editor->dark_theme,
       NULL);
+
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
+  read_brush (editor, FALSE);
+
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-show_grid_changed (GSettings                   *self,
-                   gchar                       *key,
-                   GtkCrusaderVillageMapEditor *editor)
+show_grid_changed (GSettings    *self,
+                   gchar        *key,
+                   GcvMapEditor *editor)
 {
   editor->show_grid = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-show_gradient_changed (GSettings                   *self,
-                       gchar                       *key,
-                       GtkCrusaderVillageMapEditor *editor)
+show_gradient_changed (GSettings    *self,
+                       gchar        *key,
+                       GcvMapEditor *editor)
 {
   editor->show_gradient = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-show_cursor_glow_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor)
+show_cursor_glow_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor)
 {
   editor->show_cursor_glow = g_settings_get_boolean (self, key);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-background_image_changed (GSettings                   *self,
-                          gchar                       *key,
-                          GtkCrusaderVillageMapEditor *editor)
+background_image_changed (GSettings    *self,
+                          gchar        *key,
+                          GcvMapEditor *editor)
 {
-  g_clear_object (&editor->background_image_tex);
-
-  editor->background_image = g_settings_get_string (editor->settings, "background-image");
-  if (editor->background_image[0] == '\0')
-    g_clear_pointer (&editor->background_image, g_free);
-
-  gtk_widget_queue_draw (GTK_WIDGET (editor));
+  read_background_image (editor);
 }
 
 static void
-adjustment_value_changed (GtkAdjustment               *adjustment,
-                          GtkCrusaderVillageMapEditor *editor)
+adjustment_value_changed (GtkAdjustment *adjustment,
+                          GcvMapEditor  *editor)
 {
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-drag_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+drag_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
@@ -1535,10 +1729,10 @@ drag_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-drag_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor)
+drag_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor)
 {
   editor->drag_start_hadjustment_val = gtk_adjustment_get_value (editor->hadjustment);
   editor->drag_start_vadjustment_val = gtk_adjustment_get_value (editor->vadjustment);
@@ -1548,10 +1742,10 @@ drag_gesture_begin (GtkGestureDrag              *self,
 }
 
 static void
-drag_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor)
+drag_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor)
 {
   double start_x = 0.0;
   double start_y = 0.0;
@@ -1566,27 +1760,27 @@ drag_gesture_update (GtkGestureDrag              *gesture,
 }
 
 static void
-drag_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor)
+drag_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor)
 {
   update_motion (editor, editor->pointer_x, editor->pointer_y);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-drag_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor)
+drag_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 }
 
 static void
-draw_gesture_begin_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+draw_gesture_begin_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
@@ -1595,12 +1789,12 @@ draw_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-draw_gesture_begin (GtkGestureDrag              *self,
-                    double                       start_x,
-                    double                       start_y,
-                    GtkCrusaderVillageMapEditor *editor)
+draw_gesture_begin (GtkGestureDrag *self,
+                    double          start_x,
+                    double          start_y,
+                    GcvMapEditor   *editor)
 {
-  g_autoptr (GtkCrusaderVillageItem) selected_item = NULL;
+  g_autoptr (GcvItem) selected_item = NULL;
 
   g_object_get (
       editor->item_area,
@@ -1616,9 +1810,10 @@ draw_gesture_begin (GtkGestureDrag              *self,
 
   g_clear_object (&editor->current_stroke);
   editor->current_stroke = g_object_new (
-      GTK_CRUSADER_VILLAGE_TYPE_ITEM_STROKE,
+      GCV_TYPE_ITEM_STROKE,
       "item", selected_item,
       NULL);
+  g_array_set_size (editor->stroke_tracker, 0);
 
   draw_gesture_update (self, 0.0, 0.0, editor);
 
@@ -1631,25 +1826,24 @@ draw_gesture_begin (GtkGestureDrag              *self,
 }
 
 static void
-draw_gesture_update (GtkGestureDrag              *gesture,
-                     double                       offset_x,
-                     double                       offset_y,
-                     GtkCrusaderVillageMapEditor *editor)
+draw_gesture_update (GtkGestureDrag *gesture,
+                     double          offset_x,
+                     double          offset_y,
+                     GcvMapEditor   *editor)
 {
-  g_autoptr (GArray) instances                          = NULL;
-  g_autoptr (GHashTable) grid                           = NULL;
-  int map_tile_width                                    = 0;
-  int map_tile_height                                   = 0;
-  g_autoptr (GtkCrusaderVillageItem) item               = NULL;
-  int                                  item_tile_width  = 0;
-  int                                  item_tile_height = 0;
-  GtkCrusaderVillageItemStrokeInstance last_instance    = { 0 };
-  int                                  dx               = 0;
-  int                                  dy               = 0;
-  int                                  divisor          = 0;
+  g_autoptr (GHashTable) grid            = NULL;
+  int map_tile_width                     = 0;
+  int map_tile_height                    = 0;
+  g_autoptr (GcvItem) item               = NULL;
+  g_autoptr (GArray) instances           = NULL;
+  GcvItemKind           item_kind        = 0;
+  int                   item_tile_width  = 0;
+  int                   item_tile_height = 0;
+  GcvItemStrokeInstance last_instance    = { 0 };
+  int                   dx               = 0;
+  int                   dy               = 0;
+  int                   divisor          = 0;
 
-  if (editor->hover_x < 0 || editor->hover_y < 0)
-    return;
   g_assert (editor->current_stroke != NULL);
 
   g_object_get (
@@ -1668,79 +1862,141 @@ draw_gesture_update (GtkGestureDrag              *gesture,
       NULL);
   g_object_get (
       item,
+      "kind", &item_kind,
       "tile-width", &item_tile_width,
       "tile-height", &item_tile_height,
       NULL);
 
-  if (instances->len == 0)
-    last_instance = (GtkCrusaderVillageItemStrokeInstance) {
-      .x = editor->hover_x,
-      .y = editor->hover_y
+  if (editor->stroke_tracker->len == 0)
+    last_instance = (GcvItemStrokeInstance) {
+      .x = editor->real_hover_x,
+      .y = editor->real_hover_y
     };
   else if (editor->line_mode)
     last_instance = g_array_index (
-        instances, GtkCrusaderVillageItemStrokeInstance, 0);
+        editor->stroke_tracker,
+        GcvItemStrokeInstance, 0);
   else
     last_instance = g_array_index (
-        instances, GtkCrusaderVillageItemStrokeInstance, instances->len - 1);
+        editor->stroke_tracker,
+        GcvItemStrokeInstance,
+        editor->stroke_tracker->len - 1);
 
   if (editor->line_mode)
-    g_array_set_size (instances, 0);
+    {
+      g_array_set_size (instances, 0);
+      g_array_set_size (editor->stroke_tracker, 0);
+    }
 
-  dx = editor->hover_x - last_instance.x;
-  dy = editor->hover_y - last_instance.y;
+  dx = editor->real_hover_x - last_instance.x;
+  dy = editor->real_hover_y - last_instance.y;
   dx += CLAMP (dx, -1, 1);
   dy += CLAMP (dy, -1, 1);
   divisor = MAX (MAX (ABS (dx), ABS (dy)), 1);
 
   for (int i = 0; i < divisor; i++)
     {
-      gboolean add = TRUE;
-      int      cx  = 0;
-      int      cy  = 0;
+      GcvItemStrokeInstance instance = { 0 };
 
-      cx = last_instance.x + i * dx / divisor;
-      cy = last_instance.y + i * dy / divisor;
+      instance.x = last_instance.x + i * dx / divisor;
+      instance.y = last_instance.y + i * dy / divisor;
 
-      if (cx + item_tile_width > map_tile_width ||
-          cy + item_tile_height > map_tile_height)
-        continue;
+      g_array_append_val (editor->stroke_tracker, instance);
 
-      for (int y = 0; y < item_tile_height; y++)
+      if (item_tile_height == 1 &&
+          item_tile_width == 1 &&
+          editor->brush_mask != NULL)
         {
-          for (int x = 0; x < item_tile_width; x++)
-            {
-              guint tile_idx = 0;
+          int bx = 0;
+          int by = 0;
 
-              tile_idx = (cy + y) * map_tile_width + (cx + x);
-              if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+          bx = instance.x - editor->brush_width / 2;
+          by = instance.y - editor->brush_height / 2;
+
+          for (int y = 0; y < editor->brush_height; y++)
+            {
+              for (int x = 0; x < editor->brush_width; x++)
                 {
-                  /* can't place that there lord! */
-                  add = FALSE;
-                  break;
+                  guint    tile_idx = 0;
+                  GcvItem *existing = NULL;
+                  gboolean add      = TRUE;
+
+                  if (bx + x < 0 ||
+                      by + y < 0 ||
+                      bx + x >= map_tile_width ||
+                      by + y >= map_tile_height ||
+                      editor->brush_mask[y * editor->brush_width + x] == 0)
+                    continue;
+
+                  tile_idx = (by + y) * map_tile_width + (bx + x);
+                  existing = g_hash_table_lookup (grid, GUINT_TO_POINTER (tile_idx));
+
+                  if (existing != NULL)
+                    {
+                      GcvItemKind existing_kind = 0;
+
+                      g_object_get (
+                          existing,
+                          "kind", &existing_kind,
+                          NULL);
+
+                      if (item_kind != GCV_ITEM_KIND_UNIT ||
+                          existing_kind != GCV_ITEM_KIND_BUILDING)
+                        add = FALSE;
+                    }
+
+                  if (add)
+                    gcv_item_stroke_add_instance (
+                        editor->current_stroke,
+                        (GcvItemStrokeInstance) {
+                            .x = bx + x,
+                            .y = by + y,
+                        });
                 }
             }
-
-          if (!add)
-            break;
         }
+      else
+        {
+          gboolean add = TRUE;
 
-      if (add)
-        gtk_crusader_village_item_stroke_add_instance (
-            editor->current_stroke,
-            (GtkCrusaderVillageItemStrokeInstance) {
-                .x = cx,
-                .y = cy,
-            });
+          if (instance.x < 0 ||
+              instance.y < 0 ||
+              instance.x + item_tile_width > map_tile_width ||
+              instance.y + item_tile_height > map_tile_height)
+            continue;
+
+          for (int y = 0; y < item_tile_height; y++)
+            {
+              for (int x = 0; x < item_tile_width; x++)
+                {
+                  guint tile_idx = 0;
+
+                  tile_idx = (instance.x + y) * map_tile_width + (instance.y + x);
+                  if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+                    {
+                      /* can't place that there lord! */
+                      add = FALSE;
+                      break;
+                    }
+                }
+
+              if (!add)
+                break;
+            }
+
+          if (add)
+            gcv_item_stroke_add_instance (editor->current_stroke, instance);
+        }
     }
 }
 
 static void
-draw_gesture_end (GtkGestureDrag              *gesture,
-                  double                       offset_x,
-                  double                       offset_y,
-                  GtkCrusaderVillageMapEditor *editor)
+draw_gesture_end (GtkGestureDrag *gesture,
+                  double          offset_x,
+                  double          offset_y,
+                  GcvMapEditor   *editor)
 {
+  g_autoptr (GcvItem) item     = NULL;
   g_autoptr (GArray) instances = NULL;
 
   if (editor->current_stroke == NULL)
@@ -1748,6 +2004,7 @@ draw_gesture_end (GtkGestureDrag              *gesture,
 
   g_object_get (
       editor->current_stroke,
+      "item", &item,
       "instances", &instances,
       NULL);
 
@@ -1759,18 +2016,46 @@ draw_gesture_end (GtkGestureDrag              *gesture,
           editor->map,
           "strokes", &strokes,
           NULL);
-      g_list_store_append (strokes, editor->current_stroke);
+      g_list_store_append (
+          strokes,
+          editor->current_stroke);
+
+      if (editor->settings != NULL)
+        {
+          g_autofree char *name                 = NULL;
+          g_autoptr (GVariant) frequencies      = NULL;
+          g_autoptr (GVariantDict) variant_dict = NULL;
+          guint count                           = 0;
+          g_autoptr (GVariant) reinitialized    = NULL;
+
+          g_object_get (
+              item,
+              "name", &name,
+              NULL);
+
+          /* Update the recency list */
+          frequencies  = g_settings_get_value (editor->settings, "item-frequencies");
+          variant_dict = g_variant_dict_new (frequencies);
+
+          if (g_variant_dict_contains (variant_dict, name))
+            g_variant_dict_lookup (variant_dict, name, "u", &count);
+          g_variant_dict_insert (variant_dict, name, "u", count + 1);
+
+          reinitialized = g_variant_ref_sink (g_variant_dict_end (variant_dict));
+          g_settings_set_value (editor->settings, "item-frequencies", reinitialized);
+        }
     }
 
   g_clear_object (&editor->current_stroke);
+  g_array_set_size (editor->stroke_tracker, 0);
 
   g_object_notify_by_pspec (G_OBJECT (editor), props[PROP_DRAWING]);
 }
 
 static void
-draw_gesture_end_gesture (GtkGesture                  *self,
-                          GdkEventSequence            *sequence,
-                          GtkCrusaderVillageMapEditor *editor)
+draw_gesture_end_gesture (GtkGesture       *self,
+                          GdkEventSequence *sequence,
+                          GcvMapEditor     *editor)
 {
   g_object_set (
       editor->handle,
@@ -1784,9 +2069,9 @@ draw_gesture_end_gesture (GtkGesture                  *self,
 }
 
 static void
-cancel_gesture_begin_gesture (GtkGesture                  *self,
-                              GdkEventSequence            *sequence,
-                              GtkCrusaderVillageMapEditor *editor)
+cancel_gesture_begin_gesture (GtkGesture       *self,
+                              GdkEventSequence *sequence,
+                              GcvMapEditor     *editor)
 {
   g_clear_object (&editor->current_stroke);
 
@@ -1798,18 +2083,18 @@ cancel_gesture_begin_gesture (GtkGesture                  *self,
 }
 
 static void
-cancel_gesture_end_gesture (GtkGesture                  *self,
-                            GdkEventSequence            *sequence,
-                            GtkCrusaderVillageMapEditor *editor)
+cancel_gesture_end_gesture (GtkGesture       *self,
+                            GdkEventSequence *sequence,
+                            GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-zoom_gesture_begin (GtkGesture                  *self,
-                    GdkEventSequence            *sequence,
-                    GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_begin (GtkGesture       *self,
+                    GdkEventSequence *sequence,
+                    GcvMapEditor     *editor)
 {
   gtk_gesture_set_state (editor->draw_gesture, GTK_EVENT_SEQUENCE_DENIED);
 
@@ -1820,32 +2105,32 @@ zoom_gesture_begin (GtkGesture                  *self,
 }
 
 static void
-zoom_gesture_scale_changed (GtkGestureZoom              *self,
-                            double                       scale,
-                            GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_scale_changed (GtkGestureZoom *self,
+                            double          scale,
+                            GcvMapEditor   *editor)
 {
   double scale_delta = 0.0;
 
   scale_delta  = gtk_gesture_zoom_get_scale_delta (self);
-  editor->zoom = CLAMP (editor->zoom_gesture_start_val + scale_delta * editor->zoom, 0.5, 7.5);
+  editor->zoom = CLAMP (editor->zoom_gesture_start_val + scale_delta * editor->zoom, 0.25, 7.5);
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
   update_motion (editor, editor->pointer_x, editor->pointer_y);
 }
 
 static void
-zoom_gesture_end (GtkGesture                  *self,
-                  GdkEventSequence            *sequence,
-                  GtkCrusaderVillageMapEditor *editor)
+zoom_gesture_end (GtkGesture       *self,
+                  GdkEventSequence *sequence,
+                  GcvMapEditor     *editor)
 {
   gtk_widget_set_cursor_from_name (GTK_WIDGET (editor), "crosshair");
 }
 
 static gboolean
-scroll_event (GtkEventControllerScroll    *self,
-              double                       dx,
-              double                       dy,
-              GtkCrusaderVillageMapEditor *editor)
+scroll_event (GtkEventControllerScroll *self,
+              double                    dx,
+              double                    dy,
+              GcvMapEditor             *editor)
 {
   if (gtk_gesture_is_recognized (editor->drag_gesture) ||
       gtk_gesture_is_recognized (editor->draw_gesture) ||
@@ -1855,7 +2140,7 @@ scroll_event (GtkEventControllerScroll    *self,
   gtk_widget_grab_focus (GTK_WIDGET (editor));
 
   editor->zoom += dy * -0.06 * editor->zoom;
-  editor->zoom = CLAMP (editor->zoom, 0.5, 7.5);
+  editor->zoom = CLAMP (editor->zoom, 0.25, 7.5);
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
 
@@ -1869,27 +2154,27 @@ scroll_event (GtkEventControllerScroll    *self,
 }
 
 static void
-motion_enter (GtkEventControllerMotion    *self,
-              gdouble                      x,
-              gdouble                      y,
-              GtkCrusaderVillageMapEditor *editor)
+motion_enter (GtkEventControllerMotion *self,
+              gdouble                   x,
+              gdouble                   y,
+              GcvMapEditor             *editor)
 {
   gtk_widget_grab_focus (GTK_WIDGET (editor));
   update_motion (editor, x, y);
 }
 
 static void
-motion_event (GtkEventControllerMotion    *self,
-              double                       x,
-              double                       y,
-              GtkCrusaderVillageMapEditor *editor)
+motion_event (GtkEventControllerMotion *self,
+              double                    x,
+              double                    y,
+              GcvMapEditor             *editor)
 {
   update_motion (editor, x, y);
 }
 
 static void
-motion_leave (GtkEventControllerMotion    *self,
-              GtkCrusaderVillageMapEditor *editor)
+motion_leave (GtkEventControllerMotion *self,
+              GcvMapEditor             *editor)
 {
   gboolean redraw = FALSE;
 
@@ -1925,20 +2210,35 @@ motion_leave (GtkEventControllerMotion    *self,
 }
 
 static void
-selected_item_changed (GtkCrusaderVillageItemArea  *item_area,
-                       GParamSpec                  *pspec,
-                       GtkCrusaderVillageMapEditor *editor)
+selected_item_changed (GcvItemArea  *item_area,
+                       GParamSpec   *pspec,
+                       GcvMapEditor *editor)
 {
   if (editor->hover_x >= 0 && editor->hover_y >= 0)
     gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-grid_changed (GtkCrusaderVillageMapHandle *handle,
-              GParamSpec                  *pspec,
-              GtkCrusaderVillageMapEditor *editor)
+selected_brush_changed (GcvBrushArea *brush_area,
+                        GParamSpec   *pspec,
+                        GcvMapEditor *editor)
 {
-  g_autoptr (GtkCrusaderVillageMap) map = NULL;
+  read_brush (editor, TRUE);
+}
+
+static void
+selected_brush_adjustment_value_changed (GtkAdjustment *adjustment,
+                                         GcvMapEditor  *editor)
+{
+  read_brush (editor, FALSE);
+}
+
+static void
+grid_changed (GcvMapHandle *handle,
+              GParamSpec   *pspec,
+              GcvMapEditor *editor)
+{
+  g_autoptr (GcvMap) map = NULL;
 
   g_object_get (
       handle,
@@ -1955,17 +2255,17 @@ grid_changed (GtkCrusaderVillageMapHandle *handle,
 }
 
 static void
-cursor_changed (GtkCrusaderVillageMapHandle *handle,
-                GParamSpec                  *pspec,
-                GtkCrusaderVillageMapEditor *editor)
+cursor_changed (GcvMapHandle *handle,
+                GParamSpec   *pspec,
+                GcvMapEditor *editor)
 {
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 
 static void
-update_scrollable (GtkCrusaderVillageMapEditor *self,
-                   gboolean                     center)
+update_scrollable (GcvMapEditor *self,
+                   gboolean      center)
 {
   if (self->hadjustment == NULL || self->vadjustment == NULL)
     return;
@@ -2087,22 +2387,22 @@ update_scrollable (GtkCrusaderVillageMapEditor *self,
 }
 
 static void
-update_motion (GtkCrusaderVillageMapEditor *self,
-               double                       x,
-               double                       y)
+update_motion (GcvMapEditor *self,
+               double        x,
+               double        y)
 {
-  double   hscroll         = 0.0;
-  double   vscroll         = 0.0;
-  double   map_offset      = 0.0;
-  int      new_hover_x     = 0;
-  int      new_hover_y     = 0;
-  int      map_tile_width  = 0;
-  int      map_tile_height = 0;
-  gboolean was_invalid     = FALSE;
-  gboolean is_invalid      = FALSE;
-  gboolean x_changed       = FALSE;
-  gboolean y_changed       = FALSE;
-  gboolean redraw          = FALSE;
+  double hscroll         = 0.0;
+  double vscroll         = 0.0;
+  double map_offset      = 0.0;
+  int    new_hover_x     = 0;
+  int    new_hover_y     = 0;
+  int    map_tile_width  = 0;
+  int    map_tile_height = 0;
+  // gboolean was_invalid     = FALSE;
+  gboolean is_invalid = FALSE;
+  gboolean x_changed  = FALSE;
+  gboolean y_changed  = FALSE;
+  gboolean redraw     = FALSE;
 
   self->pointer_x = x;
   self->pointer_y = y;
@@ -2124,17 +2424,19 @@ update_motion (GtkCrusaderVillageMapEditor *self,
       "height", &map_tile_height,
       NULL);
 
-  was_invalid = self->hover_x < 0 || self->hover_y < 0;
-  is_invalid  = new_hover_x < 0 || new_hover_y < 0 ||
+  // was_invalid = self->hover_x < 0 || self->hover_y < 0;
+  is_invalid = new_hover_x < 0 || new_hover_y < 0 ||
                new_hover_x >= map_tile_width || new_hover_y >= map_tile_height;
+
+  x_changed = new_hover_x != self->real_hover_x;
+  y_changed = new_hover_y != self->real_hover_y;
+  redraw    = x_changed || y_changed;
+
+  self->real_hover_x = new_hover_x;
+  self->real_hover_y = new_hover_y;
 
   if (is_invalid)
     new_hover_x = new_hover_y = -1;
-
-  x_changed = new_hover_x != self->hover_x;
-  y_changed = new_hover_y != self->hover_y;
-  redraw    = (x_changed || y_changed) && (!was_invalid || !is_invalid);
-
   self->hover_x = new_hover_x;
   self->hover_y = new_hover_y;
 
@@ -2144,4 +2446,196 @@ update_motion (GtkCrusaderVillageMapEditor *self,
     g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HOVER_Y]);
   if (redraw)
     gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+static void
+read_brush (GcvMapEditor *self,
+            gboolean      different)
+{
+  g_autoptr (GcvBrushable) brush     = NULL;
+  int                mask_width      = 0;
+  int                mask_height     = 0;
+  g_autofree guint8 *mask            = NULL;
+  g_autoptr (GtkSnapshot) snapshot   = NULL;
+  g_autoptr (GskPathBuilder) builder = NULL;
+  g_autoptr (GskPath) path           = NULL;
+  g_autoptr (GskStroke) stroke       = NULL;
+
+  g_clear_pointer (&self->brush_mask, g_free);
+  g_clear_pointer (&self->brush_node, gsk_render_node_unref);
+
+  if (different)
+    {
+      if (self->brush_adjustment != NULL)
+        g_signal_handlers_disconnect_by_func (
+            self->brush_adjustment, selected_brush_adjustment_value_changed, self);
+      g_clear_object (&self->brush_adjustment);
+    }
+
+  if (self->hover_x >= 0 && self->hover_y >= 0)
+    gtk_widget_queue_draw (GTK_WIDGET (self));
+
+  if (self->brush_area == NULL)
+    return;
+
+  g_object_get (
+      self->brush_area,
+      "selected-brush", &brush,
+      NULL);
+  if (brush == NULL)
+    return;
+
+  mask = gcv_brushable_get_mask (brush, &mask_width, &mask_height);
+  g_assert (mask != NULL);
+
+  snapshot = gtk_snapshot_new ();
+  builder  = gsk_path_builder_new ();
+  for (int y = 0; y < mask_height; y++)
+    {
+      for (int x = 0; x < mask_width; x++)
+        {
+          if (mask[y * mask_width + x] != 0)
+            {
+              if (x == 0 || mask[y * mask_width + (x - 1)] == 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 0.0, 1.0);
+                }
+              if (y == 0 || mask[(y - 1) * mask_width + x] == 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 1.0, 0.0);
+                }
+              if (x == mask_width - 1)
+                {
+                  gsk_path_builder_move_to (builder, (float) x + 1.0, (float) y + 1.0);
+                  gsk_path_builder_rel_line_to (builder, 0.0, -1.0);
+                }
+              if (y == mask_height - 1)
+                {
+                  gsk_path_builder_move_to (builder, (float) x + 1.0, (float) y + 1.0);
+                  gsk_path_builder_rel_line_to (builder, -1.0, 0.0);
+                }
+            }
+          else
+            {
+              if (x > 0 && mask[y * mask_width + (x - 1)] != 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 0.0, 1.0);
+                }
+              if (y > 0 && mask[(y - 1) * mask_width + x] != 0)
+                {
+                  gsk_path_builder_move_to (builder, (float) x, (float) y);
+                  gsk_path_builder_rel_line_to (builder, 1.0, 0.0);
+                }
+            }
+        }
+    }
+  path = gsk_path_builder_free_to_path (g_steal_pointer (&builder));
+
+  stroke = gsk_stroke_new (0.15);
+  gsk_stroke_set_line_cap (stroke, GSK_LINE_CAP_SQUARE);
+
+  gtk_snapshot_append_stroke (
+      snapshot, path, stroke,
+      self->dark_theme
+          ? &(const GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }
+          : &(const GdkRGBA) { 0.0, 0.0, 0.0, 1.0 });
+
+  self->brush_mask   = g_steal_pointer (&mask);
+  self->brush_width  = mask_width;
+  self->brush_height = mask_height;
+  self->brush_node   = gtk_snapshot_free_to_node (g_steal_pointer (&snapshot));
+
+  if (different)
+    {
+      self->brush_adjustment = gcv_brushable_get_adjustment (brush);
+      if (self->brush_adjustment != NULL)
+        g_signal_connect (self->brush_adjustment, "value-changed",
+                          G_CALLBACK (selected_brush_adjustment_value_changed), self);
+    }
+}
+
+static void
+read_background_image (GcvMapEditor *self)
+{
+  g_autofree char *path = NULL;
+
+  g_clear_object (&self->bg_image_tex);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+
+  path = g_settings_get_string (self->settings, "background-image");
+
+  if (path[0] != '\0')
+    {
+      g_autoptr (GTask) task = NULL;
+
+      task = g_task_new (self, NULL, background_texture_load_finish_cb, NULL);
+      g_task_set_task_data (task, g_steal_pointer (&path), g_free);
+      g_task_set_priority (task, G_PRIORITY_HIGH);
+      g_task_set_check_cancellable (task, TRUE);
+      g_task_run_in_thread (task, background_texture_load_async_thread);
+    }
+}
+
+static void
+background_texture_load_async_thread (GTask        *task,
+                                      gpointer      object,
+                                      gpointer      task_data,
+                                      GCancellable *cancellable)
+{
+  const char *path               = task_data;
+  g_autoptr (GError) local_error = NULL;
+  g_autoptr (GdkTexture) texture = NULL;
+
+  if (g_task_return_error_if_cancelled (task))
+    return;
+
+  texture = gdk_texture_new_from_filename (path, &local_error);
+  if (texture == NULL)
+    {
+      g_task_return_error (task, g_steal_pointer (&local_error));
+      return;
+    }
+
+  g_task_return_pointer (task, g_steal_pointer (&texture), g_object_unref);
+}
+
+static void
+background_texture_load_finish_cb (GObject      *source_object,
+                                   GAsyncResult *res,
+                                   gpointer      data)
+{
+  GcvMapEditor *editor           = GCV_MAP_EDITOR (source_object);
+  g_autoptr (GError) local_error = NULL;
+  GdkTexture *texture            = NULL;
+
+  texture = g_task_propagate_pointer (G_TASK (res), &local_error);
+
+  if (texture == NULL)
+    {
+      GtkWidget      *app_window  = NULL;
+      GtkApplication *application = NULL;
+      GtkWindow      *window      = NULL;
+
+      app_window = gtk_widget_get_ancestor (GTK_WIDGET (editor), GTK_TYPE_WINDOW);
+      g_assert (app_window != NULL);
+
+      application = gtk_window_get_application (GTK_WINDOW (app_window));
+      window      = gtk_application_get_active_window (application);
+
+      gcv_dialog (
+          "Error",
+          "Could not load background image ",
+          local_error->message,
+          window, NULL);
+
+      if (editor->settings != NULL)
+        g_settings_set_string (editor->settings, "background-image", "");
+    }
+
+  g_clear_object (&editor->bg_image_tex);
+  editor->bg_image_tex = texture;
+  gtk_widget_queue_draw (GTK_WIDGET (editor));
 }

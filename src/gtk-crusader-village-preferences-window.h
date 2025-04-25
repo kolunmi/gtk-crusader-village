@@ -24,24 +24,24 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_PREFERENCES_WINDOW (gtk_crusader_village_preferences_window_get_type ())
+#define GCV_TYPE_PREFERENCES_WINDOW (gcv_preferences_window_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillagePreferencesWindow, gtk_crusader_village_preferences_window, GTK_CRUSADER_VILLAGE, PREFERENCES_WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE (GcvPreferencesWindow, gcv_preferences_window, GCV, PREFERENCES_WINDOW, GtkWindow)
 
 /* Keep these in sync with `gtk-crusader-village-preferences-window.ui` */
 /* TODO: make this better */
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DEFAULT 0
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_LIGHT   1
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_SHC_DARK    2
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_DEFAULT     3
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_LIGHT       4
-#define GTK_CRUSADER_VILLAGE_THEME_OPTION_DARK        5
+#define GCV_THEME_OPTION_SHC_DEFAULT 0
+#define GCV_THEME_OPTION_SHC_LIGHT   1
+#define GCV_THEME_OPTION_SHC_DARK    2
+#define GCV_THEME_OPTION_DEFAULT     3
+#define GCV_THEME_OPTION_LIGHT       4
+#define GCV_THEME_OPTION_DARK        5
 
 void
-gtk_crusader_village_preferences_window_spawn (GSettings *settings,
-                                               GtkWindow *parent);
+gcv_preferences_window_spawn (GSettings *settings,
+                              GtkWindow *parent);
 
 int
-gtk_crusader_village_theme_str_to_enum (const char *theme);
+gcv_theme_str_to_enum (const char *theme);
 
 G_END_DECLS

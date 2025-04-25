@@ -24,15 +24,14 @@
 
 G_BEGIN_DECLS
 
-#define GTK_CRUSADER_VILLAGE_TYPE_MAP_HANDLE (gtk_crusader_village_map_handle_get_type ())
+#define GCV_TYPE_MAP_HANDLE (gcv_map_handle_get_type ())
 
-G_DECLARE_FINAL_TYPE (GtkCrusaderVillageMapHandle, gtk_crusader_village_map_handle, GTK_CRUSADER_VILLAGE, MAP_HANDLE, GObject)
-
-void
-gtk_crusader_village_map_handle_delete_idx (GtkCrusaderVillageMapHandle *self,
-                                            guint                        idx);
+G_DECLARE_FINAL_TYPE (GcvMapHandle, gcv_map_handle, GCV, MAP_HANDLE, GObject)
 
 void
-gtk_crusader_village_map_handle_clear_all (GtkCrusaderVillageMapHandle *self);
+gcv_map_handle_delete_at_cursor (GcvMapHandle *self);
+
+void
+gcv_map_handle_clear_all (GcvMapHandle *self);
 
 G_END_DECLS

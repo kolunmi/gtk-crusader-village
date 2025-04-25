@@ -2,7 +2,7 @@
     "id": <0x5d>,
     "name": <"Siege Tower">,
     "description": <"[English Manual] \"When in position, these gigantic mobile constructs will give all your troops quick access to the top of enemy walls. To use a siege tower, select it then select an enemy wall. Once it is close enough, the tower will dock and a gangplank will drop onto the enemies' wall. Once the gangplank is in place, units will be able to climb up through the siege tower onto enemy walls. Each siege tower requires 4 siege engineers to man before they become operational.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/SiegeTower.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/SiegeTower.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }

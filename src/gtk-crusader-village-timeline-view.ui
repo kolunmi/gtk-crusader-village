@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="GtkCrusaderVillageTimelineView" parent="GtkCrusaderVillageUtilBin">
+  <template class="GcvTimelineView" parent="GcvUtilBin">
     <property name="width-request">275</property>
     <property name="child">
       <object class="GtkBox">
@@ -25,6 +25,7 @@
             <property name="child">
               <object class="GtkListView" id="list_view">
                 <property name="show-separators">TRUE</property>
+                <property name="enable-rubberband">TRUE</property>
               </object>
             </property>
           </object>
@@ -43,6 +44,7 @@
             <child>
               <object class="GtkScale" id="scale">
                 <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                <property name="round-digits">0</property>
                 <property name="draw-value">TRUE</property>
                 <property name="digits">0</property>
               </object>
@@ -55,6 +57,16 @@
                 <property name="start-widget">
                   <object class="GtkCheckButton" id="insert_mode">
                     <property name="label">Insert</property>
+                  </object>
+                </property>
+                
+                <property name="center-widget">
+                  <object class="GtkButton" id="playback">
+                    <property name="margin-start">5</property>
+                    <property name="margin-end">5</property>
+                    <property name="margin-top">5</property>
+                    <property name="margin-bottom">5</property>
+                    <property name="label">Begin Playback</property>
                   </object>
                 </property>
                 

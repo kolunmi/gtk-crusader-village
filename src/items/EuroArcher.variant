@@ -1,8 +1,8 @@
 {
-    "id": <0x5d>,
+    "id": <6>,
     "name": <"European Archer">,
     "description": <"[English Manual] \"These are your standard long-range troops. Their lack of armor makes them one of the quickest units in the game but in hand-to-hand combat, archers are virtually useless. They have a long firing range and are very effective against units that don't wear metal armor.\"">,
-    "thumbnail-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/EuroArcher.png">,
-    "section-icon-resource": <"/am/kolunmi/GtkCrusaderVillage/shc-data/icons/euro_sword.png">,
+    "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/EuroArcher.png">,
+    "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/euro_sword.png">,
     "kind": <"unit">
 }
