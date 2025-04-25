@@ -18,18 +18,6 @@ ninja -C build
 sudo ninja -C build install # Optional installation
 ```
 
-## This is a WIP
-
-Most functionality is finished, however.
-
-## Acknowledgments
-
-`src/gtk-crusader-village-util-bin.c` and the theme portal client in `src/gtk-crusader-village-application.c` were taken from [libadwaita](https://gitlab.gnome.org/GNOME/libadwaita).
-
-All assets or ideas originating from the original Stronghold Crusader game in this repo are indicated as such and belong to [Firefly Studios](https://fireflyworlds.com/). See `src/shc-data/`. Thanks for creating such an amazing game!
-
----
-
 ## Getting Started (Windows)
 
 Choose one of the following methods to run the application on Windows.
@@ -42,30 +30,7 @@ No building or MSYS2 installation required by the application itself.
 2.  **Run:** Open the extracted folder, go into the `bin` subfolder, and double-click `gtk-crusader-village.exe`.
 3.  **Set up Python Dependency:** For full functionality, follow the steps in the **"Runtime Dependency: Python + `sourcehold-maps` Library (Manual Setup using venv)"** section below.
 
-### Option 2: Build using Automated Script
-
-Builds the project from source with minimal manual steps after installing prerequisites.
-
-1.  **Install Prerequisites:** Install [Git for Windows](https://git-scm.com/download/win) and [MSYS2](https://www.msys2.org/) (use default path `C:\msys64`).
-2.  **Clone Repository:** Open Git Bash (or Cmd/PowerShell), clone the repository, and enter its directory:
-    ```
-    git clone https://github.com/kolunmi/gtk-crusader-village.git
-    cd gtk-crusader-village
-    ```
-3.  **Run Build Script:** Run `setup_and_build.bat` from Cmd/PowerShell while in the repository root. Wait for the MSYS2 window to complete all automated steps (MSYS2 updates, pacman dependencies, `sourcehold-maps` clone & pip install, meson configure, ninja compile & install).
-    ```
-    setup_and_build.bat
-    ```
-4.  **Run Application:** Once the script finishes, the MSYS2 window stays open. Run the application from that MSYS2 shell:
-    ```
-    gtk-crusader-village.exe
-    ```
-5.  **Configure Python Path:** The helper script installed `sourcehold-maps` into the MSYS2 Python. Launch the app, go to Preferences/Settings, and set the **Python executable path** to the MSYS2 MinGW Python:
-    ```
-    C:\msys64\mingw64\bin\python.exe
-    ```
-
-### Option 3: Build using Manual Steps
+### Option 2: Build using Manual Steps
 
 Provides full control over the build process.
 
@@ -155,4 +120,12 @@ Full functionality (parsing `.map`, `.aiv` files) requires Python 3 and the `sou
         C:\path\to\gtk-crusader-village-extracted-or-cloned\.gtk_village_venv\Scripts\python.exe
         ```
         *(Replace `C:\path\to...` with the actual absolute path)*
-    * Save settings. Restart the application if required.
+
+---
+
+## Acknowledgments
+
+`src/gtk-crusader-village-util-bin.c` and the theme portal client in `src/gtk-crusader-village-application.c` were taken from [libadwaita](https://gitlab.gnome.org/GNOME/libadwaita).
+
+All assets or ideas originating from the original Stronghold Crusader game in this repo are indicated as such and belong to [Firefly Studios](https://fireflyworlds.com/). See `src/shc-data/`. Thanks for creating such an amazing game!
+
