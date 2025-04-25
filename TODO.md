@@ -9,4 +9,7 @@
       lag. Seems to only be an issue on windows
 + [X] Fix scroll-to methods for the timeline panel; they are
       disorienting right now
-+ [ ] Implement moats and stairs
++ [X] Implement moats and stairs
++ [ ] Implement a real undo/redo system
++ [ ] Implement a stair tool wher you can drag stairs against walls as
+      in the game
