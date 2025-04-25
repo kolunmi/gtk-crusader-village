@@ -57,22 +57,52 @@ jobs:
       # Let the workflow fail if installation fails (removed || echo)
       run: ninja -C build install
 
-    # Step 6: Analyze Dependencies using ntldd
+    # Step 6: Analyze Dependencies using ntldd (with Debugging)
     - name: Analyze Dependencies
       run: |
         EXE_PATH="/mingw64/bin/gtk-crusader-village.exe"
         DLL_LIST_FILE="dll_list.txt" # File to store needed DLL paths
+        NTLDD_OUTPUT_FILE="ntldd_output.log"
+        NTLDD_ERROR_FILE="ntldd_error.log"
 
-        echo "Running ntldd on ${EXE_PATH}..."
-        # Run ntldd, resolve relative paths (-R), grep for DLLs inside the mingw64 prefix,
-        # use awk to extract the full path (usually 3rd field), sort uniquely.
-        # Filter out the exe itself and common system DLLs if necessary (though grep /mingw64/ should handle most)
-        ntldd -R "$EXE_PATH" | grep '/mingw64/bin/' | awk '{print $3}' | grep -v "$EXE_PATH" | sort -u > "$DLL_LIST_FILE"
+        echo "--- Debugging ntldd ---"
+        echo "Checking if executable exists at ${EXE_PATH}:"
+        ls -l "$EXE_PATH" || echo "*** EXECUTABLE ${EXE_PATH} not found! ***"
 
-        echo "Found dependent DLLs from /mingw64/bin:"
-        cat "$DLL_LIST_FILE"
-      # Make the DLL list available to the next step
-      id: deps 
+        # Only proceed if executable seems to exist
+        if [ -f "$EXE_PATH" ]; then
+          echo "Attempting to run ntldd -R ${EXE_PATH}..."
+          # Run ntldd, capture stdout and stderr separately, capture exit code
+          ntldd -R "$EXE_PATH" > "$NTLDD_OUTPUT_FILE" 2> "$NTLDD_ERROR_FILE"
+          NTLDD_EXIT_CODE=$?
+
+          echo "ntldd exit code: ${NTLDD_EXIT_CODE}"
+          echo "--- ntldd stdout (${NTLDD_OUTPUT_FILE}): ---"
+          cat "$NTLDD_OUTPUT_FILE" || echo "  (No stdout)"
+          echo "--- End ntldd stdout ---"
+          echo "--- ntldd stderr (${NTLDD_ERROR_FILE}): ---"
+          cat "$NTLDD_ERROR_FILE" || echo "  (No stderr)"
+          echo "--- End ntldd stderr ---"
+
+          if [ ${NTLDD_EXIT_CODE} -ne 0 ]; then
+            echo "ntldd command failed. Creating empty DLL list."
+            > "$DLL_LIST_FILE" # Create empty file to avoid later errors
+            # Optionally force the workflow step to fail here if ntldd fails:
+            # exit ${NTLDD_EXIT_CODE}
+          else
+            echo "Parsing ntldd output to generate DLL list..."
+            grep '/mingw64/bin/' "$NTLDD_OUTPUT_FILE" | awk '{print $3}' | grep -v "$EXE_PATH" | sort -u > "$DLL_LIST_FILE"
+          fi
+        else
+           echo "Executable not found, creating empty DLL list."
+           > "$DLL_LIST_FILE"
+           # Optionally force failure if exe missing: exit 1
+        fi
+
+        echo "--- Generated list of dependent DLLs (${DLL_LIST_FILE}): ---"
+        cat "$DLL_LIST_FILE" || echo "  (DLL list file empty or not found)"
+        echo "--- End DLL List ---"
+      id: deps # Keep the id just in case, though next step reads file
 
     # Step 7: Prepare artifact directory using dynamic DLL list
     - name: Prepare artifact directory
