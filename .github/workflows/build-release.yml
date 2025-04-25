@@ -1,25 +1,33 @@
-# .github/workflows/build-release.yml
-# This workflow builds the project on Windows using MSYS2 and creates a distributable artifact.
+# .github/workflows/windows-build.yml
+# This workflow builds the project on Windows using MSYS2, creates a distributable artifact,
+# and uploads it to the workflow run.
 
 name: Build Windows Release
 
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on push events but only for the master branch
   push:
-    branches: [ master ] # Or your master/release branch
-  workflow_dispatch: # Allows manual triggering
+    branches: [ master ] # Adjust if your main branch has a different name
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
+  # Defines a single job called "build-windows" that runs on Windows
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-latest # Use the latest Windows runner provided by GitHub
+
+    # Sets default shell to MSYS2 MINGW64 for all run steps in this job
     defaults:
       run:
-        shell: msys2 {0} # Run commands in MSYS2 shell by default
+        shell: msys2 {0}
 
     steps:
-    # Checkout the code
+    # Step 1: Check out the repository code
     - name: Checkout repository
       uses: actions/checkout@v4
-      # If you add git submodules later, uncomment this:
+      # If you add git submodules later, uncomment this section:
       # with:
       #   submodules: 'recursive'
 
@@ -27,7 +35,7 @@ jobs:
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64 # Use the MinGW64 environment
+        msystem: MINGW64 # Use the MinGW64 environment (for 64-bit Windows builds)
         update: true # Update MSYS2 base packages first
         install: >- # Install all necessary build dependencies using pacman (multi-line string)
           git
@@ -44,89 +52,112 @@ jobs:
           mingw-w64-x86_64-appstream
           zip
 
-    # Configure, compile, and install
+    # Step 3: Configure the project using Meson
     - name: Configure build
       run: meson setup build --prefix=/mingw64 --buildtype=release
 
+    # Step 4: Compile the project using Ninja
     - name: Compile project
+      # Run ninja inside the build directory
       run: ninja -C build
 
+    # Step 5: Install the project into the MSYS2 prefix
     - name: Install project
-      run: ninja -C build install
+      # Run ninja install inside the build directory
+      # This copies files to /mingw64/bin, /mingw64/share etc.
+      # Ignore errors here because update-desktop-database might fail but we still want to package
+      run: ninja -C build install || echo "Ninja install reported errors, proceeding with packaging anyway."
 
-    # Package the installed files into a distributable format
+    # Step 6: Prepare the artifact directory for distribution
     - name: Prepare artifact directory
+      # Create a directory to gather files, then copy executable, DLLs, and data files
       run: |
         ARTIFACT_NAME="gtk-crusader-village-windows-x64"
-        INSTALL_DIR="/mingw64"
-        DEST_DIR="artifact"
+        INSTALL_DIR="/mingw64" # Where ninja install put the files
+        DEST_DIR="artifact"     # Temporary directory to gather files for the zip
 
+        echo "Creating destination directories..."
         mkdir -p "${DEST_DIR}/bin"
         mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
         mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
         mkdir -p "${DEST_DIR}/share/locale"
+        mkdir -p "${DEST_DIR}/share/metainfo"
+        mkdir -p "${DEST_DIR}/share/applications"
+        mkdir -p "${DEST_DIR}/share/dbus-1/services"
+
 
         echo "Copying executable..."
         cp "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
 
         echo "Copying essential DLLs..."
-        # This is a common pattern: copy DLLs based on direct dependencies of the exe and known GTK libs
-        # Use 'ldd' equivalent for Windows (like depends.exe or manual checking) for accuracy if needed.
-        # Copying directly from /mingw64/bin is common practice in MSYS2 workflows.
-        # List primary dependencies (adjust if needed)
         NEEDED_DLLS=(
+          # Core GTK/Adwaita/GLib
           "libgtk-4" "libgdk-4" "libglib-2.0" "libgobject-2.0" "libgio-2.0"
+          "libadwaita-1" "libjson-glib-1.0"
+          # Rendering & Text
           "libcairo" "libcairo-gobject" "libpango-1.0" "libpangocairo-1.0"
           "libpangoft2-1.0" "libpangowin32-1.0" "libgdk_pixbuf-2.0"
-          "libadwaita-1" "libjson-glib-1.0" "libintl"
-          # Core runtime DLLs
-          "libgcc_s_seh-1" "libstdc++-6" "libwinpthread-1"
-          # Common transitive dependencies (add more as needed)
-          "libpng16" "zlib1" "libffi" "libharfbuzz" "libfreetype" "libfontconfig"
-          "libexpat" "libepoxy" "libfribidi" "libdatrie" "libthai" "libgraphite2"
-          "libpixman-1" "libbrotlidec" "libbrotlicommon" "libbz2"
+          "libepoxy" "libharfbuzz" "libfreetype" "libfontconfig" "libfribidi"
+          "libgraphite2" "libpixman-1"
+          # Image Formats (GdkPixbuf loaders)
+          "libpng16" "libjpeg" "libtiff" # Added jpeg and tiff based on errors
+          # Other Dependencies
+          "libintl" "libgcc_s_seh-1" "libstdc++-6" "libwinpthread-1"
+          "zlib1" "libffi" "libexpat" "libdatrie" "libthai"
+          "libbrotlidec" "libbrotlicommon" "libbz2" "libunistring"
+          # Added based on previous runtime errors:
+          "libgraphene-1.0" # provides libgraphene-1.0-0.dll
+          "libgmodule-2.0"  # provides libgmodule-2.0-0.dll
         )
-        for lib in "${NEEDED_DLLS[@]}"; do
-          # Copy DLLs, being tolerant if one pattern doesn't match exactly (e.g., version numbers)
-          cp --verbose "${INSTALL_DIR}/bin/${lib}"*.dll "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: No DLL found matching ${lib}*.dll"
+        # De-duplicate and sort the list (optional but cleaner)
+        UNIQUE_NEEDED_DLLS=($(echo "${NEEDED_DLLS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+        echo "DLLs to copy: ${UNIQUE_NEEDED_DLLS[@]}"
+
+        for lib in "${UNIQUE_NEEDED_DLLS[@]}"; do
+          # Use find to copy all matching DLLs robustly, ignoring errors if not found
+          # Using -print first helps debug which files are found
+          echo "Looking for ${lib}*.dll in ${INSTALL_DIR}/bin/"
+          find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -t "${DEST_DIR}/bin/" {} + || echo "Info: No DLL found matching ${lib}*.dll"
         done
-        # Ensure critical MSVCRT is available? Usually handled by toolchain/system.
 
-        echo "Copying GSettings schema..."
-        # Be tolerant if file doesn't exist
+        echo "Copying data files..."
+        # Copy GSettings schema
         cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/am.kolunmi.GtkCrusaderVillage.gschema.xml" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema.xml not found."
-
-        echo "Copying icon..."
-        # Be tolerant if file doesn't exist
+        # Copy icons
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/am.kolunmi.GtkCrusaderVillage.svg" "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Icon SVG not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/am.kolunmi.GtkCrusaderVillage-symbolic.svg" "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon SVG not found."
+        # Copy other installed data files
+        cp --verbose "${INSTALL_DIR}/share/metainfo/am.kolunmi.GtkCrusaderVillage.metainfo.xml" "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo.xml not found."
+        cp --verbose "${INSTALL_DIR}/share/applications/am.kolunmi.GtkCrusaderVillage.desktop" "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
+        cp --verbose "${INSTALL_DIR}/share/dbus-1/services/am.kolunmi.GtkCrusaderVillage.service" "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
 
 
         echo "Copying locale files..."
         if [ -d "${INSTALL_DIR}/share/locale" ]; then
           for langdir in "${INSTALL_DIR}"/share/locale/*; do
             lang=$(basename "$langdir")
-            if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
-              mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
-              cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
+            # Check if it's likely a language code directory (e.g., xx or xx_YY)
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
+              if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
+                mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
+                cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
+              fi
             fi
           done
         fi
 
-        # Create a simple launcher script (optional)
-        # echo "@echo off" > "${DEST_DIR}/run.bat"
-        # echo "set PATH=%~dp0bin;%PATH%" >> "${DEST_DIR}/run.bat"
-        # echo "start \"GTK Crusader Village\" \"%~dp0bin\\gtk-crusader-village.exe\"" >> "${DEST_DIR}/run.bat"
-
         echo "Creating archive..."
-        cd "${DEST_DIR}"
-        zip -r "../${ARTIFACT_NAME}.zip" *
+        cd "${DEST_DIR}" # Change into the directory to be zipped
+        zip -r "../${ARTIFACT_NAME}.zip" * # Zip contents recursively
 
-    # Upload the zipped artifact
+    # Step 7: Upload the packaged zip file as a workflow artifact
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: gtk-crusader-village-windows-x64
-        path: gtk-crusader-village-windows-x64.zip
+        name: gtk-crusader-village-windows-x64 # Name of the artifact on GitHub Actions page
+        path: gtk-crusader-village-windows-x64.zip # Path to the zip file created outside the artifact dir
 
     # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
     # - name: Create Release
