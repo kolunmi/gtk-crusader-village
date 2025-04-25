@@ -230,6 +230,38 @@ gcv_application_class_init (GcvApplicationClass *klass)
 }
 
 static void
+gcv_application_redo (GSimpleAction *action,
+                      GVariant      *parameter,
+                      gpointer       user_data)
+{
+  GcvApplication *self   = user_data;
+  GtkWindow      *window = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (!GCV_IS_WINDOW (window))
+    return;
+
+  gcv_window_redo (GCV_WINDOW (window));
+}
+
+static void
+gcv_application_undo (GSimpleAction *action,
+                      GVariant      *parameter,
+                      gpointer       user_data)
+{
+  GcvApplication *self   = user_data;
+  GtkWindow      *window = NULL;
+
+  window = gtk_application_get_active_window (GTK_APPLICATION (self));
+
+  if (!GCV_IS_WINDOW (window))
+    return;
+
+  gcv_window_undo (GCV_WINDOW (window));
+}
+
+static void
 gcv_application_subwindow (GSimpleAction *action,
                            GVariant      *parameter,
                            gpointer       user_data)
@@ -709,6 +741,8 @@ static const GActionEntry app_actions[] = {
   {      "export",          gcv_application_export },
   {        "load",            gcv_application_load },
   {   "subwindow",       gcv_application_subwindow },
+  {        "undo",            gcv_application_undo },
+  {        "redo",            gcv_application_redo },
 };
 
 static void
@@ -798,6 +832,14 @@ gcv_application_init (GcvApplication *self)
       GTK_APPLICATION (self),
       "app.subwindow",
       (const char *[]) { "<primary>w", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.undo",
+      (const char *[]) { "<primary>z", NULL });
+  gtk_application_set_accels_for_action (
+      GTK_APPLICATION (self),
+      "app.redo",
+      (const char *[]) { "<primary>y", "<primary><shift>z", NULL });
 }
 
 static void

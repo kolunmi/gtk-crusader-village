@@ -27,6 +27,19 @@
 #include "gtk-crusader-village-map-handle.h"
 #include "gtk-crusader-village-map.h"
 
+enum
+{
+  ACTION_REMOVED,
+  ACTION_ADDED,
+};
+
+typedef struct
+{
+  int        type;
+  guint      position;
+  GPtrArray *pa;
+} Action;
+
 struct _GcvMapHandle
 {
   GObject parent_instance;
@@ -34,11 +47,9 @@ struct _GcvMapHandle
   GcvMap     *map;
   GListStore *strokes;
 
-  GListStore *memory;
-  /* This is necessary over GtkFlattenListModel
-   * for keeping the list view scrolling sane
-   */
-  GListStore *union_model;
+  GListStore *mirror;
+  GPtrArray  *memory;
+  guint       n_undos;
 
   guint    cursor;
   guint    cursor_len;
@@ -89,13 +100,18 @@ add_stroke_to_cache (GcvMapHandle  *self,
                      int            map_width,
                      int            map_height);
 
+static inline Action *
+new_action (int        type,
+            guint      position,
+            GPtrArray *pa);
+
+static void
+destroy_action (gpointer ptr);
+
 static void
 gcv_map_handle_dispose (GObject *object)
 {
   GcvMapHandle *self = GCV_MAP_HANDLE (object);
-
-  g_clear_object (&self->memory);
-  g_clear_object (&self->union_model);
 
   if (self->map != NULL)
     g_signal_handlers_disconnect_by_func (self->map, dimensions_changed, self);
@@ -105,6 +121,8 @@ gcv_map_handle_dispose (GObject *object)
     g_signal_handlers_disconnect_by_func (self->strokes, strokes_changed, self);
   g_clear_object (&self->strokes);
 
+  g_clear_pointer (&self->memory, g_ptr_array_unref);
+  g_clear_object (&self->mirror);
   g_clear_pointer (&self->cache, g_hash_table_unref);
 
   G_OBJECT_CLASS (gcv_map_handle_parent_class)->dispose (object);
@@ -124,7 +142,7 @@ gcv_map_handle_get_property (GObject    *object,
       g_value_set_object (value, self->map);
       break;
     case PROP_MODEL:
-      g_value_set_object (value, self->union_model);
+      g_value_set_object (value, self->strokes);
       break;
     case PROP_CURSOR:
       g_value_set_uint (value, self->cursor);
@@ -159,11 +177,12 @@ gcv_map_handle_set_property (GObject      *object,
     {
     case PROP_MAP:
       {
+        g_clear_object (&self->map);
         if (self->strokes != NULL)
           g_signal_handlers_disconnect_by_func (self->map, dimensions_changed, self);
         g_clear_object (&self->strokes);
-        g_clear_object (&self->map);
-        g_list_store_remove_all (self->union_model);
+        g_ptr_array_set_size (self->memory, 0);
+        g_clear_pointer (&self->cache, g_hash_table_unref);
 
         self->map = g_value_dup_object (value);
 
@@ -185,7 +204,7 @@ gcv_map_handle_set_property (GObject      *object,
 
                 for (guint i = 0; i < strokes_len; i++)
                   read[i] = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
-                g_list_store_splice (self->union_model, 0, 0, (gpointer *) read, strokes_len);
+                g_list_store_splice (self->mirror, 0, 0, (gpointer *) read, strokes_len);
                 for (guint i = 0; i < strokes_len; i++)
                   g_object_unref (read[i]);
               }
@@ -202,137 +221,43 @@ gcv_map_handle_set_property (GObject      *object,
         else
           self->cursor = 0;
 
-        self->cursor_len = 0;
-
-        g_list_store_remove_all (self->memory);
-        g_clear_pointer (&self->cache, g_hash_table_unref);
+        self->cursor_len = 1;
 
         g_object_notify_by_pspec (object, props[PROP_GRID]);
         g_object_notify_by_pspec (object, props[PROP_CURSOR]);
+        g_object_notify_by_pspec (object, props[PROP_CURSOR_LEN]);
       }
       break;
 
     case PROP_CURSOR:
       {
-        guint old_cursor     = 0;
-        guint new_cursor     = 0;
-        guint old_cursor_len = 0;
+        guint new_cursor = 0;
+
+        new_cursor = MIN (g_value_get_uint (value),
+                          g_list_model_get_n_items (G_LIST_MODEL (self->strokes)));
+
+        if (new_cursor != self->cursor)
+          {
+            self->cursor = new_cursor;
+            g_object_notify_by_pspec (object, props[PROP_CURSOR]);
+          }
+      }
+      break;
+    case PROP_CURSOR_LEN:
+      {
         guint new_cursor_len = 0;
 
-        old_cursor     = self->cursor;
-        new_cursor     = g_value_get_uint (value);
-        old_cursor_len = self->cursor_len;
-        new_cursor_len = self->cursor_len;
-
-        if (self->map != NULL)
+        new_cursor_len = g_value_get_uint (value);
+        if (new_cursor_len != self->cursor_len)
           {
-            guint n_strokes = 0;
-            guint n_memory  = 0;
-
-            n_strokes      = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
-            n_memory       = g_list_model_get_n_items (G_LIST_MODEL (self->memory));
-            new_cursor     = MIN (new_cursor, n_strokes + n_memory);
-            new_cursor_len = MIN (old_cursor_len, n_strokes + n_memory - new_cursor);
-
-            if (new_cursor != old_cursor)
-              {
-                self->cursor     = new_cursor;
-                self->cursor_len = new_cursor_len;
-                if (!self->insert_mode)
-                  g_clear_pointer (&self->cache, g_hash_table_unref);
-
-                g_signal_handlers_block_by_func (self->strokes, strokes_changed, self);
-
-                if (new_cursor < old_cursor)
-                  {
-                    guint                      range_length = 0;
-                    g_autofree GcvItemStroke **withdraw     = NULL;
-
-                    range_length = old_cursor - new_cursor;
-
-                    withdraw = g_malloc0_n (range_length, sizeof (*withdraw));
-                    for (guint i = 0; i < range_length; i++)
-                      withdraw[i] = g_list_model_get_item (G_LIST_MODEL (self->strokes), new_cursor + i);
-
-                    g_list_store_splice (self->memory, 0, 0, (gpointer *) withdraw, range_length);
-                    g_list_store_splice (self->strokes, new_cursor, range_length, NULL, 0);
-
-                    for (guint i = 0; i < range_length; i++)
-                      g_object_unref (withdraw[i]);
-                  }
-                else if (new_cursor > old_cursor)
-                  {
-                    guint                      range_length = 0;
-                    g_autofree GcvItemStroke **restore      = NULL;
-
-                    range_length = new_cursor - old_cursor;
-
-                    restore = g_malloc0_n (range_length, sizeof (*restore));
-                    for (guint i = 0; i < range_length; i++)
-                      restore[i] = g_list_model_get_item (G_LIST_MODEL (self->memory), i);
-
-                    g_list_store_splice (self->memory, 0, range_length, NULL, 0);
-                    g_list_store_splice (self->strokes, n_strokes, 0, (gpointer *) restore, range_length);
-
-                    for (guint i = 0; i < range_length; i++)
-                      g_object_unref (restore[i]);
-                  }
-
-                g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
-
-                g_object_notify_by_pspec (object, props[PROP_CURSOR]);
-                if (new_cursor_len != old_cursor_len)
-                  g_object_notify_by_pspec (object, props[PROP_CURSOR_LEN]);
-              }
-          }
-        else
-          {
-            self->cursor     = 0;
-            self->cursor_len = 0;
-            g_object_notify_by_pspec (object, props[PROP_CURSOR]);
+            self->cursor_len = new_cursor_len;
             g_object_notify_by_pspec (object, props[PROP_CURSOR_LEN]);
           }
       }
       break;
-
-    case PROP_CURSOR_LEN:
-      {
-        guint old_cursor_len = 0;
-        guint new_cursor_len = 0;
-
-        old_cursor_len = self->cursor_len;
-        new_cursor_len = g_value_get_uint (value);
-
-        if (self->map != NULL)
-          {
-            guint n_strokes = 0;
-            guint n_memory  = 0;
-
-            n_strokes      = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
-            n_memory       = g_list_model_get_n_items (G_LIST_MODEL (self->memory));
-            new_cursor_len = MIN (new_cursor_len, n_strokes + n_memory - self->cursor);
-
-            if (new_cursor_len != old_cursor_len)
-              {
-                self->cursor_len = new_cursor_len;
-                g_object_notify_by_pspec (object, props[PROP_CURSOR_LEN]);
-              }
-          }
-      }
-      break;
-
     case PROP_INSERT_MODE:
-      {
-        guint n_strokes = 0;
-
-        self->insert_mode = g_value_get_boolean (value);
-
-        n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->union_model));
-        if (self->cursor < n_strokes)
-          g_clear_pointer (&self->cache, g_hash_table_unref);
-      }
+      self->insert_mode = g_value_get_boolean (value);
       break;
-
     case PROP_LOCK_HINTED:
       self->lock_hinted = g_value_get_boolean (value);
       break;
@@ -363,8 +288,7 @@ gcv_map_handle_class_init (GcvMapHandleClass *klass)
       g_param_spec_object (
           "model",
           "Model",
-          "The list model representing the map strokes "
-          "and reserved strokes, concactenated",
+          "The model of the map strokes, for convenience",
           G_TYPE_LIST_MODEL,
           G_PARAM_READABLE);
 
@@ -381,7 +305,7 @@ gcv_map_handle_class_init (GcvMapHandleClass *klass)
           "cursor-len",
           "Cursor Length",
           "The size of the splitting point",
-          0, G_MAXUINT, 0,
+          1, G_MAXUINT, 1,
           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   props[PROP_INSERT_MODE] =
@@ -390,7 +314,7 @@ gcv_map_handle_class_init (GcvMapHandleClass *klass)
           "Insert Mode",
           "Whether to disable the automatic discard of memory "
           "when the underlying map's strokes are appended to",
-          FALSE,
+          TRUE,
           G_PARAM_READWRITE);
 
   props[PROP_LOCK_HINTED] =
@@ -417,9 +341,11 @@ gcv_map_handle_class_init (GcvMapHandleClass *klass)
 static void
 gcv_map_handle_init (GcvMapHandle *self)
 {
-  self->memory               = g_list_store_new (GCV_TYPE_ITEM_STROKE);
-  self->union_model          = g_list_store_new (GCV_TYPE_ITEM_STROKE);
+  self->memory               = g_ptr_array_new_with_free_func (destroy_action);
+  self->mirror               = g_list_store_new (GCV_TYPE_ITEM_STROKE);
   self->last_append_position = G_MAXUINT;
+  self->insert_mode          = TRUE;
+  self->cursor_len           = 1;
 }
 
 static void
@@ -429,62 +355,58 @@ strokes_changed (GListModel   *self,
                  guint         added,
                  GcvMapHandle *handle)
 {
-  guint    n_strokes   = 0;
-  guint    n_memory    = 0;
-  gboolean emit_cursor = FALSE;
+  g_autofree GcvItemStroke **additions = NULL;
+  guint                      n_items   = 0;
 
-  // if (position != handle->cursor)
-  //   return;
+  g_ptr_array_set_size (handle->memory, handle->n_undos);
 
-  if (!handle->insert_mode && added > 0)
+  if (removed > 0)
     {
-      /* Goodbye! */
-      if (handle->cursor_len == 0)
-        g_list_store_remove_all (handle->memory);
-      else
-        g_list_store_splice (handle->memory, 0, handle->cursor_len, NULL, 0);
+      g_autofree GcvItemStroke **removals = NULL;
 
-      g_clear_pointer (&handle->cache, g_hash_table_unref);
+      removals = g_malloc0_n (removed, sizeof (*removals));
+      for (guint i = 0; i < removed; i++)
+        removals[i] = g_list_model_get_item (G_LIST_MODEL (handle->mirror), position + i);
+
+      g_ptr_array_add (
+          handle->memory,
+          new_action (
+              ACTION_REMOVED, position,
+              g_ptr_array_new_take (
+                  (gpointer *) g_steal_pointer (&removals),
+                  removed, g_object_unref)));
     }
-  else if (removed > 0 || position < g_list_model_get_n_items (self) - added)
+
+  if (added > 0)
+    {
+      additions = g_malloc0_n (added, sizeof (*additions));
+      for (guint i = 0; i < added; i++)
+        additions[i] = g_list_model_get_item (G_LIST_MODEL (handle->strokes), position + i);
+    }
+
+  g_list_store_splice (handle->mirror, position, removed,
+                       (gpointer *) additions, added);
+
+  if (added > 0)
+    g_ptr_array_add (
+        handle->memory,
+        new_action (
+            ACTION_ADDED, position,
+            g_ptr_array_new_take (
+                (gpointer *) g_steal_pointer (&additions),
+                added, g_object_unref)));
+
+  handle->n_undos++;
+
+  n_items = g_list_model_get_n_items (G_LIST_MODEL (handle->strokes));
+  if (removed > 0 || position < n_items - added)
     /* We need to completely regenerate cache */
     g_clear_pointer (&handle->cache, g_hash_table_unref);
   else
     /* It was just an append, no need to regenerate */
     handle->last_append_position = MIN (position, handle->last_append_position);
 
-  n_strokes      = g_list_model_get_n_items (G_LIST_MODEL (handle->strokes));
-  n_memory       = g_list_model_get_n_items (G_LIST_MODEL (handle->memory));
-  emit_cursor    = handle->cursor != n_strokes;
-  handle->cursor = n_strokes;
-
-  if (added > 0 || removed > 0)
-    {
-      g_autofree GcvItemStroke **read = NULL;
-
-      if (added > 0)
-        {
-          read = g_malloc0_n (added, sizeof (*read));
-          for (guint i = 0; i < added; i++)
-            read[i] = g_list_model_get_item (G_LIST_MODEL (handle->strokes), position + i);
-        }
-
-      g_list_store_splice (
-          handle->union_model, position,
-          removed + (handle->insert_mode
-                         ? 0
-                         : (handle->cursor_len == 0
-                                ? n_memory
-                                : handle->cursor_len)),
-          (gpointer *) read, added);
-
-      for (guint i = 0; i < added; i++)
-        g_object_unref (read[i]);
-    }
-
   g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_GRID]);
-  if (emit_cursor)
-    g_object_notify_by_pspec (G_OBJECT (handle), props[PROP_CURSOR]);
 }
 
 static void
@@ -497,30 +419,101 @@ dimensions_changed (GcvMap       *map,
 }
 
 void
-gcv_map_handle_delete_at_cursor (GcvMapHandle *self)
+gcv_map_handle_undo (GcvMapHandle *self)
 {
-  guint strokes_len = 0;
+  Action *action = NULL;
 
   g_return_if_fail (GCV_IS_MAP_HANDLE (self));
   g_return_if_fail (self->map != NULL);
+  g_return_if_fail (self->n_undos > 0);
 
-  strokes_len = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
-  if (self->cursor_len == 0)
+  action = g_ptr_array_index (self->memory, self->n_undos - 1);
+
+  g_signal_handlers_block_by_func (self->strokes, strokes_changed, self);
+
+  switch (action->type)
     {
-      guint memory_len = 0;
-
-      memory_len = g_list_model_get_n_items (G_LIST_MODEL (self->memory));
-      g_list_store_remove_all (self->memory);
-      g_list_store_splice (self->union_model, strokes_len, memory_len, NULL, 0);
+    case ACTION_REMOVED:
+      g_list_store_splice (self->strokes, action->position, 0,
+                           action->pa->pdata, action->pa->len);
+      g_list_store_splice (self->mirror, action->position, 0,
+                           action->pa->pdata, action->pa->len);
+      break;
+    case ACTION_ADDED:
+      g_list_store_splice (self->strokes, action->position,
+                           action->pa->len, NULL, 0);
+      g_list_store_splice (self->mirror, action->position,
+                           action->pa->len, NULL, 0);
+      break;
+    default:
+      g_assert_not_reached ();
     }
-  else
-    {
-      g_list_store_splice (self->memory, 0, self->cursor_len, NULL, 0);
-      g_list_store_splice (self->union_model, strokes_len, self->cursor_len, NULL, 0);
-    }
 
-  /* ? */
+  g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
+
+  self->n_undos--;
+  self->cursor = action->position;
+  g_clear_pointer (&self->cache, g_hash_table_unref);
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_GRID]);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
+}
+
+void
+gcv_map_handle_redo (GcvMapHandle *self)
+{
+  Action *action = NULL;
+
+  g_return_if_fail (GCV_IS_MAP_HANDLE (self));
+  g_return_if_fail (self->map != NULL);
+  g_return_if_fail (self->n_undos < self->memory->len);
+
+  action = g_ptr_array_index (self->memory, self->n_undos);
+
+  g_signal_handlers_block_by_func (self->strokes, strokes_changed, self);
+
+  switch (action->type)
+    {
+    case ACTION_REMOVED:
+      g_list_store_splice (self->strokes, action->position,
+                           action->pa->len, NULL, 0);
+      g_list_store_splice (self->mirror, action->position,
+                           action->pa->len, NULL, 0);
+      break;
+    case ACTION_ADDED:
+      g_list_store_splice (self->strokes, action->position, 0,
+                           action->pa->pdata, action->pa->len);
+      g_list_store_splice (self->mirror, action->position, 0,
+                           action->pa->pdata, action->pa->len);
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+
+  g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
+
+  self->n_undos++;
+  self->cursor = action->position;
+  g_clear_pointer (&self->cache, g_hash_table_unref);
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_GRID]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
+}
+
+gboolean
+gcv_map_handle_can_undo (GcvMapHandle *self)
+{
+  g_return_val_if_fail (GCV_IS_MAP_HANDLE (self), FALSE);
+
+  return self->map != NULL && self->n_undos > 0;
+}
+
+gboolean
+gcv_map_handle_can_redo (GcvMapHandle *self)
+{
+  g_return_val_if_fail (GCV_IS_MAP_HANDLE (self), FALSE);
+
+  return self->map != NULL && self->n_undos < self->memory->len;
 }
 
 void
@@ -529,16 +522,21 @@ gcv_map_handle_clear_all (GcvMapHandle *self)
   g_return_if_fail (GCV_IS_MAP_HANDLE (self));
   g_return_if_fail (self->map != NULL);
 
-  g_list_store_remove_all (self->memory);
+  g_signal_handlers_block_by_func (self->strokes, strokes_changed, self);
+
   g_list_store_remove_all (self->strokes);
-  g_list_store_remove_all (self->union_model);
+  g_list_store_remove_all (self->mirror);
+  g_ptr_array_set_size (self->memory, 0);
+
+  g_signal_handlers_unblock_by_func (self->strokes, strokes_changed, self);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_GRID]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
 }
 
 static void
 ensure_cache (GcvMapHandle *self)
 {
   guint start_stroke_idx = 0;
-  guint n_strokes        = 0;
   guint total            = 0;
   int   map_width        = 0;
   int   map_height       = 0;
@@ -556,26 +554,17 @@ ensure_cache (GcvMapHandle *self)
   else
     start_stroke_idx = self->last_append_position;
 
-  n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
-  total     = g_list_model_get_n_items (G_LIST_MODEL (self->union_model));
-
+  total = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
   g_object_get (
       self->map,
       "width", &map_width,
       "height", &map_height,
       NULL);
 
-  for (guint i = start_stroke_idx; i < n_strokes; i++)
+  for (guint i = start_stroke_idx; i < total; i++)
     add_stroke_to_cache (
         self,
-        g_list_model_get_item (G_LIST_MODEL (self->union_model), i),
-        map_width, map_height);
-
-  for (guint i = n_strokes + (self->insert_mode ? 0 : self->cursor_len);
-       i < total; i++)
-    add_stroke_to_cache (
-        self,
-        g_list_model_get_item (G_LIST_MODEL (self->union_model), i),
+        g_list_model_get_item (G_LIST_MODEL (self->strokes), i),
         map_width, map_height);
 
   self->last_append_position = G_MAXUINT;
@@ -622,16 +611,15 @@ add_stroke_to_cache (GcvMapHandle  *self,
       "instances", &instances,
       NULL);
 
-  for (guint j = 0; j < instances->len; j++)
+  for (guint i = 0; i < instances->len; i++)
     {
       GcvItemStrokeInstance *instance = NULL;
 
-      instance = &g_array_index (instances, GcvItemStrokeInstance, j);
-      g_assert (instance->x >= 0 && instance->y >= 0);
-
-      if (instance->x + item_tile_width > map_width ||
-          instance->y + item_tile_height > map_height)
-        continue;
+      instance = &g_array_index (instances, GcvItemStrokeInstance, i);
+      g_assert (instance->x >= 0 &&
+                instance->y >= 0 &&
+                instance->x + item_tile_width <= map_width &&
+                instance->y + item_tile_height <= map_height);
 
       for (int y = 0; y < item_tile_height; y++)
         {
@@ -644,4 +632,28 @@ add_stroke_to_cache (GcvMapHandle  *self,
             }
         }
     }
+}
+
+static inline Action *
+new_action (int        type,
+            guint      position,
+            GPtrArray *pa)
+{
+  Action *action = NULL;
+
+  action           = g_new0 (typeof (*action), 1);
+  action->type     = type;
+  action->position = position;
+  action->pa       = pa;
+
+  return action;
+}
+
+static void
+destroy_action (gpointer ptr)
+{
+  Action *self = ptr;
+
+  g_ptr_array_unref (self->pa);
+  g_free (self);
 }

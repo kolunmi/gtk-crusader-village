@@ -35,17 +35,14 @@ struct _GcvTimelineView
   GcvMapHandle *handle;
   GListModel   *model;
 
-  GBinding *insert_mode_binding;
-
   guint playback_handle;
 
   /* Template widgets */
-  GtkLabel       *stats;
-  GtkListView    *list_view;
-  GtkCheckButton *insert_mode;
-  GtkButton      *delete_stroke;
-  GtkScale       *scale;
-  GtkButton      *playback;
+  GtkLabel    *stats;
+  GtkListView *list_view;
+  GtkButton   *delete_stroke;
+  GtkScale    *scale;
+  GtkButton   *playback;
 };
 
 G_DEFINE_FINAL_TYPE (GcvTimelineView, gcv_timeline_view, GCV_TYPE_UTIL_BIN)
@@ -147,7 +144,6 @@ gcv_timeline_view_dispose (GObject *object)
           self->handle, cursor_changed, self);
       g_signal_handlers_disconnect_by_func (
           self->handle, lock_hint_changed, self);
-      g_binding_unbind (self->insert_mode_binding);
     }
   g_clear_object (&self->handle);
 
@@ -198,7 +194,6 @@ gcv_timeline_view_set_property (GObject      *object,
                 self->handle, cursor_changed, self);
             g_signal_handlers_disconnect_by_func (
                 self->handle, lock_hint_changed, self);
-            g_binding_unbind (self->insert_mode_binding);
           }
         g_clear_object (&self->handle);
 
@@ -222,10 +217,6 @@ gcv_timeline_view_set_property (GObject      *object,
                               G_CALLBACK (cursor_changed), self);
             g_signal_connect (self->handle, "notify::lock-hinted",
                               G_CALLBACK (lock_hint_changed), self);
-            self->insert_mode_binding = g_object_bind_property (
-                self->handle, "insert-mode",
-                self->insert_mode, "active",
-                G_BINDING_BIDIRECTIONAL);
           }
 
         update_ui (self);
@@ -259,7 +250,6 @@ gcv_timeline_view_class_init (GcvTimelineViewClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-timeline-view.ui");
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, stats);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, list_view);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, insert_mode);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, delete_stroke);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, scale);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineView, playback);
@@ -500,10 +490,21 @@ static void
 delete_stroke_clicked (GtkButton       *self,
                        GcvTimelineView *timeline_view)
 {
+  guint cursor                   = 0;
+  guint cursor_len               = 0;
+  g_autoptr (GListStore) strokes = NULL;
+
   if (timeline_view->handle == NULL)
     return;
 
-  gcv_map_handle_delete_at_cursor (timeline_view->handle);
+  g_object_get (
+      timeline_view->handle,
+      "cursor", &cursor,
+      "cursor-len", &cursor_len,
+      "model", &strokes,
+      NULL);
+
+  g_list_store_splice (strokes, cursor, cursor_len, NULL, 0);
 }
 
 static void
@@ -534,9 +535,18 @@ cursor_changed (GcvMapHandle    *handle,
       "cursor", &cursor,
       "cursor-len", &cursor_len,
       NULL);
+
+  g_signal_handlers_block_by_func (
+      timeline_view->selection, selection_changed, timeline_view);
+
   gtk_selection_model_select_range (
-      GTK_SELECTION_MODEL (timeline_view->selection), cursor, MAX (1, cursor_len), TRUE);
+      GTK_SELECTION_MODEL (timeline_view->selection), cursor, cursor_len, TRUE);
   gtk_list_view_scroll_to (timeline_view->list_view, cursor, GTK_LIST_SCROLL_NONE, NULL);
+
+  g_signal_handlers_unblock_by_func (
+      timeline_view->selection, selection_changed, timeline_view);
+
+  update_ui (timeline_view);
 }
 
 static void
@@ -612,8 +622,7 @@ update_ui (GcvTimelineView *self)
   g_snprintf (buf, sizeof (buf), "cursor: %d-%d (total %d)", cursor, cursor_len, n_strokes);
   gtk_label_set_label (self->stats, buf);
 
-  gtk_widget_set_sensitive (GTK_WIDGET (self->insert_mode), !lock_hinted && self->playback_handle == 0);
-  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && n_strokes > 0 && self->playback_handle == 0);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->delete_stroke), !lock_hinted && cursor + cursor_len <= n_strokes && self->playback_handle == 0);
   gtk_widget_set_sensitive (GTK_WIDGET (self->playback), !lock_hinted && n_strokes > 1);
   gtk_widget_set_sensitive (GTK_WIDGET (self->scale), !lock_hinted && n_strokes > 0);
 

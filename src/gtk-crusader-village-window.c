@@ -277,6 +277,24 @@ gcv_window_init (GcvWindow *self)
 }
 
 void
+gcv_window_undo (GcvWindow *self)
+{
+  g_return_if_fail (GCV_IS_WINDOW (self));
+
+  if (gcv_map_handle_can_undo (self->map_handle))
+    gcv_map_handle_undo (self->map_handle);
+}
+
+void
+gcv_window_redo (GcvWindow *self)
+{
+  g_return_if_fail (GCV_IS_WINDOW (self));
+
+  if (gcv_map_handle_can_redo (self->map_handle))
+    gcv_map_handle_redo (self->map_handle);
+}
+
+void
 gcv_window_add_subwindow_viewport (GcvWindow *self)
 {
   GcvMapEditor       *editor          = NULL;
@@ -285,6 +303,8 @@ gcv_window_add_subwindow_viewport (GcvWindow *self)
   GcvMapEditorStatus *status          = NULL;
   GtkWidget          *box             = NULL;
   GtkWidget          *window          = NULL;
+
+  g_return_if_fail (GCV_IS_WINDOW (self));
 
   editor          = g_object_new (GCV_TYPE_MAP_EDITOR, NULL);
   scrolled_window = gtk_scrolled_window_new ();

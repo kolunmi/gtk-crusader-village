@@ -29,7 +29,16 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GcvMapHandle, gcv_map_handle, GCV, MAP_HANDLE, GObject)
 
 void
-gcv_map_handle_delete_at_cursor (GcvMapHandle *self);
+gcv_map_handle_undo (GcvMapHandle *self);
+
+void
+gcv_map_handle_redo (GcvMapHandle *self);
+
+gboolean
+gcv_map_handle_can_undo (GcvMapHandle *self);
+
+gboolean
+gcv_map_handle_can_redo (GcvMapHandle *self);
 
 void
 gcv_map_handle_clear_all (GcvMapHandle *self);

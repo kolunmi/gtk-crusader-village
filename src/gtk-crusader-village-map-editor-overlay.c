@@ -446,39 +446,22 @@ static void
 undo_clicked (GtkButton           *self,
               GcvMapEditorOverlay *overlay)
 {
-  guint cursor = 0;
-
-  if (overlay->handle == NULL)
-    return;
-
-  g_object_get (
-      overlay->handle,
-      "cursor", &cursor,
-      NULL);
-  if (cursor > 0)
-    g_object_set (
-        overlay->handle,
-        "cursor", cursor - 1,
-        NULL);
+  if (overlay->handle != NULL)
+    {
+      gcv_map_handle_undo (overlay->handle);
+      update_ui_for_model (overlay);
+    }
 }
 
 static void
 redo_clicked (GtkButton           *self,
               GcvMapEditorOverlay *overlay)
 {
-  guint cursor = 0;
-
-  if (overlay->handle == NULL)
-    return;
-
-  g_object_get (
-      overlay->handle,
-      "cursor", &cursor,
-      NULL);
-  g_object_set (
-      overlay->handle,
-      "cursor", cursor + 1,
-      NULL);
+  if (overlay->handle != NULL)
+    {
+      gcv_map_handle_redo (overlay->handle);
+      update_ui_for_model (overlay);
+    }
 }
 
 static void
@@ -601,16 +584,11 @@ update_ui_for_model (GcvMapEditorOverlay *self)
   if (self->model != NULL)
     {
       guint n_strokes = 0;
-      guint cursor    = 0;
 
       n_strokes = g_list_model_get_n_items (G_LIST_MODEL (self->model));
-      g_object_get (
-          self->handle,
-          "cursor", &cursor,
-          NULL);
 
-      gtk_widget_set_sensitive (GTK_WIDGET (self->undo), cursor > 0);
-      gtk_widget_set_sensitive (GTK_WIDGET (self->redo), cursor < n_strokes);
+      gtk_widget_set_sensitive (GTK_WIDGET (self->undo), gcv_map_handle_can_undo (self->handle));
+      gtk_widget_set_sensitive (GTK_WIDGET (self->redo), gcv_map_handle_can_redo (self->handle));
       gtk_widget_set_sensitive (GTK_WIDGET (self->clear), n_strokes > 0);
     }
   else

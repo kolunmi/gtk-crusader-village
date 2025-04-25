@@ -924,21 +924,20 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
     { 1.0, { 0.1, 0.1, 0.1, 0.0 } },
   };
 
-  GcvMapEditor   *editor                   = GCV_MAP_EDITOR (widget);
-  int             widget_width             = 0;
-  int             widget_height            = 0;
-  graphene_rect_t viewport                 = { 0 };
-  graphene_rect_t extents                  = { 0 };
-  double          tile_size                = 0.0;
-  g_autoptr (GListStore) union_model       = NULL;
-  guint cursor                             = 0;
-  guint cursor_len                         = 0;
-  int   map_tile_width                     = 0;
-  int   map_tile_height                    = 0;
-  g_autoptr (GListStore) map_strokes_model = NULL;
-  double  map_width                        = 0.0;
-  double  map_height                       = 0.0;
-  GdkRGBA widget_rgba                      = { 0 };
+  GcvMapEditor   *editor        = GCV_MAP_EDITOR (widget);
+  int             widget_width  = 0;
+  int             widget_height = 0;
+  graphene_rect_t viewport      = { 0 };
+  graphene_rect_t extents       = { 0 };
+  double          tile_size     = 0.0;
+  g_autoptr (GListStore) model  = NULL;
+  guint   cursor                = 0;
+  guint   cursor_len            = 0;
+  int     map_tile_width        = 0;
+  int     map_tile_height       = 0;
+  double  map_width             = 0.0;
+  double  map_height            = 0.0;
+  GdkRGBA widget_rgba           = { 0 };
 
   widget_width  = gtk_widget_get_width (widget);
   widget_height = gtk_widget_get_height (widget);
@@ -985,7 +984,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
   g_object_get (
       editor->handle,
-      "model", &union_model,
+      "model", &model,
       "cursor", &cursor,
       "cursor-len", &cursor_len,
       NULL);
@@ -994,7 +993,6 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
       editor->map,
       "width", &map_tile_width,
       "height", &map_tile_height,
-      "strokes", &map_strokes_model,
       NULL);
   map_width  = (double) map_tile_width * tile_size;
   map_height = (double) map_tile_height * tile_size;
@@ -1074,7 +1072,6 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
 
       g_autoptr (GHashTable) texture_to_mask = NULL;
       guint   total_strokes                  = 0;
-      guint   total_map_strokes              = 0;
       guint   total_drawn_strokes            = 0;
       GdkRGBA bg_rgba                        = { 0 };
 
@@ -1095,11 +1092,10 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
       layouts         = gtk_snapshot_new ();
       texture_to_mask = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-      total_strokes       = g_list_model_get_n_items (G_LIST_MODEL (union_model));
-      total_map_strokes   = g_list_model_get_n_items (G_LIST_MODEL (map_strokes_model));
+      total_strokes       = g_list_model_get_n_items (G_LIST_MODEL (model));
       total_drawn_strokes = editor->draw_after_cursor
                                 ? total_strokes
-                                : MIN (total_strokes, total_map_strokes + cursor_len);
+                                : MIN (total_strokes, cursor + cursor_len);
 
       gtk_widget_get_color (GTK_WIDGET (editor), &widget_rgba);
       bg_rgba = (GdkRGBA) {
@@ -1125,7 +1121,7 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
           g_autoptr (PangoLayout) tile_layout = NULL;
           PangoRectangle tile_layout_rect     = { 0 };
 
-          stroke = g_list_model_get_item (G_LIST_MODEL (union_model), i);
+          stroke = g_list_model_get_item (G_LIST_MODEL (model), i);
           g_object_get (
               stroke,
               "item", &item,
@@ -1940,9 +1936,8 @@ draw_gesture_update (GtkGestureDrag *gesture,
                           "kind", &existing_kind,
                           NULL);
 
-                      if (item_kind != GCV_ITEM_KIND_UNIT ||
-                          existing_kind != GCV_ITEM_KIND_BUILDING)
-                        add = FALSE;
+                      add = item_kind == GCV_ITEM_KIND_UNIT &&
+                            existing_kind == GCV_ITEM_KIND_BUILDING;
                     }
 
                   if (add)
@@ -1969,14 +1964,25 @@ draw_gesture_update (GtkGestureDrag *gesture,
             {
               for (int x = 0; x < item_tile_width; x++)
                 {
-                  guint tile_idx = 0;
+                  guint    tile_idx = 0;
+                  GcvItem *existing = NULL;
 
-                  tile_idx = (instance.x + y) * map_tile_width + (instance.y + x);
-                  if (g_hash_table_contains (grid, GUINT_TO_POINTER (tile_idx)))
+                  tile_idx = (instance.y + y) * map_tile_width + (instance.x + x);
+                  existing = g_hash_table_lookup (grid, GUINT_TO_POINTER (tile_idx));
+
+                  if (existing != NULL)
                     {
-                      /* can't place that there lord! */
-                      add = FALSE;
-                      break;
+                      GcvItemKind existing_kind = 0;
+
+                      g_object_get (
+                          existing,
+                          "kind", &existing_kind,
+                          NULL);
+
+                      add = item_kind == GCV_ITEM_KIND_UNIT &&
+                            existing_kind == GCV_ITEM_KIND_BUILDING;
+                      if (!add)
+                        break;
                     }
                 }
 
@@ -2010,15 +2016,20 @@ draw_gesture_end (GtkGestureDrag *gesture,
 
   if (instances->len > 0)
     {
+      guint cursor                   = 0;
       g_autoptr (GListStore) strokes = NULL;
 
       g_object_get (
-          editor->map,
-          "strokes", &strokes,
+          editor->handle,
+          "cursor", &cursor,
+          "model", &strokes,
           NULL);
-      g_list_store_append (
-          strokes,
-          editor->current_stroke);
+      g_list_store_insert (
+          strokes, cursor, editor->current_stroke);
+      g_object_set (
+          editor->handle,
+          "cursor", cursor + 1,
+          NULL);
 
       if (editor->settings != NULL)
         {

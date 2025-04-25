@@ -29,6 +29,12 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GcvWindow, gcv_window, GCV, WINDOW, GtkApplicationWindow)
 
 void
+gcv_window_undo (GcvWindow *self);
+
+void
+gcv_window_redo (GcvWindow *self);
+
+void
 gcv_window_add_subwindow_viewport (GcvWindow *self);
 
 G_END_DECLS
