@@ -148,16 +148,16 @@ jobs:
           done
         fi
 
-        echo "Creating archive..."
-        cd "${DEST_DIR}" # Change into the directory to be zipped
-        zip -r "../${ARTIFACT_NAME}.zip" * # Zip contents recursively
+     # echo "Creating archive..."
+     # cd "${DEST_DIR}" # Change into the directory to be zipped
+     # zip -r "../${ARTIFACT_NAME}.zip" * # Zip contents recursively
 
     # Step 7: Upload the packaged zip file as a workflow artifact
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: gtk-crusader-village-windows-x64 # Name of the artifact on GitHub Actions page
-        path: gtk-crusader-village-windows-x64.zip # Path to the zip file created outside the artifact dir
+        name: gtk-crusader-village-windows-x64
+        path: artifact 
 
     # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
     # - name: Create Release
