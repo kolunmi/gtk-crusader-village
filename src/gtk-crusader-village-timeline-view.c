@@ -467,6 +467,7 @@ model_changed (GListModel      *self,
                guint            added,
                GcvTimelineView *timeline_view)
 {
+  g_clear_handle_id (&timeline_view->playback_handle, g_source_remove);
   update_ui (timeline_view);
 }
 
@@ -569,7 +570,9 @@ playback_timeout (GcvTimelineView *timeline_view)
   g_autoptr (GListModel) union_model = NULL;
   guint total_strokes                = 0;
 
-  g_assert (timeline_view->handle != NULL);
+  if (timeline_view->handle == NULL ||
+      timeline_view->playback_handle == 0)
+    return G_SOURCE_REMOVE;
 
   g_object_get (
       timeline_view->handle,
