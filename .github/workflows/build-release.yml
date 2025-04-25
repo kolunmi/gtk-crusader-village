@@ -1,0 +1,295 @@
+# .github/workflows/windows-build.yml
+# Builds on Windows using MSYS2, automatically detects DLL dependencies using ntldd,
+# packages artifacts, and uploads.
+
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+    # Step 1: Checkout repository
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      # with:
+      #   submodules: 'recursive'
+
+    # Step 2: Set up MSYS2 environment & Install Dependencies
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          git
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-meson
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-python
+          mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-gtk4
+          mingw-w64-x86_64-libadwaita
+          mingw-w64-x86_64-json-glib
+          mingw-w64-x86_64-gettext
+          mingw-w64-x86_64-desktop-file-utils
+          mingw-w64-x86_64-appstream
+          mingw-w64-x86_64-ntldd
+          mingw-w64-x86_64-hicolor-icon-theme
+          mingw-w64-x86_64-librsvg
+          mingw-w64-x86_64-adwaita-icon-theme
+
+    # Step 3: Configure build
+    - name: Configure build
+      run: meson setup build --prefix=/mingw64 --buildtype=release
+
+    # Step 4: Compile project
+    - name: Compile project
+      run: ninja -C build
+
+    # Step 5: Install project
+    - name: Install project
+      # Let the workflow fail if installation fails (removed || echo)
+      run: ninja -C build install
+
+    # Step 6: Analyze Dependencies using ntldd (Corrected grep pattern)
+    - name: Analyze Dependencies
+      run: |
+        EXE_PATH="/mingw64/bin/gtk-crusader-village.exe"
+        DLL_LIST_FILE="dll_list.txt"
+        NTLDD_OUTPUT_FILE="ntldd_output.log"
+        NTLDD_ERROR_FILE="ntldd_error.log"
+        # Intermediate files for pipeline steps (optional now, but keep for debug)
+        STEP1_OUT="pipe_step1.log"
+        STEP2_OUT="pipe_step2.log"
+        STEP3_OUT="pipe_step3.log"
+        STEP4_OUT="pipe_step4.log"
+    
+        echo "--- Debugging ntldd & Pipeline ---"
+        echo "Checking if executable exists at ${EXE_PATH}:"
+        ls -l "$EXE_PATH" || { echo "*** EXECUTABLE ${EXE_PATH} not found! ***"; exit 1; }
+    
+        echo "Attempting to run ntldd -R ${EXE_PATH}..."
+        ntldd -R "$EXE_PATH" > "$NTLDD_OUTPUT_FILE" 2> "$NTLDD_ERROR_FILE"
+        NTLDD_EXIT_CODE=$?
+        echo "ntldd exit code: ${NTLDD_EXIT_CODE}"
+        echo "--- ntldd stderr (${NTLDD_ERROR_FILE}): ---"; cat "$NTLDD_ERROR_FILE" || echo "  (No stderr)"; echo "--- End ntldd stderr ---"
+        if [ ${NTLDD_EXIT_CODE} -ne 0 ]; then
+          echo "ntldd command failed. Exiting."
+          exit ${NTLDD_EXIT_CODE}
+        fi
+        # Print stdout for reference even if parsing fails later
+        echo "--- ntldd stdout (${NTLDD_OUTPUT_FILE}): ---"; cat "$NTLDD_OUTPUT_FILE"; echo "--- End ntldd stdout ---"
+    
+        echo "--- Pipeline Debug ---"
+        # Use a grep pattern matching the Windows-style path seen in ntldd output
+        # Need double backslashes for literal backslash in grep pattern within double quotes
+        # Using '/d/a/_temp/msys64/mingw64/bin/' might also work if ntldd normalizes sometimes
+        # Let's try matching 'mingw64\\bin\\' literally first.
+        GREP_PATTERN='mingw64\\bin\\'
+        echo "Step 1: grep '${GREP_PATTERN}' ..."
+        grep "${GREP_PATTERN}" "$NTLDD_OUTPUT_FILE" > "$STEP1_OUT"
+        GREP1_EXIT_CODE=$?
+        echo "  grep1 exit code: ${GREP1_EXIT_CODE}"
+        # grep returns 1 if no lines match, we need lines to proceed
+        if [ ${GREP1_EXIT_CODE} -eq 1 ]; then echo "  grep1 found no matching lines! Cannot extract DLLs."; exit 1; fi
+        if [ ${GREP1_EXIT_CODE} -gt 1 ]; then echo "  grep1 failed!"; exit ${GREP1_EXIT_CODE}; fi
+        echo "  grep1 output:" ; cat "$STEP1_OUT"; echo "  --- End grep1 output ---"
+    
+        echo "Step 2: awk '{print \$3}' ..." # Still assume path is field 3
+        awk '{print $3}' "$STEP1_OUT" > "$STEP2_OUT"
+        AWK_EXIT_CODE=$?
+        echo "  awk exit code: ${AWK_EXIT_CODE}"
+        if [ ${AWK_EXIT_CODE} -ne 0 ]; then echo "  awk failed!"; exit ${AWK_EXIT_CODE}; fi
+        echo "  awk output:"; cat "$STEP2_OUT"; echo "  --- End awk output ---"
+    
+        echo "Step 3: grep -v Filter (Using placeholder, path comparison is tricky)..."
+        # Filtering the EXE path might be unreliable now due to path format difference
+        # Let's skip filtering the EXE for now and just copy it again later if needed
+        # Alternatively, convert EXE_PATH to windows format first? Too complex for now.
+        cp "$STEP2_OUT" "$STEP3_OUT" # Just copy for now
+        GREP2_EXIT_CODE=0
+        echo "  grep2 exit code: ${GREP2_EXIT_CODE} (Skipped actual filtering)"
+        echo "  grep2 output (same as awk):"; cat "$STEP3_OUT"; echo "  --- End grep2 output ---"
+    
+        echo "Step 4: sort -u ..."
+        sort -u "$STEP3_OUT" > "$STEP4_OUT"
+        SORT_EXIT_CODE=$?
+        echo "  sort exit code: ${SORT_EXIT_CODE}"
+        if [ ${SORT_EXIT_CODE} -ne 0 ]; then echo "  sort failed!"; exit ${SORT_EXIT_CODE}; fi
+        echo "  sort output (final list before writing):"; cat "$STEP4_OUT"; echo "  --- End sort output ---"
+    
+        # Write final list to DLL_LIST_FILE
+        mv "$STEP4_OUT" "$DLL_LIST_FILE"
+    
+        echo "--- Final generated DLL list (${DLL_LIST_FILE}): ---"
+        cat "$DLL_LIST_FILE" || echo "  (DLL list file empty or not found)"
+        echo "--- End DLL List ---"
+        echo "--- Pipeline finished. ---"
+      id: deps
+
+    # Step 7: Prepare artifact directory (Copying Structure + Regenerating Icon Cache)
+    - name: Prepare artifact directory
+      run: |
+        INSTALL_DIR="/mingw64"
+        DEST_DIR="artifact"
+        DLL_LIST_FILE="dll_list.txt" # From step 6
+
+        echo "Creating destination directories..."
+        mkdir -p "${DEST_DIR}/bin"
+        mkdir -p "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" # Standard pixbuf loader path
+        mkdir -p "${DEST_DIR}/etc/gtk-4.0"                       # Standard GTK settings path
+        mkdir -p "${DEST_DIR}/share/icons/hicolor"                # Base hicolor dir
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps" # Standard icon paths
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
+        mkdir -p "${DEST_DIR}/share/icons/Adwaita"                # Adwaita theme dir
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"           # Standard GSettings path
+        mkdir -p "${DEST_DIR}/share/locale"                     # Standard locale path
+        mkdir -p "${DEST_DIR}/share/metainfo"
+        mkdir -p "${DEST_DIR}/share/applications"
+        mkdir -p "${DEST_DIR}/share/dbus-1/services"
+
+        echo "Copying main executable..."
+        cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
+
+        echo "Copying gdbus executable..."
+        cp --verbose "${INSTALL_DIR}/bin/gdbus.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gdbus.exe not found."
+
+        echo "Copying detected runtime DLLs to bin..."
+        if [ -f "$DLL_LIST_FILE" ]; then
+          while IFS= read -r dll_path; do
+            if [ -f "$dll_path" ]; then
+              dll_basename=$(basename "$dll_path")
+              if [[ "$dll_basename" != "gtk-crusader-village.exe" && "$dll_basename" != "gdbus.exe" ]]; then
+                 echo "Copying Dependency: $dll_path"
+                 cp --verbose "$dll_path" "${DEST_DIR}/bin/"
+              fi
+            else
+              echo "Warning: DLL listed by ntldd not found: $dll_path"
+            fi
+          done < "$DLL_LIST_FILE"
+        else
+          echo "Warning: ${DLL_LIST_FILE} not found. Cannot copy DLLs automatically."
+        fi
+
+        echo "Explicitly copying potentially missed DLLs (librsvg, etc.) to bin..."
+        EXPLICIT_DLLS=( "librsvg-2" "libxml2" "libcroco" ) # Add others if needed
+        for lib in "${EXPLICIT_DLLS[@]}"; do
+          echo "Looking for explicit ${lib}*.dll in ${INSTALL_DIR}/bin/"
+          find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -vt "${DEST_DIR}/bin/" {} + || echo "Info: Explicit DLL ${lib}*.dll not found."
+        done
+
+        # --- Copy GDK Pixbuf loaders and cache to lib ---
+        echo "Copying GDK Pixbuf loaders to lib/..."
+        if [ -d "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
+           # Copy the DLLs into the loaders subdir
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"*.dll "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"
+        else
+           echo "Warning: Pixbuf loaders source directory not found."
+        fi
+        echo "Copying GDK Pixbuf loaders cache to lib/..."
+        if [ -f "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" ]; then
+           # Copy the cache file into the parent directory of loaders
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/"
+        else
+           echo "Warning: loaders.cache not found. Pixbuf might not find loaders."
+        fi
+
+        # --- Copy GTK / Icon Theme / GSettings files to share and etc ---
+        echo "Copying compiled GSettings schemas to share/..."
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/gschemas.compiled" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "ERROR: gschemas.compiled not found!"
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema source xml not found."
+
+        echo "Copying Hicolor icon theme index to share/..."
+        # Copy index, but NOT the cache - we regenerate it below
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/index.theme" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor index.theme."
+
+        echo "Copying Adwaita icon theme to share/..."
+        if [ -d "${INSTALL_DIR}/share/icons/Adwaita" ]; then
+            # Copy all contents of the Adwaita theme directory recursively
+            cp -r --verbose "${INSTALL_DIR}/share/icons/Adwaita/." "${DEST_DIR}/share/icons/Adwaita/"
+        else
+            echo "Warning: Adwaita icon theme directory not found in source."
+        fi
+
+        echo "Copying GTK settings file to etc/..."
+        if [ -f "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" ]; then
+            cp --verbose "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" "${DEST_DIR}/etc/gtk-4.0/"
+        else
+            echo "Warning: Default ${INSTALL_DIR}/etc/gtk-4.0/settings.ini not found."
+        fi
+
+        # --- Copying other application data files to share ---
+        echo "Copying other application data files to share/..."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: App Scalable icon not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: App Symbolic icon not found."
+        cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
+        cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
+        cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
+
+        echo "Copying locale files to share/..."
+        if [ -d "${INSTALL_DIR}/share/locale" ]; then
+          for langdir in "${INSTALL_DIR}"/share/locale/*; do
+            lang=$(basename "$langdir")
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
+              if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
+                mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
+                cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
+              fi
+            fi
+          done
+        fi
+
+        # --- Regenerate Hicolor icon cache INSIDE artifact ---
+        echo "Regenerating Hicolor icon cache in artifact..."
+        # Use the gtk4-update-icon-cache tool from the build environment (should be in PATH)
+        # targeting the artifact's hicolor directory. The -f/--force and -t/--ignore-theme-index flags are common.
+        if [ -f /mingw64/bin/gtk4-update-icon-cache.exe ]; then
+           echo "Running: gtk4-update-icon-cache.exe -f -t \"${DEST_DIR}/share/icons/hicolor\""
+           /mingw64/bin/gtk4-update-icon-cache.exe -f -t "${DEST_DIR}/share/icons/hicolor" || echo "Warning: gtk4-update-icon-cache command failed."
+        else
+           echo "Error: gtk4-update-icon-cache.exe not found in /mingw64/bin. Cannot regenerate cache."
+           # exit 1 # Optionally fail the build if cache generation is critical
+        fi
+        # --- End cache regeneration ---
+
+        echo "--- Finished preparing artifact directory ---"
+
+    # Step 8: Upload the artifact (action zips the directory)
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gtk-crusader-village-windows-x64
+        path: artifact # Upload the contents of the 'artifact' directory
+
+    # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
+    # - name: Create Release
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   id: create_release
+    #   uses: actions/create-release@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     tag_name: ${{ github.ref_name }}
+    #     release_name: Release ${{ github.ref_name }}
+    #     draft: false
+    #     prerelease: false # Set to true if it's a pre-release
+    #
+    # - name: Upload Release Asset
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_path: ./gtk-crusader-village-windows-x64.zip
+    #     asset_name: gtk-crusader-village-windows-x64.zip
+    #     asset_content_type: application/zip
