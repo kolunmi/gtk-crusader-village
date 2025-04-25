@@ -149,6 +149,7 @@ jobs:
         mkdir -p "${DEST_DIR}/etc/gtk-4.0"                       # Standard GTK settings path
         mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps" # Standard icon paths
         mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
+        mkdir -p "${DEST_DIR}/share/icons/Adwaita"
         mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"           # Standard GSettings path
         mkdir -p "${DEST_DIR}/share/locale"                     # Standard locale path
         mkdir -p "${DEST_DIR}/share/metainfo"
@@ -209,6 +210,14 @@ jobs:
         echo "Copying Hicolor icon theme index and cache to share/..."
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/index.theme" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor index.theme."
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/icon-theme.cache" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor icon-theme.cache."
+
+        echo "Copying Adwaita icon theme to share/..."
+        if [ -d "${INSTALL_DIR}/share/icons/Adwaita" ]; then
+            # Copy all contents of the Adwaita theme directory recursively
+            cp -r --verbose "${INSTALL_DIR}/share/icons/Adwaita/." "${DEST_DIR}/share/icons/Adwaita/"
+        else
+            echo "Warning: Adwaita icon theme directory not found in source."
+        fi
 
         echo "Copying GTK settings file to etc/..."
         # Copy default GTK4 settings if they exist
