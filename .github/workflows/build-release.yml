@@ -64,9 +64,8 @@ jobs:
     # Step 5: Install the project into the MSYS2 prefix
     - name: Install project
       # Run ninja install inside the build directory
-      # This copies files to /mingw64/bin, /mingw64/share etc.
-      # Ignore errors here because update-desktop-database might fail but we still want to package
-      run: ninja -C build install || echo "Ninja install reported errors, proceeding with packaging anyway."
+      # Let the workflow fail if installation fails
+      run: ninja -C build install
 
     # Step 6: Prepare the artifact directory for distribution
     - name: Prepare artifact directory
