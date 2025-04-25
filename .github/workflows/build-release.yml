@@ -136,16 +136,26 @@ jobs:
         echo "--- Pipeline finished. ---"
       id: deps
 
-    # Step 7: Prepare artifact directory (Consolidated Copies)
+    # Step 7: Prepare artifact directory (Copying Structure + Regenerating Icon Cache)
     - name: Prepare artifact directory
       run: |
-        INSTALL_DIR="/mingw64"        # Where ninja install put the files
-        DEST_DIR="artifact"           # Directory to gather files for the artifact
-        DLL_LIST_FILE="dll_list.txt"  # From step 6
+        INSTALL_DIR="/mingw64"
+        DEST_DIR="artifact"
+        DLL_LIST_FILE="dll_list.txt" # From step 6
 
         echo "Creating destination directories..."
         mkdir -p "${DEST_DIR}/bin"
-        # Top-level lib, share, etc dirs will be created by cp -r as needed
+        mkdir -p "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" # Standard pixbuf loader path
+        mkdir -p "${DEST_DIR}/etc/gtk-4.0"                       # Standard GTK settings path
+        mkdir -p "${DEST_DIR}/share/icons/hicolor"                # Base hicolor dir
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps" # Standard icon paths
+        mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
+        mkdir -p "${DEST_DIR}/share/icons/Adwaita"                # Adwaita theme dir
+        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"           # Standard GSettings path
+        mkdir -p "${DEST_DIR}/share/locale"                     # Standard locale path
+        mkdir -p "${DEST_DIR}/share/metainfo"
+        mkdir -p "${DEST_DIR}/share/applications"
+        mkdir -p "${DEST_DIR}/share/dbus-1/services"
 
         echo "Copying main executable..."
         cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
@@ -177,66 +187,79 @@ jobs:
           find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -vt "${DEST_DIR}/bin/" {} + || echo "Info: Explicit DLL ${lib}*.dll not found."
         done
 
-        # --- Consolidated Copying of lib/share/etc subdirectories ---
-        echo "Recursively copying essential lib/share/etc directories..."
-
-        # Copy GDK Pixbuf library files (loaders, cache are inside)
-        if [ -d "${INSTALL_DIR}/lib/gdk-pixbuf-2.0" ]; then
-          mkdir -p "${DEST_DIR}/lib" # Ensure base lib dir exists
-          cp -r --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0" "${DEST_DIR}/lib/"
+        # --- Copy GDK Pixbuf loaders and cache to lib ---
+        echo "Copying GDK Pixbuf loaders to lib/..."
+        if [ -d "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
+           # Copy the DLLs into the loaders subdir
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"*.dll "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders/"
         else
-          echo "Warning: Source directory ${INSTALL_DIR}/lib/gdk-pixbuf-2.0 not found."
+           echo "Warning: Pixbuf loaders source directory not found."
+        fi
+        echo "Copying GDK Pixbuf loaders cache to lib/..."
+        if [ -f "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" ]; then
+           # Copy the cache file into the parent directory of loaders
+           cp --verbose "${INSTALL_DIR}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "${DEST_DIR}/lib/gdk-pixbuf-2.0/2.10.0/"
+        else
+           echo "Warning: loaders.cache not found. Pixbuf might not find loaders."
         fi
 
-        # Copy GSettings schemas (compiled + source are inside)
-        if [ -d "${INSTALL_DIR}/share/glib-2.0" ]; then
-          mkdir -p "${DEST_DIR}/share" # Ensure base share dir exists
-          cp -r --verbose "${INSTALL_DIR}/share/glib-2.0" "${DEST_DIR}/share/"
+        # --- Copy GTK / Icon Theme / GSettings files to share and etc ---
+        echo "Copying compiled GSettings schemas to share/..."
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/gschemas.compiled" "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "ERROR: gschemas.compiled not found!"
+        cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema source xml not found."
+
+        echo "Copying Hicolor icon theme index to share/..."
+        # Copy index, but NOT the cache - we regenerate it below
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/index.theme" "${DEST_DIR}/share/icons/hicolor/" 2>/dev/null || echo "Warning: Failed to copy hicolor index.theme."
+
+        echo "Copying Adwaita icon theme to share/..."
+        if [ -d "${INSTALL_DIR}/share/icons/Adwaita" ]; then
+            # Copy all contents of the Adwaita theme directory recursively
+            cp -r --verbose "${INSTALL_DIR}/share/icons/Adwaita/." "${DEST_DIR}/share/icons/Adwaita/"
         else
-          echo "Warning: Source directory ${INSTALL_DIR}/share/glib-2.0 not found."
+            echo "Warning: Adwaita icon theme directory not found in source."
         fi
 
-        # Copy ALL icon themes (hicolor, Adwaita, app-specific are inside)
-        if [ -d "${INSTALL_DIR}/share/icons" ]; then
-          mkdir -p "${DEST_DIR}/share"
-          cp -r --verbose "${INSTALL_DIR}/share/icons" "${DEST_DIR}/share/"
+        echo "Copying GTK settings file to etc/..."
+        if [ -f "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" ]; then
+            cp --verbose "${INSTALL_DIR}/etc/gtk-4.0/settings.ini" "${DEST_DIR}/etc/gtk-4.0/"
         else
-          echo "Warning: Source directory ${INSTALL_DIR}/share/icons not found."
+            echo "Warning: Default ${INSTALL_DIR}/etc/gtk-4.0/settings.ini not found."
         fi
 
-        # Copy ALL locale data
-        if [ -d "${INSTALL_DIR}/share/locale" ]; then
-          mkdir -p "${DEST_DIR}/share"
-          cp -r --verbose "${INSTALL_DIR}/share/locale" "${DEST_DIR}/share/"
-        else
-          echo "Warning: Source directory ${INSTALL_DIR}/share/locale not found."
-        fi
-
-        # Copy GTK settings directory
-        if [ -d "${INSTALL_DIR}/etc/gtk-4.0" ]; then
-          mkdir -p "${DEST_DIR}/etc" # Ensure base etc dir exists
-          cp -r --verbose "${INSTALL_DIR}/etc/gtk-4.0" "${DEST_DIR}/etc/"
-        else
-          echo "Warning: Source directory ${INSTALL_DIR}/etc/gtk-4.0 not found."
-        fi
-
-        # Copy other specific application data directories if needed (example)
-        # if [ -d "${INSTALL_DIR}/share/my-app-data" ]; then
-        #    mkdir -p "${DEST_DIR}/share"
-        #    cp -r --verbose "${INSTALL_DIR}/share/my-app-data" "${DEST_DIR}/share/"
-        # fi
-
-        # Copy specific remaining files if not covered by directory copies
-        # (Metainfo, Desktop, Service files are usually needed individually for installers/system integration,
-        # but for a simple zip package, having them inside the copied share/ folder might be sufficient)
-        echo "Copying specific metadata files (metainfo, desktop, service)..."
-        mkdir -p "${DEST_DIR}/share/metainfo"
+        # --- Copying other application data files to share ---
+        echo "Copying other application data files to share/..."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: App Scalable icon not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: App Symbolic icon not found."
         cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
-        mkdir -p "${DEST_DIR}/share/applications"
         cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
-        mkdir -p "${DEST_DIR}/share/dbus-1/services"
         cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
 
+        echo "Copying locale files to share/..."
+        if [ -d "${INSTALL_DIR}/share/locale" ]; then
+          for langdir in "${INSTALL_DIR}"/share/locale/*; do
+            lang=$(basename "$langdir")
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
+              if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
+                mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
+                cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
+              fi
+            fi
+          done
+        fi
+
+        # --- Regenerate Hicolor icon cache INSIDE artifact ---
+        echo "Regenerating Hicolor icon cache in artifact..."
+        # Use the gtk4-update-icon-cache tool from the build environment (should be in PATH)
+        # targeting the artifact's hicolor directory. The -f/--force and -t/--ignore-theme-index flags are common.
+        if [ -f /mingw64/bin/gtk4-update-icon-cache.exe ]; then
+           echo "Running: gtk4-update-icon-cache.exe -f -t \"${DEST_DIR}/share/icons/hicolor\""
+           /mingw64/bin/gtk4-update-icon-cache.exe -f -t "${DEST_DIR}/share/icons/hicolor" || echo "Warning: gtk4-update-icon-cache command failed."
+        else
+           echo "Error: gtk4-update-icon-cache.exe not found in /mingw64/bin. Cannot regenerate cache."
+           # exit 1 # Optionally fail the build if cache generation is critical
+        fi
+        # --- End cache regeneration ---
 
         echo "--- Finished preparing artifact directory ---"
 
