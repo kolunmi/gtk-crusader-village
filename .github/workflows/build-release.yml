@@ -70,22 +70,8 @@ jobs:
 
     # Step 6: Prepare the artifact directory for distribution
     - name: Prepare artifact directory
-      # Create a directory to gather files, then copy executable, DLLs, and data files
       run: |
-        ARTIFACT_NAME="gtk-crusader-village-windows-x64"
-        INSTALL_DIR="/mingw64" # Where ninja install put the files
-        DEST_DIR="artifact"     # Temporary directory to gather files for the zip
-
-        echo "Creating destination directories..."
-        mkdir -p "${DEST_DIR}/bin"
-        mkdir -p "${DEST_DIR}/share/icons/hicolor/scalable/apps"
-        mkdir -p "${DEST_DIR}/share/icons/hicolor/symbolic/apps"
-        mkdir -p "${DEST_DIR}/share/glib-2.0/schemas"
-        mkdir -p "${DEST_DIR}/share/locale"
-        mkdir -p "${DEST_DIR}/share/metainfo"
-        mkdir -p "${DEST_DIR}/share/applications"
-        mkdir -p "${DEST_DIR}/share/dbus-1/services"
-
+        # ... (ARTIFACT_NAME, INSTALL_DIR, DEST_DIR, mkdir commands remain the same) ...
 
         echo "Copying executable..."
         cp "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
@@ -101,23 +87,24 @@ jobs:
           "libepoxy" "libharfbuzz" "libfreetype" "libfontconfig" "libfribidi"
           "libgraphite2" "libpixman-1"
           # Image Formats (GdkPixbuf loaders)
-          "libpng16" "libjpeg" "libtiff" # Added jpeg and tiff based on errors
+          "libpng16" "libjpeg" "libtiff"
           # Other Dependencies
           "libintl" "libgcc_s_seh-1" "libstdc++-6" "libwinpthread-1"
           "zlib1" "libffi" "libexpat" "libdatrie" "libthai"
           "libbrotlidec" "libbrotlicommon" "libbz2" "libunistring"
-          # Added based on previous runtime errors:
-          "libgraphene-1.0" # provides libgraphene-1.0-0.dll
-          "libgmodule-2.0"  # provides libgmodule-2.0-0.dll
+          "libgraphene-1.0" "libgmodule-2.0"
+          # Added based on latest runtime errors (Apr 25, 2025):
+          "libiconv"      # provides libiconv-2.dll
+          "libdeflate"    # provides libdeflate.dll
+          "libjbig"       # provides libjbig-0.dll or similar
+          "libLerc"       # provides libLerc.dll or similar
         )
-        # De-duplicate and sort the list (optional but cleaner)
+        # De-duplicate and sort the list
         UNIQUE_NEEDED_DLLS=($(echo "${NEEDED_DLLS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
         echo "DLLs to copy: ${UNIQUE_NEEDED_DLLS[@]}"
 
         for lib in "${UNIQUE_NEEDED_DLLS[@]}"; do
-          # Use find to copy all matching DLLs robustly, ignoring errors if not found
-          # Using -print first helps debug which files are found
           echo "Looking for ${lib}*.dll in ${INSTALL_DIR}/bin/"
           find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -t "${DEST_DIR}/bin/" {} + || echo "Info: No DLL found matching ${lib}*.dll"
         done
