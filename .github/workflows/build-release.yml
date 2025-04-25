@@ -42,7 +42,7 @@ jobs:
           mingw-w64-x86_64-gettext
           mingw-w64-x86_64-desktop-file-utils
           mingw-w64-x86_64-appstream
-          zip # Utility needed for packaging the artifact later
+          zip
 
     # Configure, compile, and install
     - name: Configure build
