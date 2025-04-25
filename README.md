@@ -48,37 +48,37 @@ These instructions guide you through building the project natively on Windows us
 **3. Update MSYS2 & Install Build Dependencies:**
     This step ensures your MSYS2 environment is up-to-date and installs all the tools and libraries needed to compile the project. It can optionally also set up the `sourcehold-maps` Python dependency. Choose one option:
 
-    * **Option A (Manual Steps):**
-        1.  Open the **"MSYS2 MSYS"** shell from the Start Menu.
-        2.  Update the core packages (run twice, closing the shell in between if prompted):
-            ```
-            pacman -Syu
-            ```
-            ```
-            pacman -Su
-            ```
-        3.  **Close** the "MSYS2 MSYS" shell.
-        4.  Open the **"MSYS2 MinGW x64"** shell from the Start Menu. **Use this shell for all build commands.**
-        5.  Install the build dependencies using `pacman`:
-            ```
-            pacman -S --needed --noconfirm git mingw-w64-x86_64-toolchain mingw-w64-x86_64-meson mingw-w64-x86_64-ninja mingw-w64-x86_64-python mingw-w64-x86_64-pkgconf mingw-w64-x86_64-gtk4 mingw-w64-x86_64-libadwaita mingw-w64-x86_64-json-glib mingw-w64-x86_64-gettext mingw-w64-x86_64-desktop-file-utils mingw-w64-x86_64-appstream
-            ```
-            *(You can remove `--noconfirm` if you prefer to confirm each package group)*
+* **Option A (Manual Steps):**
+    1.  Open the **"MSYS2 MSYS"** shell from the Start Menu.
+    2.  Update the core packages (run twice, closing the shell in between if prompted):
+        ```
+        pacman -Syu
+        ```
+        ```
+        pacman -Su
+        ```
+    3.  **Close** the "MSYS2 MSYS" shell.
+    4.  Open the **"MSYS2 MinGW x64"** shell from the Start Menu. **Use this shell for all build commands.**
+    5.  Install the build dependencies using `pacman`:
+        ```
+        pacman -S --needed --noconfirm git mingw-w64-x86_64-toolchain mingw-w64-x86_64-meson mingw-w64-x86_64-ninja mingw-w64-x86_64-python mingw-w64-x86_64-pkgconf mingw-w64-x86_64-gtk4 mingw-w64-x86_64-libadwaita mingw-w64-x86_64-json-glib mingw-w64-x86_64-gettext mingw-w64-x86_64-desktop-file-utils mingw-w64-x86_64-appstream
+        ```
+        *(You can remove `--noconfirm` if you prefer to confirm each package group)*
 
-    * **Option B (Helper Script):**
-        1.  Make sure you have completed Step 1 (Install MSYS2 to `C:\msys64`) and Step 2 (Clone Repository).
-        2.  Locate the `setup_msys2_deps.bat` script in the root directory of this repository.
-        3.  Double-click the `setup_msys2_deps.bat` script or run it from a standard Windows Command Prompt (cmd.exe) or PowerShell while inside the repository's root directory:
-            ```batch
-            setup_msys2_deps.bat
-            ```
-        4.  This script will automatically launch the MSYS2 shell in a new window and attempt to:
-            * Run the necessary `pacman` update and C/GTK dependency installation commands (equivalent to Option A).
-            * Clone the `sourcehold-maps` repository into the parent directory (next to this project's directory).
-            * Install `sourcehold-maps` from source using `pip` into the MSYS2 MinGW Python environment.
-        5.  Monitor the MSYS2 window for progress and any potential errors or prompts.
-        6.  If the script runs successfully, it **replaces the manual `pacman` commands** (Option A) **AND attempts the source install for `sourcehold-maps`**. The MSYS2 shell window opened by the script can then be used for the subsequent build steps (Step 4 onwards).
-        7.  **Note:** If using this script, proceed to Step 4 for building the C project. For the runtime Python configuration (see below), you **must** configure the application to use the MSYS2 MinGW Python path: `C:\msys64\mingw64\bin\python.exe`.
+* **Option B (Helper Script):**
+    1.  Make sure you have completed Step 1 (Install MSYS2 to `C:\msys64`) and Step 2 (Clone Repository).
+    2.  Locate the `setup_msys2_deps.bat` script in the root directory of this repository.
+    3.  Double-click the `setup_msys2_deps.bat` script or run it from a standard Windows Command Prompt (cmd.exe) or PowerShell while inside the repository's root directory:
+        ```batch
+        setup_msys2_deps.bat
+        ```
+    4.  This script will automatically launch the MSYS2 shell in a new window and attempt to:
+        * Run the necessary `pacman` update and C/GTK dependency installation commands (equivalent to Option A).
+        * Clone the `sourcehold-maps` repository into the parent directory (next to this project's directory).
+        * Install `sourcehold-maps` from source using `pip` into the MSYS2 MinGW Python environment.
+    5.  Monitor the MSYS2 window for progress and any potential errors or prompts.
+    6.  If the script runs successfully, it **replaces the manual `pacman` commands** (Option A) **AND attempts the source install for `sourcehold-maps`**. The MSYS2 shell window opened by the script can then be used for the subsequent build steps (Step 4 onwards).
+    7.  **Note:** If using this script, proceed to Step 4 for building the C project. For the runtime Python configuration (see below), you **must** configure the application to use the MSYS2 MinGW Python path: `C:\msys64\mingw64\bin\python.exe`.
 
 **4. Configure the Build:**
     - Ensure you are in the **"MSYS2 MinGW x64"** shell, inside the project's root directory (`gtk-crusader-village`).
