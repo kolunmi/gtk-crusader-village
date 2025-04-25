@@ -1,43 +1,35 @@
 # .github/workflows/windows-build.yml
-# This workflow builds the project on Windows using MSYS2, creates a distributable artifact,
-# and uploads it to the workflow run.
+# Builds on Windows using MSYS2, automatically detects DLL dependencies using ntldd,
+# packages artifacts, and uploads.
 
 name: Build Windows Release
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push events but only for the master branch
   push:
-    branches: [ master ] # Adjust if your main branch has a different name
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
-  # Defines a single job called "build-windows" that runs on Windows
   build-windows:
-    runs-on: windows-latest # Use the latest Windows runner provided by GitHub
-
-    # Sets default shell to MSYS2 MINGW64 for all run steps in this job
+    runs-on: windows-latest
     defaults:
       run:
         shell: msys2 {0}
 
     steps:
-    # Step 1: Check out the repository code
+    # Step 1: Checkout repository
     - name: Checkout repository
       uses: actions/checkout@v4
-      # If you add git submodules later, uncomment this section:
       # with:
       #   submodules: 'recursive'
 
-    # Step 2: Set up the MSYS2 environment
+    # Step 2: Set up MSYS2 environment & Install Dependencies
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64 # Use the MinGW64 environment (for 64-bit Windows builds)
-        update: true # Update MSYS2 base packages first
-        install: >- # Install all necessary build dependencies using pacman (multi-line string)
+        msystem: MINGW64
+        update: true
+        install: >-
           git
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-meson
@@ -50,29 +42,44 @@ jobs:
           mingw-w64-x86_64-gettext
           mingw-w64-x86_64-desktop-file-utils
           mingw-w64-x86_64-appstream
-          zip
+          mingw-w64-x86_64-ntldd
 
-    # Step 3: Configure the project using Meson
+    # Step 3: Configure build
     - name: Configure build
       run: meson setup build --prefix=/mingw64 --buildtype=release
 
-    # Step 4: Compile the project using Ninja
+    # Step 4: Compile project
     - name: Compile project
-      # Run ninja inside the build directory
       run: ninja -C build
 
-    # Step 5: Install the project into the MSYS2 prefix
+    # Step 5: Install project
     - name: Install project
-      # Run ninja install inside the build directory
-      # Let the workflow fail if installation fails
+      # Let the workflow fail if installation fails (removed || echo)
       run: ninja -C build install
 
-    # Step 6: Prepare the artifact directory for distribution
+    # Step 6: Analyze Dependencies using ntldd
+    - name: Analyze Dependencies
+      run: |
+        EXE_PATH="/mingw64/bin/gtk-crusader-village.exe"
+        DLL_LIST_FILE="dll_list.txt" # File to store needed DLL paths
+
+        echo "Running ntldd on ${EXE_PATH}..."
+        # Run ntldd, resolve relative paths (-R), grep for DLLs inside the mingw64 prefix,
+        # use awk to extract the full path (usually 3rd field), sort uniquely.
+        # Filter out the exe itself and common system DLLs if necessary (though grep /mingw64/ should handle most)
+        ntldd -R "$EXE_PATH" | grep '/mingw64/bin/' | awk '{print $3}' | grep -v "$EXE_PATH" | sort -u > "$DLL_LIST_FILE"
+
+        echo "Found dependent DLLs from /mingw64/bin:"
+        cat "$DLL_LIST_FILE"
+      # Make the DLL list available to the next step
+      id: deps 
+
+    # Step 7: Prepare artifact directory using dynamic DLL list
     - name: Prepare artifact directory
       run: |
-        ARTIFACT_NAME="gtk-crusader-village-windows-x64"
-        INSTALL_DIR="/mingw64" # The *intended* install prefix within MSYS2
-        DEST_DIR="artifact"     # Directory to gather files for the artifact
+        INSTALL_DIR="/mingw64"
+        DEST_DIR="artifact"
+        DLL_LIST_FILE="dll_list.txt" # File containing needed DLL paths from previous step
 
         echo "Creating destination directories..."
         mkdir -p "${DEST_DIR}/bin"
@@ -84,58 +91,28 @@ jobs:
         mkdir -p "${DEST_DIR}/share/applications"
         mkdir -p "${DEST_DIR}/share/dbus-1/services"
 
-        # --- Start Debugging ---
-        echo "-----------------------------------------------------"
-        echo "DEBUG INFO FOR STEP 6:"
-        echo "Current directory: $(pwd)"
-        echo "INSTALL_DIR variable is set to: ${INSTALL_DIR}"
-        echo ""
-        echo "Listing contents of INSTALL_DIR (${INSTALL_DIR}/bin/) ..."
-        ls -la "${INSTALL_DIR}/bin/"
-        echo ""
-        echo "Checking existence of EXE specifically at ${INSTALL_DIR}/bin/gtk-crusader-village.exe ..."
-        ls -l "${INSTALL_DIR}/bin/gtk-crusader-village.exe" || echo "*** EXECUTABLE NOT FOUND at ${INSTALL_DIR}/bin/gtk-crusader-village.exe ***"
-        echo ""
-        echo "Listing contents of /bin/ (for comparison)..."
-        ls -la /bin/
-        echo "-----------------------------------------------------"
-        # --- End Debugging ---
-
         echo "Copying executable..."
-        # Use --verbose flag for cp to see what it's doing
         cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
 
-        echo "Copying essential DLLs..."
-        NEEDED_DLLS=(
-          # Core GTK/Adwaita/GLib
-          "libgtk-4" "libgdk-4" "libglib-2.0" "libgobject-2.0" "libgio-2.0"
-          "libadwaita-1" "libjson-glib-1.0"
-          # Rendering & Text
-          "libcairo" "libcairo-gobject" "libpango-1.0" "libpangocairo-1.0"
-          "libpangoft2-1.0" "libpangowin32-1.0" "libgdk_pixbuf-2.0"
-          "libepoxy" "libharfbuzz" "libfreetype" "libfontconfig" "libfribidi"
-          "libgraphite2" "libpixman-1"
-          # Image Formats (GdkPixbuf loaders)
-          "libpng16" "libjpeg" "libtiff"
-          # Other Dependencies
-          "libintl" "libgcc_s_seh-1" "libstdc++-6" "libwinpthread-1"
-          "zlib1" "libffi" "libexpat" "libdatrie" "libthai"
-          "libbrotlidec" "libbrotlicommon" "libbz2" "libunistring"
-          "libgraphene-1.0" "libgmodule-2.0"
-          # Added based on latest runtime errors:
-          "libiconv" "libdeflate" "libjbig" "libLerc"
-        )
-        UNIQUE_NEEDED_DLLS=($(echo "${NEEDED_DLLS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        echo "DLLs to copy: ${UNIQUE_NEEDED_DLLS[@]}"
-        for lib in "${UNIQUE_NEEDED_DLLS[@]}"; do
-          echo "Looking for ${lib}*.dll in ${INSTALL_DIR}/bin/"
-          find "${INSTALL_DIR}/bin/" -maxdepth 1 -name "${lib}*.dll" -print -exec cp -t "${DEST_DIR}/bin/" {} + || echo "Info: No DLL found matching ${lib}*.dll"
-        done
+        echo "Copying detected DLLs from ${DLL_LIST_FILE}..."
+        if [ -f "$DLL_LIST_FILE" ]; then
+          while IFS= read -r dll_path; do
+            if [ -f "$dll_path" ]; then
+              echo "Copying $dll_path"
+              cp --verbose "$dll_path" "${DEST_DIR}/bin/"
+            else
+              echo "Warning: DLL listed by ntldd not found: $dll_path"
+            fi
+          done < "$DLL_LIST_FILE"
+        else
+          echo "Warning: ${DLL_LIST_FILE} not found. Cannot copy DLLs automatically."
+        fi
 
+        # --- Copying data files (remains the same) ---
         echo "Copying data files..."
         cp --verbose "${INSTALL_DIR}/share/glib-2.0/schemas/"*.xml "${DEST_DIR}/share/glib-2.0/schemas/" 2>/dev/null || echo "Warning: gschema files not found."
         cp --verbose "${INSTALL_DIR}/share/icons/hicolor/scalable/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/scalable/apps/" 2>/dev/null || echo "Warning: Scalable icon not found."
-        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon SVG not found."
+        cp --verbose "${INSTALL_DIR}/share/icons/hicolor/symbolic/apps/"*.svg "${DEST_DIR}/share/icons/hicolor/symbolic/apps/" 2>/dev/null || echo "Warning: Symbolic icon not found."
         cp --verbose "${INSTALL_DIR}/share/metainfo/"*.xml "${DEST_DIR}/share/metainfo/" 2>/dev/null || echo "Warning: metainfo file not found."
         cp --verbose "${INSTALL_DIR}/share/applications/"*.desktop "${DEST_DIR}/share/applications/" 2>/dev/null || echo "Warning: .desktop file not found."
         cp --verbose "${INSTALL_DIR}/share/dbus-1/services/"*.service "${DEST_DIR}/share/dbus-1/services/" 2>/dev/null || echo "Warning: .service file not found."
@@ -144,7 +121,7 @@ jobs:
         if [ -d "${INSTALL_DIR}/share/locale" ]; then
           for langdir in "${INSTALL_DIR}"/share/locale/*; do
             lang=$(basename "$langdir")
-            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then # Check if directory name looks like a language code
+            if [[ "$lang" =~ ^[a-z]{2}(_[A-Z]{2})?$ ]]; then
               if [ -f "$langdir/LC_MESSAGES/gtk-crusader-village.mo" ]; then
                 mkdir -p "${DEST_DIR}/share/locale/$lang/LC_MESSAGES"
                 cp "$langdir/LC_MESSAGES/gtk-crusader-village.mo" "${DEST_DIR}/share/locale/$lang/LC_MESSAGES/"
@@ -152,17 +129,14 @@ jobs:
             fi
           done
         fi
+        # --- End copying data files ---
 
-     # echo "Creating archive..."
-     # cd "${DEST_DIR}" # Change into the directory to be zipped
-     # zip -r "../${ARTIFACT_NAME}.zip" * # Zip contents recursively
-
-    # Step 7: Upload the packaged zip file as a workflow artifact
+    # Step 8: Upload the artifact (action zips the directory)
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: gtk-crusader-village-windows-x64
-        path: artifact 
+        path: artifact # Upload the contents of the 'artifact' directory
 
     # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
     # - name: Create Release
