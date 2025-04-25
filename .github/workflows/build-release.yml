@@ -57,52 +57,77 @@ jobs:
       # Let the workflow fail if installation fails (removed || echo)
       run: ninja -C build install
 
-    # Step 6: Analyze Dependencies using ntldd (with Debugging)
+    # Step 6: Analyze Dependencies using ntldd (with Pipeline Debugging)
     - name: Analyze Dependencies
       run: |
         EXE_PATH="/mingw64/bin/gtk-crusader-village.exe"
-        DLL_LIST_FILE="dll_list.txt" # File to store needed DLL paths
+        DLL_LIST_FILE="dll_list.txt"
         NTLDD_OUTPUT_FILE="ntldd_output.log"
         NTLDD_ERROR_FILE="ntldd_error.log"
+        # Intermediate files for pipeline steps
+        STEP1_OUT="pipe_step1.log"
+        STEP2_OUT="pipe_step2.log"
+        STEP3_OUT="pipe_step3.log"
+        STEP4_OUT="pipe_step4.log" # This is the final list before writing to file
 
-        echo "--- Debugging ntldd ---"
+        echo "--- Debugging ntldd & Pipeline ---"
         echo "Checking if executable exists at ${EXE_PATH}:"
-        ls -l "$EXE_PATH" || echo "*** EXECUTABLE ${EXE_PATH} not found! ***"
+        ls -l "$EXE_PATH" || { echo "*** EXECUTABLE ${EXE_PATH} not found! ***"; exit 1; } # Exit if exe missing
 
-        # Only proceed if executable seems to exist
-        if [ -f "$EXE_PATH" ]; then
-          echo "Attempting to run ntldd -R ${EXE_PATH}..."
-          # Run ntldd, capture stdout and stderr separately, capture exit code
-          ntldd -R "$EXE_PATH" > "$NTLDD_OUTPUT_FILE" 2> "$NTLDD_ERROR_FILE"
-          NTLDD_EXIT_CODE=$?
-
-          echo "ntldd exit code: ${NTLDD_EXIT_CODE}"
-          echo "--- ntldd stdout (${NTLDD_OUTPUT_FILE}): ---"
-          cat "$NTLDD_OUTPUT_FILE" || echo "  (No stdout)"
-          echo "--- End ntldd stdout ---"
-          echo "--- ntldd stderr (${NTLDD_ERROR_FILE}): ---"
-          cat "$NTLDD_ERROR_FILE" || echo "  (No stderr)"
-          echo "--- End ntldd stderr ---"
-
-          if [ ${NTLDD_EXIT_CODE} -ne 0 ]; then
-            echo "ntldd command failed. Creating empty DLL list."
-            > "$DLL_LIST_FILE" # Create empty file to avoid later errors
-            # Optionally force the workflow step to fail here if ntldd fails:
-            # exit ${NTLDD_EXIT_CODE}
-          else
-            echo "Parsing ntldd output to generate DLL list..."
-            grep '/mingw64/bin/' "$NTLDD_OUTPUT_FILE" | awk '{print $3}' | grep -v "$EXE_PATH" | sort -u > "$DLL_LIST_FILE"
-          fi
+        echo "Attempting to run ntldd -R ${EXE_PATH}..."
+        ntldd -R "$EXE_PATH" > "$NTLDD_OUTPUT_FILE" 2> "$NTLDD_ERROR_FILE"
+        NTLDD_EXIT_CODE=$?
+        echo "ntldd exit code: ${NTLDD_EXIT_CODE}"
+        # Printing stderr first in case of subtle errors
+        echo "--- ntldd stderr (${NTLDD_ERROR_FILE}): ---"; cat "$NTLDD_ERROR_FILE" || echo "  (No stderr)"; echo "--- End ntldd stderr ---"
+        # Print stdout only if command succeeded, otherwise it might be empty/irrelevant
+        if [ ${NTLDD_EXIT_CODE} -eq 0 ]; then
+          echo "--- ntldd stdout (${NTLDD_OUTPUT_FILE}): ---"; cat "$NTLDD_OUTPUT_FILE"; echo "--- End ntldd stdout ---"
         else
-           echo "Executable not found, creating empty DLL list."
-           > "$DLL_LIST_FILE"
-           # Optionally force failure if exe missing: exit 1
+          echo "ntldd command failed. Exiting."
+          exit ${NTLDD_EXIT_CODE}
         fi
 
-        echo "--- Generated list of dependent DLLs (${DLL_LIST_FILE}): ---"
+        echo "--- Pipeline Debug ---"
+
+        echo "Step 1: grep '/mingw64/bin/' ..."
+        grep '/mingw64/bin/' "$NTLDD_OUTPUT_FILE" > "$STEP1_OUT"
+        GREP1_EXIT_CODE=$?
+        echo "  grep1 exit code: ${GREP1_EXIT_CODE}"
+        # grep returns 1 if no lines match, which is not a fatal error for the pipeline
+        if [ ${GREP1_EXIT_CODE} -gt 1 ]; then echo "  grep1 failed!"; exit ${GREP1_EXIT_CODE}; fi
+        echo "  grep1 output:" ; cat "$STEP1_OUT"; echo "  --- End grep1 output ---"
+
+        echo "Step 2: awk '{print \$3}' ..." # Need to escape $ for awk within double quotes
+        awk '{print $3}' "$STEP1_OUT" > "$STEP2_OUT"
+        AWK_EXIT_CODE=$?
+        echo "  awk exit code: ${AWK_EXIT_CODE}"
+        if [ ${AWK_EXIT_CODE} -ne 0 ]; then echo "  awk failed!"; exit ${AWK_EXIT_CODE}; fi
+        echo "  awk output:"; cat "$STEP2_OUT"; echo "  --- End awk output ---"
+
+        echo "Step 3: grep -v \"$EXE_PATH\" ..." # Use double quotes for variable expansion
+        grep -v "$EXE_PATH" "$STEP2_OUT" > "$STEP3_OUT"
+        GREP2_EXIT_CODE=$?
+        echo "  grep2 exit code: ${GREP2_EXIT_CODE}"
+        # grep exits 1 if no lines selected (i.e., exe path wasn't found), which is OK
+        if [ ${GREP2_EXIT_CODE} -gt 1 ]; then echo "  grep2 failed!"; exit ${GREP2_EXIT_CODE}; fi
+        echo "  grep2 output:"; cat "$STEP3_OUT"; echo "  --- End grep2 output ---"
+
+        echo "Step 4: sort -u ..."
+        sort -u "$STEP3_OUT" > "$STEP4_OUT"
+        SORT_EXIT_CODE=$?
+        echo "  sort exit code: ${SORT_EXIT_CODE}"
+        if [ ${SORT_EXIT_CODE} -ne 0 ]; then echo "  sort failed!"; exit ${SORT_EXIT_CODE}; fi
+        echo "  sort output (final list before writing):"; cat "$STEP4_OUT"; echo "  --- End sort output ---"
+
+        # Write final list to DLL_LIST_FILE
+        mv "$STEP4_OUT" "$DLL_LIST_FILE"
+
+        echo "--- Final generated DLL list (${DLL_LIST_FILE}): ---"
         cat "$DLL_LIST_FILE" || echo "  (DLL list file empty or not found)"
         echo "--- End DLL List ---"
-      id: deps # Keep the id just in case, though next step reads file
+        echo "--- Pipeline appears successful. ---"
+      id: deps
 
     # Step 7: Prepare artifact directory using dynamic DLL list
     - name: Prepare artifact directory
