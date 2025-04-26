@@ -1,6 +1,6 @@
 # GTK Crusader Village
 
-![Image](https://github.com/user-attachments/assets/148a9cfd-46df-4bec-9023-41fd27077d5b)
+![Image](https://github.com/user-attachments/assets/456d48e5-9611-454a-92a9-f98dd68e3b63)
 
 ## What is this
 
@@ -73,7 +73,7 @@ Provides full control over the build process.
 
 ## Runtime Dependency: Python + `sourcehold-maps` Library (Manual Setup using venv)
 
-Full functionality (parsing `.map`, `.aiv` files) requires Python 3 and the `sourcehold-maps` library. This setup uses a Python **virtual environment (`venv`)** to keep dependencies isolated and is necessary if you used **Option 1 (Pre-built)** or **Option 3 (Manual Build)**.
+Full functionality (parsing `.map`, `.aiv` files) requires Python 3 and the `sourcehold-maps` library. This setup uses a Python **virtual environment (`venv`)** to keep dependencies isolated and is necessary if you used **Option 1 (Pre-built)** or **Option 2 (Manual Build)**.
 
 **Requirements:**
 
@@ -81,7 +81,7 @@ Full functionality (parsing `.map`, `.aiv` files) requires Python 3 and the `sou
 
 **Setup Steps:**
 
-1.  **Navigate to Project/Extraction Directory:** Open Windows Command Prompt or PowerShell. Change directory (`cd`) to where you extracted the pre-built application (Option 1) or cloned the repository (Option 3). For example:
+1.  **Navigate to Project/Extraction Directory:** Open Windows Command Prompt or PowerShell. Change directory (`cd`) to where you extracted the pre-built application (Option 1) or cloned the repository (Option 2). For example:
     ```
     cd C:\path\to\gtk-crusader-village-extracted-or-cloned
     ```
