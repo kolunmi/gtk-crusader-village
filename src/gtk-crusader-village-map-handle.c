@@ -438,12 +438,14 @@ gcv_map_handle_undo (GcvMapHandle *self)
                            action->pa->pdata, action->pa->len);
       g_list_store_splice (self->mirror, action->position, 0,
                            action->pa->pdata, action->pa->len);
+      self->cursor_len = action->pa->len;
       break;
     case ACTION_ADDED:
       g_list_store_splice (self->strokes, action->position,
                            action->pa->len, NULL, 0);
       g_list_store_splice (self->mirror, action->position,
                            action->pa->len, NULL, 0);
+      self->cursor_len = 1;
       break;
     default:
       g_assert_not_reached ();
@@ -457,6 +459,7 @@ gcv_map_handle_undo (GcvMapHandle *self)
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_GRID]);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR_LEN]);
 }
 
 void
@@ -479,12 +482,14 @@ gcv_map_handle_redo (GcvMapHandle *self)
                            action->pa->len, NULL, 0);
       g_list_store_splice (self->mirror, action->position,
                            action->pa->len, NULL, 0);
+      self->cursor_len = 1;
       break;
     case ACTION_ADDED:
       g_list_store_splice (self->strokes, action->position, 0,
                            action->pa->pdata, action->pa->len);
       g_list_store_splice (self->mirror, action->position, 0,
                            action->pa->pdata, action->pa->len);
+      self->cursor_len = action->pa->len;
       break;
     default:
       g_assert_not_reached ();
@@ -498,6 +503,7 @@ gcv_map_handle_redo (GcvMapHandle *self)
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_GRID]);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR_LEN]);
 }
 
 gboolean
