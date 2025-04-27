@@ -7,5 +7,9 @@
     "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
     "kind": <"building">,
     "tile-width": <9>,
-    "tile-height": <9>
+    "tile-height": <9>,
+    "tile-impassable-rect-x": <0>,
+    "tile-impassable-rect-y": <0>,
+    "tile-impassable-rect-w": <9>,
+    "tile-impassable-rect-h": <9>
 }

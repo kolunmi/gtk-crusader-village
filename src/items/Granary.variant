@@ -7,5 +7,9 @@
     "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/wood.png">,
     "kind": <"building">,
     "tile-width": <4>,
-    "tile-height": <4>
+    "tile-height": <4>,
+    "tile-impassable-rect-x": <0>,
+    "tile-impassable-rect-y": <0>,
+    "tile-impassable-rect-w": <4>,
+    "tile-impassable-rect-h": <4>
 }

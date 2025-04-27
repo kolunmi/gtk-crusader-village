@@ -7,5 +7,9 @@
     "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/dirt.png">,
     "kind": <"building">,
     "tile-width": <10>,
-    "tile-height": <10>
+    "tile-height": <10>,
+    "tile-impassable-rect-x": <0>,
+    "tile-impassable-rect-y": <0>,
+    "tile-impassable-rect-w": <10>,
+    "tile-impassable-rect-h": <10>
 }

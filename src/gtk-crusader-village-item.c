@@ -47,6 +47,10 @@ struct _GcvItem
   int         tile_height;
   int         tile_offset_x;
   int         tile_offset_y;
+  int         tile_impassable_rect_x;
+  int         tile_impassable_rect_y;
+  int         tile_impassable_rect_w;
+  int         tile_impassable_rect_h;
 
   guint tile_resource_hash;
 };
@@ -68,6 +72,10 @@ enum
   PROP_TILE_HEIGHT,
   PROP_TILE_OFFSET_X,
   PROP_TILE_OFFSET_Y,
+  PROP_TILE_IMPASSABLE_RECT_X,
+  PROP_TILE_IMPASSABLE_RECT_Y,
+  PROP_TILE_IMPASSABLE_RECT_W,
+  PROP_TILE_IMPASSABLE_RECT_H,
 
   LAST_PROP
 };
@@ -131,6 +139,18 @@ gcv_item_get_property (GObject    *object,
     case PROP_TILE_OFFSET_Y:
       g_value_set_int (value, self->tile_offset_y);
       break;
+    case PROP_TILE_IMPASSABLE_RECT_X:
+      g_value_set_int (value, self->tile_impassable_rect_x);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_Y:
+      g_value_set_int (value, self->tile_impassable_rect_y);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_W:
+      g_value_set_int (value, self->tile_impassable_rect_w);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_H:
+      g_value_set_int (value, self->tile_impassable_rect_h);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -187,6 +207,18 @@ gcv_item_set_property (GObject      *object,
       break;
     case PROP_TILE_OFFSET_Y:
       self->tile_offset_y = g_value_get_int (value);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_X:
+      self->tile_impassable_rect_x = g_value_get_int (value);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_Y:
+      self->tile_impassable_rect_y = g_value_get_int (value);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_W:
+      self->tile_impassable_rect_w = g_value_get_int (value);
+      break;
+    case PROP_TILE_IMPASSABLE_RECT_H:
+      self->tile_impassable_rect_h = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -291,6 +323,42 @@ gcv_item_class_init (GcvItemClass *klass)
           G_MININT, G_MAXINT, 0,
           G_PARAM_READWRITE);
 
+  props[PROP_TILE_IMPASSABLE_RECT_X] =
+      g_param_spec_int (
+          "tile-impassable-rect-x",
+          "Tile Impassable Rect X",
+          "If this item is a building, the x component of "
+          "impassable rect within the building's footprint",
+          0, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
+  props[PROP_TILE_IMPASSABLE_RECT_Y] =
+      g_param_spec_int (
+          "tile-impassable-rect-y",
+          "Tile Impassable Rect Y",
+          "If this item is a building, the y component of "
+          "impassable rect within the building's footprint",
+          0, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
+  props[PROP_TILE_IMPASSABLE_RECT_W] =
+      g_param_spec_int (
+          "tile-impassable-rect-w",
+          "Tile Impassable Rect Width",
+          "If this item is a building, the width component of "
+          "impassable rect within the building's footprint",
+          0, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
+  props[PROP_TILE_IMPASSABLE_RECT_H] =
+      g_param_spec_int (
+          "tile-impassable-rect-h",
+          "Tile Impassable Rect Height",
+          "If this item is a building, the height component of "
+          "impassable rect within the building's footprint",
+          0, G_MAXINT, 0,
+          G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, LAST_PROP, props);
 }
 
@@ -328,6 +396,10 @@ gcv_item_set_property_from_variant_inner (GcvItem  *self,
     case PROP_TILE_HEIGHT:
     case PROP_TILE_OFFSET_X:
     case PROP_TILE_OFFSET_Y:
+    case PROP_TILE_IMPASSABLE_RECT_X:
+    case PROP_TILE_IMPASSABLE_RECT_Y:
+    case PROP_TILE_IMPASSABLE_RECT_W:
+    case PROP_TILE_IMPASSABLE_RECT_H:
       RECEIVE_BASIC_VARIANT (int32, G_VARIANT_TYPE_INT32, variant);
       break;
     case PROP_NAME:
