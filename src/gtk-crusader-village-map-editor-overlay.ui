@@ -63,6 +63,14 @@
                 </child>
 
                 <child>
+                  <object class="GtkToggleButton" id="accessible_overlay">
+                    <property name="has-tooltip">TRUE</property>
+                    <property name="tooltip-text">Show the accessibility overlay</property>
+                    <property name="icon-name">walking-symbolic</property>
+                  </object>
+                </child>
+
+                <child>
                   <object class="GtkSeparator">
                     <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
                   </object>

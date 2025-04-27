@@ -40,6 +40,17 @@ typedef struct
   GPtrArray *pa;
 } Action;
 
+typedef struct
+{
+  grefcount             rc;
+  GcvItemStrokeInstance instance;
+  GcvItemKind           kind;
+  int                   impassable_x;
+  int                   impassable_y;
+  int                   impassable_w;
+  int                   impassable_h;
+} PathFindItem;
+
 struct _GcvMapHandle
 {
   GObject parent_instance;
@@ -97,8 +108,10 @@ ensure_cache (GcvMapHandle *self);
 static void
 add_stroke_to_cache (GcvMapHandle  *self,
                      GcvItemStroke *stroke,
+                     GHashTable    *cache,
                      int            map_width,
-                     int            map_height);
+                     int            map_height,
+                     gboolean       use_path_find_item);
 
 static inline Action *
 new_action (int        type,
@@ -107,6 +120,20 @@ new_action (int        type,
 
 static void
 destroy_action (gpointer ptr);
+
+static inline PathFindItem *
+new_path_find_item (GcvItemKind           kind,
+                    GcvItemStrokeInstance instance,
+                    int                   impassable_x,
+                    int                   impassable_y,
+                    int                   impassable_w,
+                    int                   impassable_h);
+
+static inline PathFindItem *
+ref_path_find_item (PathFindItem *self);
+
+static void
+unref_path_find_item (gpointer ptr);
 
 static void
 gcv_map_handle_dispose (GObject *object)
@@ -539,6 +566,114 @@ gcv_map_handle_clear_all (GcvMapHandle *self)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
 }
 
+guint8 *
+gcv_map_handle_get_accessibilty_mask (GcvMapHandle *self)
+{
+  guint total                 = 0;
+  int   map_width             = 0;
+  int   map_height            = 0;
+  g_autoptr (GHashTable) snap = NULL;
+  g_autoptr (GArray) stack    = NULL;
+  g_autofree guint8 *mask     = NULL;
+
+  g_return_val_if_fail (GCV_IS_MAP_HANDLE (self), NULL);
+  g_return_val_if_fail (self->map != NULL, NULL);
+
+  total = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+  g_object_get (
+      self->map,
+      "width", &map_width,
+      "height", &map_height,
+      NULL);
+
+  snap = g_hash_table_new_full (
+      g_direct_hash, g_direct_equal, NULL, unref_path_find_item);
+
+  for (guint i = 0; i < total; i++)
+    add_stroke_to_cache (
+        self,
+        g_list_model_get_item (G_LIST_MODEL (self->strokes), i),
+        snap, map_width, map_height, TRUE);
+
+  stack = g_array_new (FALSE, TRUE, sizeof (guint));
+  g_array_append_vals (
+      stack, &(guint) { (map_height / 2 + 4) * map_width + (map_width / 2 - 4) }, 1);
+
+  mask = g_malloc0_n (sizeof (*mask), map_width * map_height);
+
+  while (stack->len > 0)
+    {
+      guint    idx      = 0;
+      int      decode_x = 0;
+      int      decode_y = 0;
+      gboolean stop     = FALSE;
+
+      idx = g_array_index (stack, typeof (idx), stack->len - 1);
+      if (mask[idx] > 0)
+        {
+          /* We've already processed this tile, climb down */
+          g_array_set_size (stack, stack->len - 1);
+          continue;
+        }
+
+      decode_x = idx % map_width;
+      decode_y = idx / map_width;
+
+      if (decode_x >= map_width / 2 - 7 &&
+          decode_y >= map_height / 2 - 7 &&
+          decode_x < map_width / 2 &&
+          decode_y < map_height / 2)
+        /* say the keep is impassable */
+        stop = TRUE;
+      else
+        {
+          PathFindItem *item = NULL;
+
+          item = g_hash_table_lookup (snap, GUINT_TO_POINTER (idx));
+          if (item != NULL)
+            {
+              if (item->kind == GCV_ITEM_KIND_GATEHOUSE_NS)
+                stop = decode_y - item->instance.y != item->impassable_y + item->impassable_h / 2;
+              else if (item->kind == GCV_ITEM_KIND_GATEHOUSE_EW)
+                stop = decode_x - item->instance.x != item->impassable_x + item->impassable_w / 2;
+              else
+                stop = decode_x - item->instance.x >= item->impassable_x &&
+                       decode_y - item->instance.y >= item->impassable_y &&
+                       decode_x - item->instance.x < item->impassable_x + item->impassable_w &&
+                       decode_y - item->instance.y < item->impassable_y + item->impassable_h;
+            }
+        }
+
+      if (stop)
+        mask[idx] = 2;
+      else
+        {
+          guint vals[4] = { 0 };
+          int   n_vals  = 0;
+
+          if (decode_x + 1 < map_width &&
+              mask[decode_y * map_width + (decode_x + 1)] == 0)
+            vals[n_vals++] = decode_y * map_width + (decode_x + 1);
+          if (decode_y + 1 < map_width &&
+              mask[(decode_y + 1) * map_width + decode_x] == 0)
+            vals[n_vals++] = (decode_y + 1) * map_width + decode_x;
+          if (decode_x > 0 &&
+              mask[decode_y * map_width + (decode_x - 1)] == 0)
+            vals[n_vals++] = decode_y * map_width + (decode_x - 1);
+          if (decode_y > 0 &&
+              mask[(decode_y - 1) * map_width + decode_x] == 0)
+            vals[n_vals++] = (decode_y - 1) * map_width + decode_x;
+
+          if (n_vals > 0)
+            g_array_append_vals (stack, vals, n_vals);
+
+          mask[idx] = 1;
+        }
+    }
+
+  return g_steal_pointer (&mask);
+}
+
 static void
 ensure_cache (GcvMapHandle *self)
 {
@@ -571,7 +706,7 @@ ensure_cache (GcvMapHandle *self)
     add_stroke_to_cache (
         self,
         g_list_model_get_item (G_LIST_MODEL (self->strokes), i),
-        map_width, map_height);
+        self->cache, map_width, map_height, FALSE);
 
   self->last_append_position = G_MAXUINT;
 }
@@ -579,16 +714,20 @@ ensure_cache (GcvMapHandle *self)
 static void
 add_stroke_to_cache (GcvMapHandle  *self,
                      GcvItemStroke *stroke,
+                     GHashTable    *cache,
                      int            map_width,
-                     int            map_height)
+                     int            map_height,
+                     gboolean       use_path_find_item)
 {
   g_autoptr (GcvItem) item     = NULL;
   GcvItemKind item_kind        = GCV_ITEM_KIND_BUILDING;
   int         item_tile_width  = 0;
   int         item_tile_height = 0;
+  int         impassable_x     = 0;
+  int         impassable_y     = 0;
+  int         impassable_w     = 0;
+  int         impassable_h     = 0;
   g_autoptr (GArray) instances = NULL;
-
-  g_assert (self->cache != NULL);
 
   g_object_get (
       stroke,
@@ -609,8 +748,16 @@ add_stroke_to_cache (GcvMapHandle  *self,
       item,
       "tile-width", &item_tile_width,
       "tile-height", &item_tile_height,
+      "tile-impassable-rect-x", &impassable_x,
+      "tile-impassable-rect-y", &impassable_y,
+      "tile-impassable-rect-w", &impassable_w,
+      "tile-impassable-rect-h", &impassable_h,
       NULL);
   g_assert (item_tile_width > 0 && item_tile_height > 0);
+
+  if (use_path_find_item &&
+      (impassable_w <= 0 || impassable_h <= 0))
+    return;
 
   g_object_get (
       stroke,
@@ -619,13 +766,23 @@ add_stroke_to_cache (GcvMapHandle  *self,
 
   for (guint i = 0; i < instances->len; i++)
     {
-      GcvItemStrokeInstance *instance = NULL;
+      GcvItemStrokeInstance instance       = { 0 };
+      PathFindItem         *path_find_item = NULL;
 
-      instance = &g_array_index (instances, GcvItemStrokeInstance, i);
-      g_assert (instance->x >= 0 &&
-                instance->y >= 0 &&
-                instance->x + item_tile_width <= map_width &&
-                instance->y + item_tile_height <= map_height);
+      instance = g_array_index (instances, GcvItemStrokeInstance, i);
+      g_assert (instance.x >= 0 &&
+                instance.y >= 0 &&
+                instance.x + item_tile_width <= map_width &&
+                instance.y + item_tile_height <= map_height);
+
+      if (use_path_find_item)
+        path_find_item = new_path_find_item (
+            item_kind,
+            instance,
+            impassable_x,
+            impassable_y,
+            impassable_w,
+            impassable_h);
 
       for (int y = 0; y < item_tile_height; y++)
         {
@@ -633,10 +790,16 @@ add_stroke_to_cache (GcvMapHandle  *self,
             {
               guint idx = 0;
 
-              idx = (instance->y + y) * map_width + (instance->x + x);
-              g_hash_table_replace (self->cache, GUINT_TO_POINTER (idx), g_object_ref (item));
+              idx = (instance.y + y) * map_width + (instance.x + x);
+              g_hash_table_replace (cache, GUINT_TO_POINTER (idx),
+                                    use_path_find_item
+                                        ? (gpointer) ref_path_find_item (path_find_item)
+                                        : (gpointer) g_object_ref (item));
             }
         }
+
+      if (use_path_find_item)
+        unref_path_find_item (path_find_item);
     }
 }
 
@@ -662,4 +825,43 @@ destroy_action (gpointer ptr)
 
   g_ptr_array_unref (self->pa);
   g_free (self);
+}
+
+static inline PathFindItem *
+new_path_find_item (GcvItemKind           kind,
+                    GcvItemStrokeInstance instance,
+                    int                   impassable_x,
+                    int                   impassable_y,
+                    int                   impassable_w,
+                    int                   impassable_h)
+{
+  PathFindItem *path_find_item = NULL;
+
+  path_find_item               = g_new0 (typeof (*path_find_item), 1);
+  path_find_item->instance     = instance;
+  path_find_item->kind         = kind;
+  path_find_item->impassable_x = impassable_x;
+  path_find_item->impassable_y = impassable_y;
+  path_find_item->impassable_w = impassable_w;
+  path_find_item->impassable_h = impassable_h;
+
+  g_ref_count_init (&path_find_item->rc);
+
+  return path_find_item;
+}
+
+static inline PathFindItem *
+ref_path_find_item (PathFindItem *self)
+{
+  g_ref_count_inc (&self->rc);
+  return self;
+}
+
+static void
+unref_path_find_item (gpointer ptr)
+{
+  PathFindItem *self = ptr;
+
+  if (g_ref_count_dec (&self->rc))
+    g_free (self);
 }

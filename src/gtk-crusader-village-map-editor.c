@@ -54,6 +54,9 @@ struct _GcvMapEditor
   gboolean line_mode;
   gboolean draw_after_cursor;
 
+  gboolean show_accessibility;
+  guint8  *accessibility_mask;
+
   GHashTable     *tile_textures;
   GskRenderNode  *render_cache;
   graphene_rect_t viewport;
@@ -117,6 +120,7 @@ enum
   PROP_DRAWING,
   PROP_LINE_MODE,
   PROP_DRAW_AFTER_CURSOR,
+  PROP_SHOW_ACCESSIBILITY,
 
   LAST_NATIVE_PROP,
 
@@ -415,6 +419,7 @@ gcv_map_editor_dispose (GObject *object)
   g_clear_object (&self->bg_image_tex);
   g_clear_pointer (&self->render_cache, gsk_render_node_unref);
   g_clear_pointer (&self->brush_node, gsk_render_node_unref);
+  g_clear_pointer (&self->accessibility_mask, g_free);
 
   if (self->brush_adjustment != NULL)
     g_signal_handlers_disconnect_by_func (
@@ -463,6 +468,9 @@ gcv_map_editor_get_property (GObject    *object,
       break;
     case PROP_DRAW_AFTER_CURSOR:
       g_value_set_boolean (value, self->draw_after_cursor);
+      break;
+    case PROP_SHOW_ACCESSIBILITY:
+      g_value_set_boolean (value, self->show_accessibility);
       break;
     case PROP_HADJUSTMENT:
       g_value_set_object (value, self->hadjustment);
@@ -557,6 +565,7 @@ gcv_map_editor_set_property (GObject      *object,
 
       self->queue_center = TRUE;
       g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+      g_clear_pointer (&self->accessibility_mask, g_free);
       gtk_widget_queue_draw (GTK_WIDGET (self));
       break;
 
@@ -603,6 +612,21 @@ gcv_map_editor_set_property (GObject      *object,
           {
             self->draw_after_cursor = new_val;
             g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+            gtk_widget_queue_draw (GTK_WIDGET (self));
+          }
+      }
+      break;
+
+    case PROP_SHOW_ACCESSIBILITY:
+      {
+        gboolean new_val = FALSE;
+
+        new_val = g_value_get_boolean (value);
+        if (self->show_accessibility != new_val)
+          {
+            self->show_accessibility = new_val;
+            g_clear_pointer (&self->render_cache, gsk_render_node_unref);
+            g_clear_pointer (&self->accessibility_mask, g_free);
             gtk_widget_queue_draw (GTK_WIDGET (self));
           }
       }
@@ -755,6 +779,14 @@ gcv_map_editor_class_init (GcvMapEditorClass *klass)
           "Draw After Cursor",
           "Whether this widget draws all strokes regardless of the map handle's cursor position",
           TRUE,
+          G_PARAM_READWRITE);
+
+  props[PROP_SHOW_ACCESSIBILITY] =
+      g_param_spec_boolean (
+          "show-accessibility",
+          "Show Accessibility",
+          "Whether this widget shows whether units can reach certain tiles",
+          FALSE,
           G_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, LAST_NATIVE_PROP, props);
@@ -1378,6 +1410,30 @@ gcv_map_editor_snapshot (GtkWidget   *widget,
       layouts_node = gtk_snapshot_to_node (layouts);
       if (layouts_node != NULL)
         gtk_snapshot_append_node (regen, layouts_node);
+
+      if (editor->show_accessibility)
+        {
+          if (editor->accessibility_mask == NULL)
+            editor->accessibility_mask = gcv_map_handle_get_accessibilty_mask (editor->handle);
+
+          for (guint y = 0; y < map_tile_height; y++)
+            {
+              for (guint x = 0; x < map_tile_width; x++)
+                {
+                  guint idx = 0;
+
+                  idx = y * map_tile_width + x;
+                  gtk_snapshot_append_color (
+                      regen,
+                      editor->accessibility_mask[idx] == 1
+                          ? &(GdkRGBA) { 0.0, 1.0, 0.2, 0.5 }
+                          : &(GdkRGBA) { 1.0, 0.2, 0.0, 0.5 },
+                      &GRAPHENE_RECT_INIT (
+                          x * tile_size, y * tile_size,
+                          tile_size, tile_size));
+                }
+            }
+        }
 
       editor->render_cache = gtk_snapshot_to_node (regen);
     }
@@ -2262,6 +2318,7 @@ grid_changed (GcvMapHandle *handle,
     }
 
   g_clear_pointer (&editor->render_cache, gsk_render_node_unref);
+  g_clear_pointer (&editor->accessibility_mask, g_free);
   gtk_widget_queue_draw (GTK_WIDGET (editor));
 }
 

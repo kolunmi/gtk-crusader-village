@@ -43,4 +43,7 @@ gcv_map_handle_can_redo (GcvMapHandle *self);
 void
 gcv_map_handle_clear_all (GcvMapHandle *self);
 
+guint8 *
+gcv_map_handle_get_accessibilty_mask (GcvMapHandle *self);
+
 G_END_DECLS

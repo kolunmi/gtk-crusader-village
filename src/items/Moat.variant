@@ -6,5 +6,9 @@
     "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
     "kind": <"moat">,
     "tile-width": <1>,
-    "tile-height": <1>
+    "tile-height": <1>,
+    "tile-impassable-rect-x": <0>,
+    "tile-impassable-rect-y": <0>,
+    "tile-impassable-rect-w": <1>,
+    "tile-impassable-rect-h": <1>
 }

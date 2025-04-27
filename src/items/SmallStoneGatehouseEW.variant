@@ -5,7 +5,7 @@
     "thumbnail-resource": <"/am/kolunmi/Gcv/shc-data/SmallStoneGatehouse.png">,
     "section-icon-resource": <"/am/kolunmi/Gcv/shc-data/icons/tower.png">,
     "tile-resource": <"/am/kolunmi/Gcv/shc-data/tiles/stone.png">,
-    "kind": <"building">,
+    "kind": <"gatehouse-ew">,
     "tile-width": <5>,
     "tile-height": <5>,
     "tile-impassable-rect-x": <0>,
