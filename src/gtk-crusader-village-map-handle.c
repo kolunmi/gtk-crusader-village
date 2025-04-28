@@ -599,7 +599,7 @@ gcv_map_handle_get_accessibilty_mask (GcvMapHandle *self)
   g_array_append_vals (
       stack, &(guint) { (map_height / 2 + 4) * map_width + (map_width / 2 - 4) }, 1);
 
-  mask = g_malloc0_n (sizeof (*mask), map_width * map_height);
+  mask = g_malloc0_n (map_width * map_height, sizeof (*mask));
 
   while (stack->len > 0)
     {
@@ -672,6 +672,40 @@ gcv_map_handle_get_accessibilty_mask (GcvMapHandle *self)
     }
 
   return g_steal_pointer (&mask);
+}
+
+void
+gcv_map_handle_reorder (GcvMapHandle *self,
+                        guint         position,
+                        guint         length,
+                        guint         new_position)
+{
+  guint                      strokes_len       = 0;
+  guint                      real_new_position = 0;
+  g_autofree GcvItemStroke **read              = NULL;
+
+  g_return_if_fail (GCV_IS_MAP_HANDLE (self));
+  g_return_if_fail (self->map != NULL);
+  g_return_if_fail (length > 0);
+  g_return_if_fail (new_position < position || new_position > position + length);
+
+  strokes_len = g_list_model_get_n_items (G_LIST_MODEL (self->strokes));
+  g_return_if_fail (strokes_len > 0 && position + length <= strokes_len);
+
+  real_new_position = new_position < position ? new_position : new_position - length;
+
+  read = g_malloc0_n (length, sizeof (*read));
+  for (guint i = 0; i < length; i++)
+    read[i] = g_list_model_get_item (G_LIST_MODEL (self->strokes), position + i);
+  g_list_store_splice (self->strokes, position, length, NULL, 0);
+  g_list_store_splice (self->strokes, real_new_position, 0, (gpointer *) read, length);
+  for (guint i = 0; i < length; i++)
+    g_object_unref (read[i]);
+
+  self->cursor     = real_new_position;
+  self->cursor_len = length;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CURSOR_LEN]);
 }
 
 static void

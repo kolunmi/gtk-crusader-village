@@ -7,12 +7,10 @@
     <file>gtk/shc-dark.css</file>
     
     <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-turn-left-up-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow4-down-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/draw-line-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/edit-delete-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/pencil-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/shc.svg</file>
-    <file preprocess="xml-stripblanks">icons/scalable/actions/step-over-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/eye-not-looking-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/eye-open-negative-filled-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/walking-symbolic.svg</file>

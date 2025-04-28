@@ -29,20 +29,19 @@ struct _GcvTimelineViewItem
   GcvUtilBin parent_instance;
 
   GcvItemStroke *stroke;
-  gboolean       selected;
-  gboolean       inactive;
-  gboolean       insert_mode;
-  gboolean       drawing;
+  guint          position;
+
+  gboolean selected;
+  gboolean inactive;
+  gboolean insert_mode;
 
   /* Template widgets */
   GtkImage *invisible_indicator;
-  GtkImage *overwrite_indicator;
-  GtkImage *overwriting_indicator;
   GtkImage *insert_indicator;
-  GtkImage *inserting_indicator;
-  GtkLabel *left;
-  GtkLabel *center;
-  GtkLabel *right;
+  GtkLabel *position_label;
+  GtkLabel *left_label;
+  GtkLabel *center_label;
+  GtkLabel *right_label;
 };
 
 G_DEFINE_FINAL_TYPE (GcvTimelineViewItem, gcv_timeline_view_item, GCV_TYPE_UTIL_BIN)
@@ -52,11 +51,11 @@ enum
   PROP_0,
 
   PROP_STROKE,
+  PROP_POSITION,
 
   PROP_SELECTED,
   PROP_INACTIVE,
   PROP_INSERT_MODE,
-  PROP_DRAWING,
 
   LAST_PROP
 };
@@ -89,6 +88,9 @@ gcv_timeline_view_item_get_property (GObject    *object,
     case PROP_STROKE:
       g_value_set_object (value, self->stroke);
       break;
+    case PROP_POSITION:
+      g_value_set_uint (value, self->position);
+      break;
     case PROP_SELECTED:
       g_value_set_boolean (value, self->selected);
       break;
@@ -97,9 +99,6 @@ gcv_timeline_view_item_get_property (GObject    *object,
       break;
     case PROP_INSERT_MODE:
       g_value_set_boolean (value, self->insert_mode);
-      break;
-    case PROP_DRAWING:
-      g_value_set_boolean (value, self->drawing);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -141,30 +140,39 @@ gcv_timeline_view_item_set_property (GObject      *object,
                     "name", &name,
                     NULL);
 
-                gtk_label_set_label (self->left, name);
+                gtk_label_set_label (self->left_label, name);
               }
             else
-              gtk_label_set_label (self->left, "---");
+              gtk_label_set_label (self->left_label, "---");
 
             if (instances != NULL)
               {
                 char buf[64] = { 0 };
 
                 g_snprintf (buf, sizeof (buf), "%d", instances->len);
-                gtk_label_set_label (self->right, buf);
+                gtk_label_set_label (self->right_label, buf);
               }
             else
-              gtk_label_set_label (self->right, "---");
+              gtk_label_set_label (self->right_label, "---");
 
-            gtk_label_set_label (self->center, NULL);
+            gtk_label_set_label (self->center_label, NULL);
           }
         else
           {
-            gtk_label_set_label (self->left, NULL);
-            gtk_label_set_label (self->center, "---");
-            gtk_label_set_label (self->right, NULL);
+            gtk_label_set_label (self->left_label, NULL);
+            gtk_label_set_label (self->center_label, "---");
+            gtk_label_set_label (self->right_label, NULL);
           }
         update_indicators (self);
+      }
+      break;
+    case PROP_POSITION:
+      {
+        char buf[32] = { 0 };
+
+        self->position = g_value_get_uint (value);
+        g_snprintf (buf, sizeof (buf), "%d.", self->position);
+        gtk_label_set_label (self->position_label, buf);
       }
       break;
     case PROP_SELECTED:
@@ -177,10 +185,6 @@ gcv_timeline_view_item_set_property (GObject      *object,
       break;
     case PROP_INSERT_MODE:
       self->insert_mode = g_value_get_boolean (value);
-      update_indicators (self);
-      break;
-    case PROP_DRAWING:
-      self->drawing = g_value_get_boolean (value);
       update_indicators (self);
       break;
     default:
@@ -204,6 +208,14 @@ gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
           "Stroke",
           "The stroke this widget represents",
           GCV_TYPE_ITEM_STROKE,
+          G_PARAM_READWRITE);
+
+  props[PROP_POSITION] =
+      g_param_spec_uint (
+          "position",
+          "Position",
+          "The item's position in the list",
+          0, G_MAXUINT, 0,
           G_PARAM_READWRITE);
 
   props[PROP_SELECTED] =
@@ -230,43 +242,26 @@ gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
           FALSE,
           G_PARAM_READWRITE);
 
-  props[PROP_DRAWING] =
-      g_param_spec_boolean (
-          "drawing",
-          "Drawing",
-          "Whether to hint that the stroke's relation to its list is about to change",
-          FALSE,
-          G_PARAM_READWRITE);
-
   g_object_class_install_properties (object_class, LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-timeline-view-item.ui");
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, invisible_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwrite_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, overwriting_indicator);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, position_label);
   gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, insert_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, inserting_indicator);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, left);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, center);
-  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, right);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, left_label);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, center_label);
+  gtk_widget_class_bind_template_child (widget_class, GcvTimelineViewItem, right_label);
 }
 
 static void
 gcv_timeline_view_item_init (GcvTimelineViewItem *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-
-  gtk_label_set_label (self->left, NULL);
-  gtk_label_set_label (self->center, "---");
-  gtk_label_set_label (self->right, NULL);
 }
 
 static void
 update_indicators (GcvTimelineViewItem *self)
 {
   gtk_widget_set_visible (GTK_WIDGET (self->invisible_indicator), self->inactive);
-  gtk_widget_set_visible (GTK_WIDGET (self->overwrite_indicator), self->selected && !self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->overwriting_indicator), self->selected && self->drawing && !self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->selected && self->insert_mode);
-  gtk_widget_set_visible (GTK_WIDGET (self->inserting_indicator), self->selected && self->drawing && self->insert_mode);
+  gtk_widget_set_visible (GTK_WIDGET (self->insert_indicator), self->selected || self->insert_mode);
 }

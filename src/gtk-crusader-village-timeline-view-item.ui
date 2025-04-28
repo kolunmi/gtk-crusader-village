@@ -3,76 +3,62 @@
   <requires lib="gtk" version="4.0"/>
   <template class="GcvTimelineViewItem" parent="GcvUtilBin">
     <property name="child">
-      <object class="GtkCenterBox">
-        <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+      <object class="GtkBox">
+        <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
 
-        <property name="start-widget">
-          <object class="GtkBox">
+        <child>
+          <object class="GtkCenterBox">
             <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-            <property name="margin-top">2</property>
-            <property name="margin-bottom">2</property>
-            <child>
-              <object class="GtkImage" id="invisible_indicator">
+
+            <property name="start-widget">
+              <object class="GtkBox">
+                <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
                 <property name="margin-start">5</property>
-                <property name="margin-end">10</property>
-                <property name="visible">FALSE</property>
-                <property name="icon-name">eye-not-looking-symbolic</property>
+                <property name="margin-top">2</property>
+                <property name="margin-bottom">2</property>
+                <child>
+                  <object class="GtkImage" id="invisible_indicator">
+                    <property name="margin-end">10</property>
+                    <property name="visible">FALSE</property>
+                    <property name="icon-name">eye-not-looking-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="insert_indicator">
+                    <property name="margin-end">10</property>
+                    <property name="visible">FALSE</property>
+                    <property name="icon-name">arrow-turn-left-up-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="position_label">
+                    <style>
+                      <class name="monospace"/>
+                    </style>
+                    <property name="margin-end">10</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="left_label"/>
+                </child>
               </object>
-            </child>
-            <child>
-              <object class="GtkImage" id="overwrite_indicator">
-                <property name="margin-start">5</property>
-                <property name="margin-end">10</property>
-                <property name="visible">FALSE</property>
-                <property name="icon-name">step-over-symbolic</property>
+            </property>
+            
+            <property name="center-widget">
+              <object class="GtkLabel" id="center_label">
+                <property name="label">---</property>
               </object>
-            </child>
-            <child>
-              <object class="GtkImage" id="overwriting_indicator">
-                <style>
-                  <class name="icon-danger"/>
-                  <class name="icon-pulse"/>
-                </style>
-                <property name="margin-end">10</property>
-                <property name="visible">FALSE</property>
-                <property name="icon-name">edit-delete-symbolic</property>
+            </property>
+            
+            <property name="end-widget">
+              <object class="GtkLabel" id="right_label">
+                <property name="margin-start">10</property>
+                <property name="margin-end">15</property>
               </object>
-            </child>
-            <child>
-              <object class="GtkImage" id="insert_indicator">
-                <property name="margin-start">5</property>
-                <property name="margin-end">10</property>
-                <property name="visible">FALSE</property>
-                <property name="icon-name">arrow-turn-left-up-symbolic</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkImage" id="inserting_indicator">
-                <style>
-                  <class name="icon-move-up-down"/>
-                </style>
-                <property name="margin-end">10</property>
-                <property name="visible">FALSE</property>
-                <property name="icon-name">arrow4-down-symbolic</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel" id="left"/>
-            </child>
+            </property>
+            
           </object>
-        </property>
-        
-        <property name="center-widget">
-          <object class="GtkLabel" id="center"/>
-        </property>
-        
-        <property name="end-widget">
-          <object class="GtkLabel" id="right">
-            <property name="margin-start">10</property>
-            <property name="margin-end">15</property>
-          </object>
-        </property>
-        
+        </child>
       </object>
     </property>
   </template>

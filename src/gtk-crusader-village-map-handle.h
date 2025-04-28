@@ -46,4 +46,10 @@ gcv_map_handle_clear_all (GcvMapHandle *self);
 guint8 *
 gcv_map_handle_get_accessibilty_mask (GcvMapHandle *self);
 
+void
+gcv_map_handle_reorder (GcvMapHandle *self,
+                        guint         position,
+                        guint         length,
+                        guint         new_position);
+
 G_END_DECLS

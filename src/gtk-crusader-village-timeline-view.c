@@ -30,6 +30,7 @@ struct _GcvTimelineView
   GcvUtilBin parent_instance;
 
   GtkMultiSelection *selection;
+  GtkBitset         *selection_bitset;
   GListStore        *wrapper_store;
 
   GcvMapHandle *handle;
@@ -78,10 +79,33 @@ listitem_cursor_changed (GcvMapHandle *handle,
                          GParamSpec   *pspec,
                          GtkListItem  *list_item);
 
+static GdkContentProvider *
+listitem_drag_prepare (GtkDragSource   *source,
+                       double           x,
+                       double           y,
+                       GcvTimelineView *self);
+
 static void
-listitem_mode_hint_changed (GcvMapHandle *handle,
-                            GParamSpec   *pspec,
-                            GtkListItem  *list_item);
+listitem_drag_begin (GtkDragSource   *source,
+                     GdkDrag         *drag,
+                     GcvTimelineView *self);
+
+static gboolean
+listitem_drop (GtkDropTarget   *target,
+               const GValue    *value,
+               double           x,
+               double           y,
+               GcvTimelineView *self);
+
+static GdkDragAction
+listitem_drag_enter (GtkDropTarget *target,
+                     gdouble        x,
+                     gdouble        y,
+                     GtkListItem   *list_item);
+
+static void
+listitem_drag_leave (GtkDropTarget *target,
+                     GtkListItem   *list_item);
 
 static void
 model_changed (GListModel      *self,
@@ -132,6 +156,7 @@ gcv_timeline_view_dispose (GObject *object)
   GcvTimelineView *self = GCV_TIMELINE_VIEW (object);
 
   g_clear_object (&self->selection);
+  g_clear_pointer (&self->selection_bitset, gtk_bitset_unref);
   g_clear_object (&self->wrapper_store);
 
   if (self->model != NULL)
@@ -305,10 +330,24 @@ setup_listitem (GtkListItemFactory *factory,
                 GtkListItem        *list_item,
                 GcvTimelineView    *self)
 {
-  GcvTimelineViewItem *area_item = NULL;
+  GcvTimelineViewItem *view_item   = NULL;
+  GtkDragSource       *drag_source = NULL;
+  GtkDropTarget       *drop_target = NULL;
 
-  area_item = g_object_new (GCV_TYPE_TIMELINE_VIEW_ITEM, NULL);
-  gtk_list_item_set_child (list_item, GTK_WIDGET (area_item));
+  view_item = g_object_new (GCV_TYPE_TIMELINE_VIEW_ITEM, NULL);
+  gtk_list_item_set_child (list_item, GTK_WIDGET (view_item));
+
+  drag_source = gtk_drag_source_new ();
+  gtk_drag_source_set_actions (drag_source, GDK_ACTION_MOVE);
+  g_signal_connect (drag_source, "prepare", G_CALLBACK (listitem_drag_prepare), self);
+  g_signal_connect (drag_source, "drag-begin", G_CALLBACK (listitem_drag_begin), self);
+  gtk_widget_add_controller (GTK_WIDGET (view_item), GTK_EVENT_CONTROLLER (drag_source));
+
+  drop_target = gtk_drop_target_new (GTK_TYPE_BITSET, GDK_ACTION_MOVE);
+  g_signal_connect (drop_target, "drop", G_CALLBACK (listitem_drop), self);
+  g_signal_connect (drop_target, "enter", G_CALLBACK (listitem_drag_enter), list_item);
+  g_signal_connect (drop_target, "leave", G_CALLBACK (listitem_drag_leave), list_item);
+  gtk_widget_add_controller (GTK_WIDGET (view_item), GTK_EVENT_CONTROLLER (drop_target));
 }
 
 static void
@@ -325,7 +364,6 @@ bind_listitem (GtkListItemFactory *factory,
       GtkWidget *view_item   = NULL;
       guint      cursor      = 0;
       guint      cursor_len  = 0;
-      gboolean   insert_mode = FALSE;
       gboolean   lock_hinted = FALSE;
       guint      position    = 0;
       gboolean   inactive    = FALSE;
@@ -337,32 +375,26 @@ bind_listitem (GtkListItemFactory *factory,
           self->handle,
           "cursor", &cursor,
           "cursor-len", &cursor_len,
-          "insert-mode", &insert_mode,
           "lock-hinted", &lock_hinted,
           NULL);
 
       position = gtk_list_item_get_position (list_item);
       inactive = position >= cursor + cursor_len;
-      selected = position >= cursor &&
-                 (cursor_len == 0 || position < cursor + cursor_len);
+      selected = position == cursor;
 
       g_object_set (
           view_item,
           "stroke", stroke,
-          "insert-mode", insert_mode,
-          "drawing", lock_hinted,
+          "position", position,
           "selected", selected,
           "inactive", inactive,
+          "insert-mode", FALSE,
           NULL);
 
       g_signal_connect (self->handle, "notify::cursor",
                         G_CALLBACK (listitem_cursor_changed), list_item);
       g_signal_connect (self->handle, "notify::cursor-len",
                         G_CALLBACK (listitem_cursor_changed), list_item);
-      g_signal_connect (self->handle, "notify::insert-mode",
-                        G_CALLBACK (listitem_mode_hint_changed), list_item);
-      g_signal_connect (self->handle, "notify::lock-hinted",
-                        G_CALLBACK (listitem_mode_hint_changed), list_item);
     }
 }
 
@@ -384,16 +416,13 @@ unbind_listitem (GtkListItemFactory *factory,
       g_object_set (
           view_item,
           "stroke", NULL,
-          "insert-mode", FALSE,
-          "drawing", FALSE,
           "selected", FALSE,
           "inactive", FALSE,
+          "insert-mode", FALSE,
           NULL);
 
       g_signal_handlers_disconnect_by_func (
           self->handle, listitem_cursor_changed, list_item);
-      g_signal_handlers_disconnect_by_func (
-          self->handle, listitem_mode_hint_changed, list_item);
     }
 }
 
@@ -416,37 +445,146 @@ listitem_cursor_changed (GcvMapHandle *handle,
       NULL);
   position = gtk_list_item_get_position (list_item);
   inactive = position >= cursor + cursor_len;
-  selected = position >= cursor &&
-             (cursor_len == 0 || position < cursor + cursor_len);
+  selected = position == cursor;
 
   view_item = gtk_list_item_get_child (list_item);
   g_object_set (
       view_item,
+      "position", position,
       "selected", selected,
       "inactive", inactive,
       NULL);
 }
 
-static void
-listitem_mode_hint_changed (GcvMapHandle *handle,
-                            GParamSpec   *pspec,
-                            GtkListItem  *list_item)
+static GdkContentProvider *
+listitem_drag_prepare (GtkDragSource   *source,
+                       double           x,
+                       double           y,
+                       GcvTimelineView *self)
 {
-  gboolean   insert_mode = FALSE;
-  gboolean   lock_hinted = FALSE;
-  GtkWidget *view_item   = NULL;
+  if (self->selection_bitset == NULL)
+    {
+      gtk_drag_source_drag_cancel (source);
+      return NULL;
+    }
 
-  g_object_get (
-      handle,
-      "insert-mode", &insert_mode,
-      "lock-hinted", &lock_hinted,
-      NULL);
+  return gdk_content_provider_new_typed (
+      GTK_TYPE_BITSET, gtk_bitset_ref (self->selection_bitset));
+}
+
+static void
+listitem_drag_begin (GtkDragSource   *source,
+                     GdkDrag         *drag,
+                     GcvTimelineView *self)
+{
+  g_autoptr (GtkSnapshot) snapshot   = NULL;
+  guint   selection_min              = 0;
+  guint   selection_max              = 0;
+  char    buf[64]                    = { 0 };
+  GdkRGBA color                      = { 0 };
+  g_autoptr (PangoLayout) layout     = NULL;
+  PangoRectangle rect                = { 0 };
+  g_autoptr (GdkPaintable) paintable = NULL;
+
+  if (self->selection_bitset == NULL)
+    return;
+
+  snapshot = gtk_snapshot_new ();
+
+  selection_min = gtk_bitset_get_minimum (self->selection_bitset);
+  selection_max = gtk_bitset_get_maximum (self->selection_bitset);
+  if (selection_min == selection_max)
+    g_snprintf (buf, sizeof (buf), "Reordering Highlighted Stroke #%d", selection_min);
+  else
+    g_snprintf (buf, sizeof (buf), "Reordering Highlighted Strokes #%d to #%d", selection_min, selection_max);
+
+  gtk_widget_get_color (GTK_WIDGET (self), &color);
+
+  layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), buf);
+  pango_layout_get_extents (layout, NULL, &rect);
+
+  gtk_snapshot_append_color (
+      snapshot,
+      &(GdkRGBA) {
+          .red   = 1.0 - color.red,
+          .blue  = 1.0 - color.blue,
+          .green = 1.0 - color.green,
+          .alpha = 1.0,
+      },
+      &GRAPHENE_RECT_INIT (
+          PANGO_PIXELS (rect.x),
+          PANGO_PIXELS (rect.y),
+          PANGO_PIXELS (rect.width),
+          PANGO_PIXELS (rect.height)));
+  gtk_snapshot_append_layout (snapshot, layout, &color);
+
+  paintable = gtk_snapshot_free_to_paintable (g_steal_pointer (&snapshot), NULL);
+  gtk_drag_source_set_icon (source, paintable, 0, 0);
+}
+
+static gboolean
+listitem_drop (GtkDropTarget   *target,
+               const GValue    *value,
+               double           x,
+               double           y,
+               GcvTimelineView *self)
+{
+  if (G_VALUE_HOLDS (value, GTK_TYPE_BITSET))
+    {
+      GtkWidget *view_item         = NULL;
+      guint      position          = 0;
+      g_autoptr (GtkBitset) bitset = NULL;
+      guint min                    = 0;
+      guint max                    = 0;
+
+      view_item = gtk_event_controller_get_widget (
+          GTK_EVENT_CONTROLLER (target));
+      g_object_get (
+          view_item,
+          "position", &position,
+          NULL);
+
+      bitset = g_value_get_boxed (value);
+      min    = gtk_bitset_get_minimum (bitset);
+      max    = gtk_bitset_get_maximum (bitset);
+
+      if (position >= min && position <= max)
+        return FALSE;
+
+      gcv_map_handle_reorder (self->handle, min, max - min + 1, position);
+      return TRUE;
+    }
+  else
+    return FALSE;
+}
+
+static GdkDragAction
+listitem_drag_enter (GtkDropTarget *target,
+                     gdouble        x,
+                     gdouble        y,
+                     GtkListItem   *list_item)
+{
+  GtkWidget *view_item = NULL;
 
   view_item = gtk_list_item_get_child (list_item);
   g_object_set (
       view_item,
-      "insert-mode", insert_mode,
-      "drawing", lock_hinted,
+      "insert-mode", TRUE,
+      NULL);
+
+  return GDK_ACTION_MOVE;
+}
+
+static void
+listitem_drag_leave (GtkDropTarget *target,
+                     GtkListItem   *list_item)
+{
+  GtkWidget *view_item = NULL;
+
+  view_item = gtk_list_item_get_child (list_item);
+  g_object_set (
+      view_item,
+      "insert-mode", FALSE,
       NULL);
 }
 
@@ -467,21 +605,28 @@ selection_changed (GtkSelectionModel *self,
                    guint              n_items,
                    GcvTimelineView   *timeline_view)
 {
-  g_autoptr (GtkBitset) selected = NULL;
-  guint min                      = 0;
-  guint max                      = 0;
+  guint min = 0;
+  guint max = 0;
 
-  selected = gtk_selection_model_get_selection (
+  g_clear_pointer (&timeline_view->selection_bitset, gtk_bitset_unref);
+  timeline_view->selection_bitset = gtk_selection_model_get_selection (
       GTK_SELECTION_MODEL (timeline_view->selection));
 
-  min = gtk_bitset_get_minimum (selected);
-  max = gtk_bitset_get_maximum (selected);
+  min = gtk_bitset_get_minimum (timeline_view->selection_bitset);
+  max = gtk_bitset_get_maximum (timeline_view->selection_bitset);
 
   g_object_set (
       timeline_view->handle,
       "cursor", min,
       "cursor-len", max - min + 1,
       NULL);
+
+  g_signal_handlers_block_by_func (
+      timeline_view->selection, selection_changed, timeline_view);
+  gtk_selection_model_select_range (
+      GTK_SELECTION_MODEL (timeline_view->selection), min, max - min + 1, TRUE);
+  g_signal_handlers_unblock_by_func (
+      timeline_view->selection, selection_changed, timeline_view);
 
   update_ui (timeline_view);
 }
