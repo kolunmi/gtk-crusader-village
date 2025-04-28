@@ -168,11 +168,17 @@ gcv_timeline_view_item_set_property (GObject      *object,
       break;
     case PROP_POSITION:
       {
-        char buf[32] = { 0 };
-
         self->position = g_value_get_uint (value);
-        g_snprintf (buf, sizeof (buf), "%d.", self->position);
-        gtk_label_set_label (self->position_label, buf);
+
+        if (self->position == G_MAXUINT)
+          gtk_label_set_label (self->position_label, NULL);
+        else
+          {
+            char buf[32] = { 0 };
+
+            g_snprintf (buf, sizeof (buf), "%d.", self->position);
+            gtk_label_set_label (self->position_label, buf);
+          }
       }
       break;
     case PROP_SELECTED:
@@ -215,7 +221,7 @@ gcv_timeline_view_item_class_init (GcvTimelineViewItemClass *klass)
           "position",
           "Position",
           "The item's position in the list",
-          0, G_MAXUINT, 0,
+          0, G_MAXUINT, G_MAXUINT,
           G_PARAM_READWRITE);
 
   props[PROP_SELECTED] =
@@ -257,6 +263,7 @@ static void
 gcv_timeline_view_item_init (GcvTimelineViewItem *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+  self->position = G_MAXUINT;
 }
 
 static void

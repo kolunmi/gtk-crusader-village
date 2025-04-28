@@ -416,6 +416,7 @@ unbind_listitem (GtkListItemFactory *factory,
       g_object_set (
           view_item,
           "stroke", NULL,
+          "position", G_MAXUINT,
           "selected", FALSE,
           "inactive", FALSE,
           "insert-mode", FALSE,
@@ -543,6 +544,8 @@ listitem_drop (GtkDropTarget   *target,
           view_item,
           "position", &position,
           NULL);
+      if (position == G_MAXUINT)
+        position = g_list_model_get_n_items (self->model);
 
       bitset = g_value_get_boxed (value);
       min    = gtk_bitset_get_minimum (bitset);
@@ -683,11 +686,9 @@ cursor_changed (GcvMapHandle    *handle,
 
   g_signal_handlers_block_by_func (
       timeline_view->selection, selection_changed, timeline_view);
-
   gtk_selection_model_select_range (
       GTK_SELECTION_MODEL (timeline_view->selection), cursor, cursor_len, TRUE);
   gtk_list_view_scroll_to (timeline_view->list_view, cursor, GTK_LIST_SCROLL_NONE, NULL);
-
   g_signal_handlers_unblock_by_func (
       timeline_view->selection, selection_changed, timeline_view);
 
