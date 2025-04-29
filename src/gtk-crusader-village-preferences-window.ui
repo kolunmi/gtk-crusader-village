@@ -28,9 +28,20 @@
               </object>
             </property>
             <property name="end-widget">
-              <object class="GtkEntry" id="python_install">
+              <object class="GtkBox">
                 <property name="margin-start">20</property>
-                <property name="width-request">150</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkEntry" id="python_install">
+                    <property name="margin-start">20</property>
+                    <property name="width-request">150</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="python_reset">
+                    <property name="label">Default</property>
+                  </object>
+                </child>
               </object>
             </property>
           </object>

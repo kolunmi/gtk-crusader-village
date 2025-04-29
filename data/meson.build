@@ -24,7 +24,17 @@ appstreamcli = find_program('appstreamcli', required: false, disabler: true)
 test('Validate appstream file', appstreamcli,
      args: ['validate', '--no-net', '--explain', appstream_file])
 
-install_data('am.kolunmi.GtkCrusaderVillage.gschema.xml',
+
+
+
+
+
+gschema_conf = configuration_data()
+gschema_conf.set('python', python_install_dir / 'sourcehold-python-venv' / 'bin' / python_exe_name)
+configure_file(
+  input: 'am.kolunmi.GtkCrusaderVillage.gschema.xml.in',
+  output: 'am.kolunmi.GtkCrusaderVillage.gschema.xml',
+  configuration: gschema_conf,
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas'
 )
 
@@ -32,6 +42,9 @@ compile_schemas = find_program('glib-compile-schemas', required: false, disabler
 test('Validate schema file',
      compile_schemas,
      args: ['--strict', '--dry-run', meson.current_source_dir()])
+
+
+
 
 
 service_conf = configuration_data()

@@ -2,7 +2,7 @@
 <schemalist>
   <schema id="am.kolunmi.GtkCrusaderVillage" path="/am/kolunmi/GtkCrusaderVillage/" gettext-domain="gtk-crusader-village">
     <key name="sourcehold-python-installation" type="s">
-      <default>""</default>
+      <default>"@python@"</default>
       <summary>Sourcehold Python Installation</summary>
       <description>The location of the python executable whose installation includes the sourcehold module</description>
     </key>

@@ -49,6 +49,7 @@ struct _GcvPreferencesWindow
 
   /* Template widgets */
   GtkEntry    *python_install;
+  GtkButton   *python_reset;
   GtkDropDown *theme;
   GtkSwitch   *show_grid;
   GtkSwitch   *show_gradient;
@@ -89,6 +90,10 @@ background_button_clicked (GtkButton            *self,
 static void
 background_clear_clicked (GtkButton            *self,
                           GcvPreferencesWindow *window);
+
+static void
+python_reset_clicked (GtkButton            *self,
+                      GcvPreferencesWindow *window);
 
 static void
 image_dialog_finish_cb (GObject      *source_object,
@@ -206,6 +211,7 @@ gcv_preferences_window_class_init (GcvPreferencesWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_gradient);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_cursor_glow);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_install);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_reset);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_label);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_button);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_clear);
@@ -228,6 +234,8 @@ gcv_preferences_window_init (GcvPreferencesWindow *self)
   g_signal_connect (self->python_install, "notify::text",
                     G_CALLBACK (ui_changed), self);
 
+  g_signal_connect (self->python_reset, "clicked",
+                    G_CALLBACK (python_reset_clicked), self);
   g_signal_connect (self->background_button, "clicked",
                     G_CALLBACK (background_button_clicked), self);
   g_signal_connect (self->background_clear, "clicked",
@@ -299,6 +307,13 @@ background_clear_clicked (GtkButton            *self,
                           GcvPreferencesWindow *window)
 {
   g_settings_set_string (window->settings, KEY_BACKGROUND_IMAGE, "");
+}
+
+static void
+python_reset_clicked (GtkButton            *self,
+                      GcvPreferencesWindow *window)
+{
+  g_settings_reset (window->settings, KEY_PYTHON_INSTALL);
 }
 
 static void

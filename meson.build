@@ -1,7 +1,7 @@
 project('gtk-crusader-village', 'c',
           version: '0.1.0',
     meson_version: '>= 1.0.0',
-  default_options: [ 'warning_level=2', 'werror=false', 'c_std=gnu11', ],
+  default_options: [ 'warning_level=2', 'werror=false', 'c_std=gnu11' ],
 )
 
 i18n = import('i18n')
@@ -86,9 +86,39 @@ foreach arg: test_c_args
 endforeach
 add_project_arguments(project_c_args, language: 'c')
 
+
+# for sourcehold dep, make sure the the git submodule is initialized
+python_exe_name = 'python'
+if host_machine.system() == 'windows'
+  python_exe_name += '.exe'
+endif
+python_install = find_program(python_exe_name)
+
+sourcehold_script = find_program('make-sourcehold-venv.sh')
+python_install_dir = get_option('prefix') / get_option('sharedstatedir')
+
+sourcehold = custom_target(
+  'sourcehold',
+  output : ['sourcehold-python-venv'],
+  command : [
+    sourcehold_script,
+    python_install,
+    '@BUILD_ROOT@',
+    '@SOURCE_ROOT@',
+    '@PRIVATE_DIR@',
+    '@OUTPUT@'
+  ],
+  install: true,
+  install_dir: python_install_dir,
+)
+
+
+
 subdir('data')
 subdir('src')
 subdir('po')
+
+
 
 gnome.post_install(
      glib_compile_schemas: true,

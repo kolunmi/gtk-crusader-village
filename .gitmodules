@@ -1,0 +1,3 @@
+[submodule "sourcehold-maps"]
+	path = sourcehold-maps
+	url = https://github.com/sourcehold/sourcehold-maps.git
