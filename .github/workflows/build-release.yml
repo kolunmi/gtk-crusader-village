@@ -163,8 +163,8 @@ jobs:
         echo "Copying gdbus executable..."
         cp --verbose "${INSTALL_DIR}/bin/gdbus.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gdbus.exe not found."
 
-        echo "Copying gspawn-win32-helper executable..."
-        cp --verbose "${INSTALL_DIR}/bin/gspawn-win32-helper.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gspawn-win32-helper.exe not found."
+        echo "Copying gspawn-win64-helper executable..."
+        cp --verbose "${INSTALL_DIR}/bin/gspawn-win64-helper.exe" "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: gspawn-win64-helper.exe not found."
 
         echo "Copying detected runtime DLLs to bin..."
         if [ -f "$DLL_LIST_FILE" ]; then
