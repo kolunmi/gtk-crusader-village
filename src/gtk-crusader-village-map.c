@@ -357,7 +357,7 @@ new_from_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
+  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
@@ -656,7 +656,7 @@ save_to_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
+  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
