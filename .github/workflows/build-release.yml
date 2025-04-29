@@ -169,6 +169,7 @@ jobs:
         mkdir -p "${DEST_DIR}/share/metainfo"
         mkdir -p "${DEST_DIR}/share/applications"
         mkdir -p "${DEST_DIR}/share/dbus-1/services"
+        mkdir -p "${DEST_DIR}/com" # Sourcehold
 
         echo "Copying main executable..."
         cp --verbose "${INSTALL_DIR}/bin/gtk-crusader-village.exe" "${DEST_DIR}/bin/"
@@ -279,6 +280,9 @@ jobs:
            # exit 1 # Optionally fail the build if cache generation is critical
         fi
         # --- End cache regeneration ---
+
+        echo "Copying Sourcehold python venv..."
+        cp -r --verbose "${INSTALL_DIR}/com/sourcehold-python-venv" "${DEST_DIR}/com/" 2>/dev/null || echo "Warning: Sourcehold python venv not found"
 
         echo "--- Finished preparing artifact directory ---"
 

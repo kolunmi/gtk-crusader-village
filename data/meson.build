@@ -30,7 +30,11 @@ test('Validate appstream file', appstreamcli,
 
 
 gschema_conf = configuration_data()
-gschema_conf.set('python', python_install_dir / 'sourcehold-python-venv' / 'bin' / python_exe_name)
+if host_machine.system() == 'windows'
+  gschema_conf.set('python', '..' / 'com' / 'sourcehold-python-venv' / 'bin' / python_exe_name)
+else
+  gschema_conf.set('python', python_install_dir / 'sourcehold-python-venv' / 'bin' / python_exe_name)
+endif
 configure_file(
   input: 'am.kolunmi.GtkCrusaderVillage.gschema.xml.in',
   output: 'am.kolunmi.GtkCrusaderVillage.gschema.xml',
