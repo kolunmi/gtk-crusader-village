@@ -39,4 +39,5 @@ gtk_crusader_village_sources += gnome.compile_resources('gtk-crusader-village-re
 executable('gtk-crusader-village', gtk_crusader_village_sources,
   dependencies: gtk_crusader_village_deps,
        install: true,
+ win_subsystem: 'windows'
 )
