@@ -15,6 +15,6 @@ echo '-------- START BUILDING SOURCEHOLD --------'
 "$OUTPUT"/bin/python -m pip -v install --upgrade pip
 "$OUTPUT"/bin/python -m pip -v install build
 "$OUTPUT"/bin/python -m build "$SOURCE_ROOT"/sourcehold-maps -v -w -o "$PRIVATE_DIR"
-"$OUTPUT"/bin/python -m pip -v install "$PRIVATE_DIR"/*.whl
+"$OUTPUT"/bin/python -m pip -v install --prefer-binary "$PRIVATE_DIR"/*.whl
 
 echo '-------- END BUILDING SOURCEHOLD --------'

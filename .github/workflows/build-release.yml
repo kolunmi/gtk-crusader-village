@@ -46,7 +46,6 @@ jobs:
           mingw-w64-x86_64-hicolor-icon-theme
           mingw-w64-x86_64-librsvg
           mingw-w64-x86_64-adwaita-icon-theme
-          zlib-devel
 
     # Step 3: Configure build
     - name: Configure build
