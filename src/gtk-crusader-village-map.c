@@ -349,7 +349,7 @@ new_from_aiv_file_async_thread (GTask        *task,
   tmp_file_path = g_file_get_path (tmp_file);
 
   sourcehold = g_subprocess_new (
-      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
+      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
       &local_error,
       data->python_exe, "-m", "sourcehold", "convert", "aiv", "--input", aiv_file_path, "--output", tmp_file_path,
       NULL);
@@ -648,7 +648,7 @@ save_to_aiv_file_async_thread (GTask        *task,
     }
 
   sourcehold = g_subprocess_new (
-      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
+      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
       &local_error,
       data->python_exe, "-m", "sourcehold", "convert", "aiv", "--input", tmp_file_path, "--output", aiv_file_path,
       NULL);
