@@ -2695,9 +2695,9 @@ background_texture_load_finish_cb (GObject      *source_object,
 
       gcv_dialog (
           "Error",
-          "Could not load background image ",
+          "Could not load background image",
           local_error->message,
-          window, NULL);
+          FALSE, window, NULL);
 
       if (editor->settings != NULL)
         g_settings_set_string (editor->settings, "background-image", "");

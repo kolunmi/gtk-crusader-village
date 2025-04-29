@@ -324,7 +324,7 @@ load_map_finish_cb (GObject      *source_object,
         "An Error Occurred",
         "Could not parse file from disk.",
         error->message,
-        window, NULL);
+        FALSE, window, NULL);
 
   g_object_set (
       window,
@@ -360,7 +360,7 @@ load_dialog_finish_cb (GObject      *source_object,
             "Cannot Proceed",
             "Sourcehold Python Installation Not Configured",
             INSTALLATION_WARNING_TEXT,
-            window, NULL);
+            FALSE, window, NULL);
     }
   else
     {
@@ -368,7 +368,7 @@ load_dialog_finish_cb (GObject      *source_object,
           "An Error Occurred",
           "Could not load file from disk.",
           local_error->message,
-          window, NULL);
+          FALSE, window, NULL);
       g_object_set (
           window,
           "busy", FALSE,
@@ -419,7 +419,7 @@ gcv_application_load (GSimpleAction *action,
         "Import Error",
         "Sourcehold Python Installation Not Configured",
         INSTALLATION_WARNING_TEXT,
-        window, NULL);
+        TRUE, window, NULL);
 }
 
 static void
@@ -440,7 +440,7 @@ save_map_finish_cb (GObject      *source_object,
         "An Error Occurred",
         "Could not save AIV to disk.",
         error->message,
-        window, NULL);
+        FALSE, window, NULL);
 
   g_object_set (
       window,
@@ -485,7 +485,7 @@ save_dialog_finish_cb (GObject      *source_object,
             "Cannot Proceed",
             "Sourcehold Python Installation Not Configured",
             INSTALLATION_WARNING_TEXT,
-            window, NULL);
+            TRUE, window, NULL);
     }
   else
     {
@@ -493,7 +493,7 @@ save_dialog_finish_cb (GObject      *source_object,
           "An Error Occurred",
           "Could not save file to disk.",
           local_error->message,
-          window, NULL);
+          FALSE, window, NULL);
       g_object_set (
           window,
           "busy", FALSE,
@@ -544,7 +544,7 @@ gcv_application_export (GSimpleAction *action,
         "Export Error",
         "Sourcehold Python Installation Not Configured",
         INSTALLATION_WARNING_TEXT,
-        window, NULL);
+        TRUE, window, NULL);
 }
 
 static void
@@ -624,7 +624,7 @@ do_greeting (GcvApplication *self)
       "Welcome",
       "Welcome",
       GREETING_TEXT,
-      window, dialog_structure);
+      TRUE, window, dialog_structure);
   g_object_set (
       dialog,
       "default-width", 650,
@@ -665,7 +665,7 @@ gcv_application_greeting_action (GSimpleAction *action,
           "Warning",
           "Sourcehold Python Installation Not Configured",
           INSTALLATION_WARNING_TEXT,
-          window, NULL);
+          TRUE, window, NULL);
       g_signal_connect (dialog, "notify::final-submission",
                         G_CALLBACK (installation_warning_submission), self);
     }
@@ -718,7 +718,7 @@ gcv_application_about_action (GSimpleAction *action,
       "About",
       "GTK Crusader Village",
       message,
-      window, NULL);
+      TRUE, window, NULL);
 }
 
 static void

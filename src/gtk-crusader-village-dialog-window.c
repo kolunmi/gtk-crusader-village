@@ -253,6 +253,7 @@ GcvDialogWindow *
 gcv_dialog (const char *title,
             const char *header,
             const char *message,
+            gboolean    use_markup,
             GtkWindow  *parent,
             GVariant   *structure)
 {
@@ -280,7 +281,14 @@ gcv_dialog (const char *title,
 
   gtk_window_set_title (GTK_WINDOW (dialog), title != NULL ? title : "Dialog");
   gtk_label_set_label (dialog->header, header);
-  gtk_label_set_markup (dialog->message, message);
+  if (use_markup)
+    gtk_label_set_markup (dialog->message, message);
+  else
+    {
+      gtk_widget_add_css_class (GTK_WIDGET (dialog->message), "monospace");
+      gtk_label_set_selectable (dialog->message, TRUE);
+      gtk_label_set_label (dialog->message, message);
+    }
   gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
   gtk_window_present (GTK_WINDOW (dialog));
 

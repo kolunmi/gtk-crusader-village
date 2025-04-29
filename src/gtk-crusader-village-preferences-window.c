@@ -324,7 +324,7 @@ image_dialog_finish_cb (GObject      *source_object,
         "An Error Occurred",
         "Could not retrieve image from disk.",
         local_error->message,
-        GTK_WINDOW (self), NULL);
+        FALSE, GTK_WINDOW (self), NULL);
 }
 
 void

@@ -32,6 +32,7 @@ GcvDialogWindow *
 gcv_dialog (const char *title,
             const char *header,
             const char *message,
+            gboolean    use_markup,
             GtkWindow  *parent,
             GVariant   *structure);
 

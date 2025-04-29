@@ -319,7 +319,7 @@ image_dialog_finish_cb (GObject      *source_object,
           "An Error Occurred",
           "Could not retrieve image mask from disk.",
           local_error->message,
-          window, NULL);
+          FALSE, window, NULL);
 
       gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
       gtk_widget_set_visible (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
@@ -355,7 +355,7 @@ load_brush_image_file_finish_cb (GObject      *source_object,
           "An Error Occurred",
           "Could not retrieve image mask from disk.",
           local_error->message,
-          window, NULL);
+          FALSE, window, NULL);
     }
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
