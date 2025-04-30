@@ -94,7 +94,7 @@ if host_machine.system() == 'windows'
 endif
 python_install = find_program(python_exe_name)
 
-sourcehold_script = find_program('make-sourcehold-venv.sh')
+sourcehold_script = find_program('make-sourcehold-install.sh')
 python_install_dir = get_option('prefix') / get_option('datadir')
 python_data_dir = 'gtk-crusader-village-python'
 
@@ -103,6 +103,7 @@ sourcehold = custom_target(
   output : [python_data_dir],
   command : [
     sourcehold_script,
+    host_machine.system(), 
     python_install,
     '@BUILD_ROOT@',
     '@SOURCE_ROOT@',

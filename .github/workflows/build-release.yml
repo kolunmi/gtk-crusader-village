@@ -23,46 +23,53 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
     # Step 2: Set up MSYS2 environment & Install Dependencies
     - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
+        msystem: UCRT64
         update: true
         install: >-
           git
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-meson
-          mingw-w64-x86_64-ninja
-          mingw-w64-x86_64-python
-          mingw-w64-x86_64-pkgconf
-          mingw-w64-x86_64-gtk4
-          mingw-w64-x86_64-libadwaita
-          mingw-w64-x86_64-json-glib
-          mingw-w64-x86_64-gettext
-          mingw-w64-x86_64-desktop-file-utils
-          mingw-w64-x86_64-appstream
-          mingw-w64-x86_64-ntldd
-          mingw-w64-x86_64-hicolor-icon-theme
-          mingw-w64-x86_64-librsvg
-          mingw-w64-x86_64-adwaita-icon-theme
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-python-pip
-          mingw-w64-x86_64-python-setuptools
-          mingw-w64-x86_64-libjpeg-turbo
-          mingw-w64-x86_64-zlib
-          mingw-w64-x86_64-libtiff
-          mingw-w64-x86_64-freetype
-          mingw-w64-x86_64-lcms2
-          mingw-w64-x86_64-libwebp
-          mingw-w64-x86_64-openjpeg2
-          mingw-w64-x86_64-libimagequant
-          mingw-w64-x86_64-libraqm
-          mingw-w64-x86_64-libavif
+          wget
+          unzip
+          python-devel
+          mingw-w64-ucrt-x86_64-toolchain
+          mingw-w64-ucrt-x86_64-meson
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-python
+          mingw-w64-ucrt-x86_64-pybind11
+          mingw-w64-ucrt-x86_64-pkgconf
+          mingw-w64-ucrt-x86_64-gtk4
+          mingw-w64-ucrt-x86_64-libadwaita
+          mingw-w64-ucrt-x86_64-json-glib
+          mingw-w64-ucrt-x86_64-gettext
+          mingw-w64-ucrt-x86_64-desktop-file-utils
+          mingw-w64-ucrt-x86_64-appstream
+          mingw-w64-ucrt-x86_64-ntldd
+          mingw-w64-ucrt-x86_64-hicolor-icon-theme
+          mingw-w64-ucrt-x86_64-librsvg
+          mingw-w64-ucrt-x86_64-adwaita-icon-theme
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-libjpeg-turbo
+          mingw-w64-ucrt-x86_64-zlib
+          mingw-w64-ucrt-x86_64-libtiff
+          mingw-w64-ucrt-x86_64-freetype
+          mingw-w64-ucrt-x86_64-lcms2
+          mingw-w64-ucrt-x86_64-libwebp
+          mingw-w64-ucrt-x86_64-openjpeg2
+          mingw-w64-ucrt-x86_64-libimagequant
+          mingw-w64-ucrt-x86_64-libraqm
+          mingw-w64-ucrt-x86_64-libavif
 
     # Step 3: Configure build
     - name: Configure build
-      run: meson setup build --prefix=/mingw64 --buildtype=release
+      run: meson setup build --prefix=/ucrt64 --buildtype=release
 
     # Step 4: Compile project
     - name: Compile project
@@ -76,7 +83,7 @@ jobs:
     # Step 6: Analyze Dependencies using ntldd (Corrected grep pattern)
     - name: Analyze Dependencies
       run: |
-        EXE_PATH="/mingw64/bin/gtk-crusader-village.exe"
+        EXE_PATH="/ucrt64/bin/gtk-crusader-village.exe"
         DLL_LIST_FILE="dll_list.txt"
         NTLDD_OUTPUT_FILE="ntldd_output.log"
         NTLDD_ERROR_FILE="ntldd_error.log"
@@ -105,9 +112,9 @@ jobs:
         echo "--- Pipeline Debug ---"
         # Use a grep pattern matching the Windows-style path seen in ntldd output
         # Need double backslashes for literal backslash in grep pattern within double quotes
-        # Using '/d/a/_temp/msys64/mingw64/bin/' might also work if ntldd normalizes sometimes
-        # Let's try matching 'mingw64\\bin\\' literally first.
-        GREP_PATTERN='mingw64\\bin\\'
+        # Using '/d/a/_temp/msys64/ucrt64/bin/' might also work if ntldd normalizes sometimes
+        # Let's try matching 'ucrt64\\bin\\' literally first.
+        GREP_PATTERN='ucrt64\\bin\\'
         echo "Step 1: grep '${GREP_PATTERN}' ..."
         grep "${GREP_PATTERN}" "$NTLDD_OUTPUT_FILE" > "$STEP1_OUT"
         GREP1_EXIT_CODE=$?
@@ -152,7 +159,7 @@ jobs:
     # Step 7: Prepare artifact directory (Copying Structure + Regenerating Icon Cache)
     - name: Prepare artifact directory
       run: |
-        INSTALL_DIR="/mingw64"
+        INSTALL_DIR="/ucrt64"
         DEST_DIR="artifact"
         DLL_LIST_FILE="dll_list.txt" # From step 6
 
@@ -271,17 +278,17 @@ jobs:
         echo "Regenerating Hicolor icon cache in artifact..."
         # Use the gtk4-update-icon-cache tool from the build environment (should be in PATH)
         # targeting the artifact's hicolor directory. The -f/--force and -t/--ignore-theme-index flags are common.
-        if [ -f /mingw64/bin/gtk4-update-icon-cache.exe ]; then
+        if [ -f /ucrt64/bin/gtk4-update-icon-cache.exe ]; then
            echo "Running: gtk4-update-icon-cache.exe -f -t \"${DEST_DIR}/share/icons/hicolor\""
-           /mingw64/bin/gtk4-update-icon-cache.exe -f -t "${DEST_DIR}/share/icons/hicolor" || echo "Warning: gtk4-update-icon-cache command failed."
+           /ucrt64/bin/gtk4-update-icon-cache.exe -f -t "${DEST_DIR}/share/icons/hicolor" || echo "Warning: gtk4-update-icon-cache command failed."
         else
-           echo "Error: gtk4-update-icon-cache.exe not found in /mingw64/bin. Cannot regenerate cache."
+           echo "Error: gtk4-update-icon-cache.exe not found in /ucrt64/bin. Cannot regenerate cache."
            # exit 1 # Optionally fail the build if cache generation is critical
         fi
         # --- End cache regeneration ---
 
         echo "Copying Sourcehold python packages..."
-        cp -r --verbose "${INSTALL_DIR}/share/gtk-crusader-village-python" "${DEST_DIR}/share/gtk-crusader-village-python" 2>/dev/null || echo "Warning: Sourcehold python packages not found"
+        cp -r --verbose "${INSTALL_DIR}/share/gtk-crusader-village-python/"* "${DEST_DIR}/bin/" 2>/dev/null || echo "Warning: Sourcehold python install not found"
 
         echo "--- Finished preparing artifact directory ---"
 
