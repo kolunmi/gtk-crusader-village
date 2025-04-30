@@ -353,8 +353,8 @@ load_dialog_finish_cb (GObject      *source_object,
 
       if (python_exe != NULL)
         gcv_map_new_from_aiv_file_async (
-            file, self->item_store, python_exe, G_PRIORITY_DEFAULT,
-            NULL, load_map_finish_cb, self);
+            file, self->item_store, "python", python_exe,
+            G_PRIORITY_DEFAULT, NULL, load_map_finish_cb, self);
       else
         gcv_dialog (
             "Cannot Proceed",
@@ -477,7 +477,7 @@ save_dialog_finish_cb (GObject      *source_object,
               NULL);
 
           gcv_map_save_to_aiv_file_async (
-              map, file, python_exe, G_PRIORITY_DEFAULT,
+              map, file, "python", python_exe, G_PRIORITY_DEFAULT,
               NULL, save_map_finish_cb, self);
         }
       else

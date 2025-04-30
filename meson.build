@@ -95,11 +95,12 @@ endif
 python_install = find_program(python_exe_name)
 
 sourcehold_script = find_program('make-sourcehold-venv.sh')
-python_install_dir = get_option('prefix') / get_option('sharedstatedir')
+python_install_dir = get_option('prefix') / get_option('datadir')
+python_data_dir = 'gtk-crusader-village-python'
 
 sourcehold = custom_target(
   'sourcehold',
-  output : ['sourcehold-python-venv'],
+  output : [python_data_dir],
   command : [
     sourcehold_script,
     python_install,

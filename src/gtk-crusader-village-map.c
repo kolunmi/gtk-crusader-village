@@ -60,12 +60,14 @@ typedef struct
 {
   GcvItemStore *store;
   char         *python_exe;
+  char         *module_dir;
 } LoadData;
 
 typedef struct
 {
   GPtrArray *strokes;
   char      *python_exe;
+  char      *module_dir;
 } SaveData;
 
 static void
@@ -210,6 +212,7 @@ void
 gcv_map_new_from_aiv_file_async (GFile              *file,
                                  GcvItemStore       *store,
                                  const char         *python_exe,
+                                 const char         *module_dir,
                                  int                 io_priority,
                                  GCancellable       *cancellable,
                                  GAsyncReadyCallback callback,
@@ -225,6 +228,7 @@ gcv_map_new_from_aiv_file_async (GFile              *file,
   data             = g_new0 (typeof (*data), 1);
   data->store      = gcv_item_store_dup (store);
   data->python_exe = g_strdup (python_exe);
+  data->module_dir = g_strdup (module_dir);
 
   task = g_task_new (file, cancellable, callback, user_data);
   g_task_set_source_tag (task, gcv_map_new_from_aiv_file_async);
@@ -249,6 +253,7 @@ void
 gcv_map_save_to_aiv_file_async (GcvMap             *self,
                                 GFile              *file,
                                 const char         *python_exe,
+                                const char         *module_dir,
                                 int                 io_priority,
                                 GCancellable       *cancellable,
                                 GAsyncReadyCallback callback,
@@ -264,6 +269,7 @@ gcv_map_save_to_aiv_file_async (GcvMap             *self,
   data             = g_new0 (typeof (*data), 1);
   data->strokes    = g_ptr_array_new_with_free_func (g_object_unref);
   data->python_exe = g_strdup (python_exe);
+  data->module_dir = g_strdup (module_dir);
 
   g_ptr_array_set_size (data->strokes, g_list_model_get_n_items (G_LIST_MODEL (self->strokes)));
   for (guint i = 0; i < data->strokes->len; i++)
@@ -295,6 +301,7 @@ destroy_load_data (gpointer data)
 
   g_clear_object (&self->store);
   g_clear_pointer (&self->python_exe, g_free);
+  g_clear_pointer (&self->module_dir, g_free);
   g_free (self);
 }
 
@@ -305,6 +312,7 @@ destroy_save_data (gpointer data)
 
   g_clear_pointer (&self->strokes, g_ptr_array_unref);
   g_clear_pointer (&self->python_exe, g_free);
+  g_clear_pointer (&self->module_dir, g_free);
   g_free (self);
 }
 
@@ -322,6 +330,7 @@ new_from_aiv_file_async_thread (GTask        *task,
   g_autoptr (GFileIOStream) tmp_file_iostream = NULL;
   g_autofree char *aiv_file_path              = NULL;
   g_autofree char *tmp_file_path              = NULL;
+  g_autoptr (GSubprocessLauncher) launcher    = NULL;
   g_autoptr (GSubprocess) sourcehold          = NULL;
   GInputStream *sourcehold_output             = NULL;
   g_autoptr (GFileInputStream) stream         = NULL;
@@ -348,8 +357,12 @@ new_from_aiv_file_async_thread (GTask        *task,
   aiv_file_path = g_file_get_path (file);
   tmp_file_path = g_file_get_path (tmp_file);
 
-  sourcehold = g_subprocess_new (
-      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
+  launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+  g_subprocess_launcher_set_flags (
+      launcher, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE);
+  g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
+  sourcehold = g_subprocess_launcher_spawn (
+      launcher,
       &local_error,
       data->python_exe, "-m", "sourcehold", "convert", "aiv", "--input", aiv_file_path, "--output", tmp_file_path,
       NULL);
@@ -357,7 +370,7 @@ new_from_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
+  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
@@ -516,6 +529,7 @@ save_to_aiv_file_async_thread (GTask        *task,
   GOutputStream   *tmp_file_outstream         = NULL;
   g_autofree char *aiv_file_path              = NULL;
   g_autofree char *tmp_file_path              = NULL;
+  g_autoptr (GSubprocessLauncher) launcher    = NULL;
   g_autoptr (GSubprocess) sourcehold          = NULL;
   GInputStream *sourcehold_output             = NULL;
 
@@ -647,8 +661,12 @@ save_to_aiv_file_async_thread (GTask        *task,
       g_free (tmp);
     }
 
-  sourcehold = g_subprocess_new (
-      G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE,
+  launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+  g_subprocess_launcher_set_flags (
+      launcher, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE);
+  g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
+  sourcehold = g_subprocess_launcher_spawn (
+      launcher,
       &local_error,
       data->python_exe, "-m", "sourcehold", "convert", "aiv", "--input", tmp_file_path, "--output", aiv_file_path,
       NULL);
@@ -656,7 +674,7 @@ save_to_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
+  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
