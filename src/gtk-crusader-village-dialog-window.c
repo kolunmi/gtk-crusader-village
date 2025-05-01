@@ -292,6 +292,10 @@ gcv_dialog (const char *title,
   gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
   gtk_window_present (GTK_WINDOW (dialog));
 
+  if (!use_markup)
+    /* Make sure selection is not active initially */
+    gtk_label_select_region (dialog->message, 0, 0);
+
   return g_steal_pointer (&dialog);
 }
 

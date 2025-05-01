@@ -290,6 +290,18 @@ get_python_install (GcvApplication *self)
     return NULL;
 }
 
+static char *
+get_python_package_path (GcvApplication *self)
+{
+  g_autofree char *python_path = NULL;
+
+  python_path = g_settings_get_string (self->settings, "sourcehold-python-package-path");
+  if (python_path[0] != '\0')
+    return g_steal_pointer (&python_path);
+  else
+    return NULL;
+}
+
 #define INSTALLATION_WARNING_TEXT                                                              \
   "In order to perform import/export of AIV files, this application "                          \
   "needs a functional python installation with the \"sourcehold\" "                            \
@@ -347,13 +359,15 @@ load_dialog_finish_cb (GObject      *source_object,
 
   if (file != NULL)
     {
-      g_autofree char *python_exe = NULL;
+      g_autofree char *python_exe   = NULL;
+      g_autofree char *package_path = NULL;
 
-      python_exe = get_python_install (self);
+      python_exe   = get_python_install (self);
+      package_path = get_python_package_path (self);
 
       if (python_exe != NULL)
         gcv_map_new_from_aiv_file_async (
-            file, self->item_store, "python", python_exe,
+            file, self->item_store, python_exe, package_path,
             G_PRIORITY_DEFAULT, NULL, load_map_finish_cb, self);
       else
         gcv_dialog (
@@ -469,15 +483,17 @@ save_dialog_finish_cb (GObject      *source_object,
 
       if (python_exe != NULL)
         {
-          g_autoptr (GcvMap) map = NULL;
+          g_autofree char *package_path = NULL;
+          g_autoptr (GcvMap) map        = NULL;
 
+          package_path = get_python_package_path (self);
           g_object_get (
               window,
               "map", &map,
               NULL);
 
           gcv_map_save_to_aiv_file_async (
-              map, file, "python", python_exe, G_PRIORITY_DEFAULT,
+              map, file, python_exe, package_path, G_PRIORITY_DEFAULT,
               NULL, save_map_finish_cb, self);
         }
       else

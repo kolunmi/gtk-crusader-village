@@ -31,9 +31,11 @@ test('Validate appstream file', appstreamcli,
 
 gschema_conf = configuration_data()
 if host_machine.system() == 'windows'
-  gschema_conf.set('python', '..' / get_option('datadir') / python_data_dir)
+  gschema_conf.set('python', 'python.exe')
+  gschema_conf.set('pythonpath', '')
 else
-  gschema_conf.set('python', python_install_dir / python_data_dir)
+  gschema_conf.set('python', python_install.full_path())
+  gschema_conf.set('pythonpath', python_install_dir / python_data_dir)
 endif
 configure_file(
   input: 'am.kolunmi.GtkCrusaderVillage.gschema.xml.in',

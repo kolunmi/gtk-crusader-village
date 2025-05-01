@@ -23,7 +23,7 @@
           <object class="GtkCenterBox">
             <property name="start-widget">
               <object class="GtkLabel">
-                <property name="label">Absolute path to a python executable with &lt;a href="https://github.com/sourcehold/sourcehold-maps"&gt;Sourcehold&lt;/a&gt; installed</property>
+                <property name="label">A python executable with which to run &lt;a href="https://github.com/sourcehold/sourcehold-maps"&gt;Sourcehold&lt;/a&gt;</property>
                 <property name="use-markup">TRUE</property>
               </object>
             </property>
@@ -34,12 +34,39 @@
                 <child>
                   <object class="GtkEntry" id="python_install">
                     <property name="margin-start">20</property>
-                    <property name="width-request">150</property>
+                    <property name="width-request">250</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkButton" id="python_reset">
-                    <property name="label">Default</property>
+                    <property name="label">Revert</property>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkCenterBox">
+            <property name="start-widget">
+              <object class="GtkLabel">
+                <property name="label">Optionally, the value of the &lt;i&gt;PYTHONPATH&lt;/i&gt; environment variable</property>
+                <property name="use-markup">TRUE</property>
+              </object>
+            </property>
+            <property name="end-widget">
+              <object class="GtkBox">
+                <property name="margin-start">20</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkEntry" id="python_path">
+                    <property name="margin-start">20</property>
+                    <property name="width-request">250</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="python_path_reset">
+                    <property name="label">Revert</property>
                   </object>
                 </child>
               </object>

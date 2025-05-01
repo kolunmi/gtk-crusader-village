@@ -290,28 +290,25 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: gtk-crusader-village-windows-x64
-        path: artifact # Upload the contents of the 'artifact' directory
+        path: artifact
 
-    # Optional: Create Release and Upload Asset (uncomment and adapt if you use tags for releases)
-    # - name: Create Release
-    #   if: startsWith(github.ref, 'refs/tags/')
-    #   id: create_release
-    #   uses: actions/create-release@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     tag_name: ${{ github.ref_name }}
-    #     release_name: Release ${{ github.ref_name }}
-    #     draft: false
-    #     prerelease: false # Set to true if it's a pre-release
-    #
-    # - name: Upload Release Asset
-    #   if: startsWith(github.ref, 'refs/tags/')
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_path: ./gtk-crusader-village-windows-x64.zip
-    #     asset_name: gtk-crusader-village-windows-x64.zip
-    #     asset_content_type: application/zip
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: true
+    
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./gtk-crusader-village-windows-x64.zip
+        asset_name: gtk-crusader-village-windows-x64.zip
+        asset_content_type: application/zip

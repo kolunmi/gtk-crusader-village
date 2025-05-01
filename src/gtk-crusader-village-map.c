@@ -228,7 +228,8 @@ gcv_map_new_from_aiv_file_async (GFile              *file,
   data             = g_new0 (typeof (*data), 1);
   data->store      = gcv_item_store_dup (store);
   data->python_exe = g_strdup (python_exe);
-  data->module_dir = g_strdup (module_dir);
+  if (module_dir != NULL)
+    data->module_dir = g_strdup (module_dir);
 
   task = g_task_new (file, cancellable, callback, user_data);
   g_task_set_source_tag (task, gcv_map_new_from_aiv_file_async);
@@ -269,7 +270,8 @@ gcv_map_save_to_aiv_file_async (GcvMap             *self,
   data             = g_new0 (typeof (*data), 1);
   data->strokes    = g_ptr_array_new_with_free_func (g_object_unref);
   data->python_exe = g_strdup (python_exe);
-  data->module_dir = g_strdup (module_dir);
+  if (module_dir != NULL)
+    data->module_dir = g_strdup (module_dir);
 
   g_ptr_array_set_size (data->strokes, g_list_model_get_n_items (G_LIST_MODEL (self->strokes)));
   for (guint i = 0; i < data->strokes->len; i++)
@@ -360,7 +362,8 @@ new_from_aiv_file_async_thread (GTask        *task,
   launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
   g_subprocess_launcher_set_flags (
       launcher, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE);
-  g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
+  if (data->module_dir != NULL)
+    g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
   sourcehold = g_subprocess_launcher_spawn (
       launcher,
       &local_error,
@@ -370,7 +373,11 @@ new_from_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
+#ifdef G_OS_WIN32
+  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
+#else
   sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
+#endif
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
@@ -664,7 +671,8 @@ save_to_aiv_file_async_thread (GTask        *task,
   launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
   g_subprocess_launcher_set_flags (
       launcher, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE);
-  g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
+  if (data->module_dir != NULL)
+    g_subprocess_launcher_setenv (launcher, "PYTHONPATH", data->module_dir, TRUE);
   sourcehold = g_subprocess_launcher_spawn (
       launcher,
       &local_error,
@@ -674,7 +682,11 @@ save_to_aiv_file_async_thread (GTask        *task,
     goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
+#ifdef G_OS_WIN32
+  sourcehold_output = g_subprocess_get_stderr_pipe (sourcehold);
+#else
   sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
+#endif
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 

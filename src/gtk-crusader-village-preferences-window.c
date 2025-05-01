@@ -24,12 +24,13 @@
 #include "gtk-crusader-village-preferences-window.h"
 #include "gtk-crusader-village-theme-utils.h"
 
-#define KEY_PYTHON_INSTALL   "sourcehold-python-installation"
-#define KEY_THEME            "theme"
-#define KEY_SHOW_GRID        "show-grid"
-#define KEY_BACKGROUND_IMAGE "background-image"
-#define KEY_SHOW_GRADIENT    "show-gradient"
-#define KEY_SHOW_CURSOR_GLOW "show-cursor-glow"
+#define KEY_PYTHON_INSTALL      "sourcehold-python-installation"
+#define KEY_PYTHON_PACKAGE_PATH "sourcehold-python-package-path"
+#define KEY_THEME               "theme"
+#define KEY_SHOW_GRID           "show-grid"
+#define KEY_BACKGROUND_IMAGE    "background-image"
+#define KEY_SHOW_GRADIENT       "show-gradient"
+#define KEY_SHOW_CURSOR_GLOW    "show-cursor-glow"
 
 /* TODO: perhaps read from schema instead */
 static const char *theme_choices[] = {
@@ -50,6 +51,8 @@ struct _GcvPreferencesWindow
   /* Template widgets */
   GtkEntry    *python_install;
   GtkButton   *python_reset;
+  GtkEntry    *python_path;
+  GtkButton   *python_path_reset;
   GtkDropDown *theme;
   GtkSwitch   *show_grid;
   GtkSwitch   *show_gradient;
@@ -96,6 +99,10 @@ python_reset_clicked (GtkButton            *self,
                       GcvPreferencesWindow *window);
 
 static void
+python_path_reset_clicked (GtkButton            *self,
+                           GcvPreferencesWindow *window);
+
+static void
 image_dialog_finish_cb (GObject      *source_object,
                         GAsyncResult *res,
                         gpointer      data);
@@ -111,9 +118,10 @@ write_theme (GcvPreferencesWindow *self,
              const char           *key);
 
 static void
-read_python_install (GcvPreferencesWindow *self,
-                     GSettings            *settings,
-                     const char           *key);
+read_python (GcvPreferencesWindow *self,
+             GtkEditable          *editable,
+             GSettings            *settings,
+             const char           *key);
 
 static void
 read_background_image (GcvPreferencesWindow *self,
@@ -176,7 +184,8 @@ gcv_preferences_window_set_property (GObject      *object,
           gtk_switch_set_active (self->show_grid, g_settings_get_boolean (self->settings, KEY_SHOW_GRID));
           gtk_switch_set_active (self->show_gradient, g_settings_get_boolean (self->settings, KEY_SHOW_GRADIENT));
           gtk_switch_set_active (self->show_cursor_glow, g_settings_get_boolean (self->settings, KEY_SHOW_CURSOR_GLOW));
-          read_python_install (self, self->settings, KEY_PYTHON_INSTALL);
+          read_python (self, GTK_EDITABLE (self->python_install), self->settings, KEY_PYTHON_INSTALL);
+          read_python (self, GTK_EDITABLE (self->python_path), self->settings, KEY_PYTHON_PACKAGE_PATH);
           read_background_image (self, self->settings, KEY_BACKGROUND_IMAGE);
         }
       break;
@@ -212,6 +221,8 @@ gcv_preferences_window_class_init (GcvPreferencesWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, show_cursor_glow);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_install);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_reset);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_path);
+  gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, python_path_reset);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_label);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_button);
   gtk_widget_class_bind_template_child (widget_class, GcvPreferencesWindow, background_clear);
@@ -233,9 +244,13 @@ gcv_preferences_window_init (GcvPreferencesWindow *self)
                     G_CALLBACK (ui_changed), self);
   g_signal_connect (self->python_install, "notify::text",
                     G_CALLBACK (ui_changed), self);
+  g_signal_connect (self->python_path, "notify::text",
+                    G_CALLBACK (ui_changed), self);
 
   g_signal_connect (self->python_reset, "clicked",
                     G_CALLBACK (python_reset_clicked), self);
+  g_signal_connect (self->python_path_reset, "clicked",
+                    G_CALLBACK (python_path_reset_clicked), self);
   g_signal_connect (self->background_button, "clicked",
                     G_CALLBACK (background_button_clicked), self);
   g_signal_connect (self->background_clear, "clicked",
@@ -258,7 +273,9 @@ setting_changed (GSettings            *self,
   else if (g_strcmp0 (key, KEY_SHOW_CURSOR_GLOW) == 0)
     gtk_switch_set_active (window->show_cursor_glow, g_settings_get_boolean (self, KEY_SHOW_CURSOR_GLOW));
   else if (g_strcmp0 (key, KEY_PYTHON_INSTALL) == 0)
-    read_python_install (window, self, key);
+    read_python (window, GTK_EDITABLE (window->python_install), self, key);
+  else if (g_strcmp0 (key, KEY_PYTHON_PACKAGE_PATH) == 0)
+    read_python (window, GTK_EDITABLE (window->python_path), self, key);
 }
 
 static void
@@ -281,6 +298,8 @@ ui_changed (GtkWidget            *widget,
     g_settings_set_boolean (window->settings, KEY_SHOW_CURSOR_GLOW, gtk_switch_get_active (window->show_cursor_glow));
   else if (widget == (GtkWidget *) window->python_install)
     g_settings_set_string (window->settings, KEY_PYTHON_INSTALL, gtk_editable_get_text (GTK_EDITABLE (window->python_install)));
+  else if (widget == (GtkWidget *) window->python_path)
+    g_settings_set_string (window->settings, KEY_PYTHON_PACKAGE_PATH, gtk_editable_get_text (GTK_EDITABLE (window->python_path)));
 
   g_signal_handlers_unblock_by_func (window->settings, setting_changed, window);
 }
@@ -314,6 +333,13 @@ python_reset_clicked (GtkButton            *self,
                       GcvPreferencesWindow *window)
 {
   g_settings_reset (window->settings, KEY_PYTHON_INSTALL);
+}
+
+static void
+python_path_reset_clicked (GtkButton            *self,
+                           GcvPreferencesWindow *window)
+{
+  g_settings_reset (window->settings, KEY_PYTHON_PACKAGE_PATH);
 }
 
 static void
@@ -388,14 +414,15 @@ write_theme (GcvPreferencesWindow *self,
 }
 
 static void
-read_python_install (GcvPreferencesWindow *self,
-                     GSettings            *settings,
-                     const char           *key)
+read_python (GcvPreferencesWindow *self,
+             GtkEditable          *editable,
+             GSettings            *settings,
+             const char           *key)
 {
   g_autofree char *path = NULL;
 
   path = g_settings_get_string (settings, key);
-  gtk_editable_set_text (GTK_EDITABLE (self->python_install), path);
+  gtk_editable_set_text (editable, path);
 }
 
 static void

@@ -4,7 +4,12 @@
     <key name="sourcehold-python-installation" type="s">
       <default>"@python@"</default>
       <summary>Sourcehold Python Installation</summary>
-      <description>The location of the python executable whose installation includes the sourcehold module</description>
+      <description>The location of the python executable to run Sourcehold</description>
+    </key>
+    <key name="sourcehold-python-package-path" type="s">
+      <default>"@pythonpath@"</default>
+      <summary>Sourcehold Python Package Path</summary>
+      <description>Optionally, the value of the PYTHONPATH environment variable which allows python to discover Sourcehold</description>
     </key>
     <key name="show-startup-greeting" type="b">
       <default>true</default>

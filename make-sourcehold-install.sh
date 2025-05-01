@@ -24,21 +24,6 @@ if [ "$HOST_SYSTEM" = 'windows' ]; then
     tar -C "$PRIVATE_DIR" -xzvf "$PRIVATE_DIR"/"$PYTHON_INSTALL_TAR"
     mv "$PRIVATE_DIR"/python "$OUTPUT"
 
-    # PYTHON_INSTALL_SRC='Python-'"$PYTHON_INSTALL_VERSION"
-    # PYTHON_INSTALL_SRC_TAR="$PYTHON_INSTALL_SRC"'.tar.xz'
-    # PYTHON_INSTALL_SRC_URL='https://www.python.org/ftp/python/'"$PYTHON_INSTALL_VERSION"'/'"$PYTHON_INSTALL_SRC_TAR"
-    # wget -O "$PRIVATE_DIR"/"$PYTHON_INSTALL_SRC_TAR" "$PYTHON_INSTALL_SRC_URL"
-    # tar -C "$PRIVATE_DIR" -xJf "$PRIVATE_DIR"/"$PYTHON_INSTALL_SRC_TAR"
-    # cp -r "$PRIVATE_DIR"/"$PYTHON_INSTALL_SRC"/Include "$OUTPUT"/Include
-    # cp "$PRIVATE_DIR"/"$PYTHON_INSTALL_SRC"/PC/pyconfig.h.in "$OUTPUT"/Include/pyconfig.h
-
-    # mv "$OUTPUT"/python313._pth "$OUTPUT"/python313.pth
-    # mkdir -p "$OUTPUT"/DLLS
-
-    # GETPIP_URL='https://bootstrap.pypa.io/get-pip.py'
-    # wget -O "$PRIVATE_DIR"/get-pip.py "$GETPIP_URL"
-    # "$OUTPUT"/python.exe "$PRIVATE_DIR"/get-pip.py
-    
     "$OUTPUT"/python.exe -m pip install --upgrade pip
     "$OUTPUT"/python.exe -m pip install build distlib setuptools
     "$OUTPUT"/python.exe -m build "$SOURCE_ROOT"/sourcehold-maps -w -o "$PRIVATE_DIR"
