@@ -30,12 +30,12 @@ G_DECLARE_FINAL_TYPE (GcvPreferencesWindow, gcv_preferences_window, GCV, PREFERE
 
 /* Keep these in sync with `gtk-crusader-village-preferences-window.ui` */
 /* TODO: make this better */
-#define GCV_THEME_OPTION_SHC_DEFAULT 0
-#define GCV_THEME_OPTION_SHC_LIGHT   1
-#define GCV_THEME_OPTION_SHC_DARK    2
-#define GCV_THEME_OPTION_DEFAULT     3
-#define GCV_THEME_OPTION_LIGHT       4
-#define GCV_THEME_OPTION_DARK        5
+#define GCV_THEME_OPTION_DEFAULT     0
+#define GCV_THEME_OPTION_LIGHT       1
+#define GCV_THEME_OPTION_DARK        2
+// #define GCV_THEME_OPTION_SHC_DEFAULT 3
+// #define GCV_THEME_OPTION_SHC_LIGHT   4
+// #define GCV_THEME_OPTION_SHC_DARK    5
 
 void
 gcv_preferences_window_spawn (GSettings *settings,

@@ -18,14 +18,14 @@
     </key>
     <key name="theme" type="s">
       <choices>
-        <choice value="shc-default"/>
-        <choice value="shc-light"/>
-        <choice value="shc-dark"/>
+        <!-- <choice value="shc-default"/> -->
+        <!-- <choice value="shc-light"/> -->
+        <!-- <choice value="shc-dark"/> -->
         <choice value="default"/>
         <choice value="light"/>
         <choice value="dark"/>
       </choices>
-      <default>'shc-default'</default>
+      <default>'default'</default>
       <summary>The application GUI theme</summary>
       <description>Use a light or dark variant of GTK. 'default' will attempt to read OS settings on supported platforms.</description>
     </key>

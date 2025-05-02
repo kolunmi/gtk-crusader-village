@@ -92,9 +92,9 @@
                 <property name="model">
                   <object class="GtkStringList">
                     <items>
-                      <item>shc-default</item>
-                      <item>shc-light</item>
-                      <item>shc-dark</item>
+                      <!-- <item>shc-default</item> -->
+                      <!-- <item>shc-light</item> -->
+                      <!-- <item>shc-dark</item> -->
                       <item>default</item>
                       <item>light</item>
                       <item>dark</item>

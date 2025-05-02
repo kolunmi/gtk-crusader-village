@@ -178,11 +178,10 @@ gcv_application_activate (GApplication *app)
       GTK_STYLE_PROVIDER (self->custom_css),
       GTK_STYLE_PROVIDER_PRIORITY_USER);
 
-  self->shc_theme_light_css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (self->shc_theme_light_css, "/am/kolunmi/Gcv/gtk/shc-light.css");
-
-  self->shc_theme_dark_css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (self->shc_theme_dark_css, "/am/kolunmi/Gcv/gtk/shc-dark.css");
+  // self->shc_theme_light_css = gtk_css_provider_new ();
+  // gtk_css_provider_load_from_resource (self->shc_theme_light_css, "/am/kolunmi/Gcv/gtk/shc-light.css");
+  // self->shc_theme_dark_css = gtk_css_provider_new ();
+  // gtk_css_provider_load_from_resource (self->shc_theme_dark_css, "/am/kolunmi/Gcv/gtk/shc-dark.css");
 
 #ifdef USE_THEME_PORTAL
   init_portal (self);
@@ -880,18 +879,21 @@ read_theme_from_settings (GcvApplication *self)
 static void
 apply_gtk_theme (GcvApplication *self)
 {
-  gboolean    dark    = FALSE;
-  GdkDisplay *display = NULL;
+  gboolean dark = FALSE;
+  // GdkDisplay *display = NULL;
 
 #ifdef USE_THEME_PORTAL
-  dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
-          self->theme_setting == GCV_THEME_OPTION_DARK) ||
-         ((self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
-           self->theme_setting == GCV_THEME_OPTION_DEFAULT) &&
-          self->portal_wants_dark);
+  // dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
+  //         self->theme_setting == GCV_THEME_OPTION_DARK) ||
+  //        ((self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
+  //          self->theme_setting == GCV_THEME_OPTION_DEFAULT) &&
+  //         self->portal_wants_dark);
+  dark = self->theme_setting == GCV_THEME_OPTION_DARK ||
+         (self->theme_setting == GCV_THEME_OPTION_DEFAULT && self->portal_wants_dark);
 #else
-  dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
-          self->theme_setting == GCV_THEME_OPTION_DARK);
+  // dark = (self->theme_setting == GCV_THEME_OPTION_SHC_DARK ||
+  //         self->theme_setting == GCV_THEME_OPTION_DARK);
+  dark = self->theme_setting == GCV_THEME_OPTION_DARK;
 #endif
 
   g_object_set (
@@ -899,27 +901,27 @@ apply_gtk_theme (GcvApplication *self)
       "gtk-application-prefer-dark-theme", dark,
       NULL);
 
-  display = gdk_display_get_default ();
-  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->custom_css));
-  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_light_css));
-  gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_dark_css));
+  // display = gdk_display_get_default ();
+  // gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->custom_css));
+  // gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_light_css));
+  // gtk_style_context_remove_provider_for_display (display, GTK_STYLE_PROVIDER (self->shc_theme_dark_css));
 
-  if (self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
-      self->theme_setting == GCV_THEME_OPTION_SHC_LIGHT ||
-      self->theme_setting == GCV_THEME_OPTION_SHC_DARK)
-    {
-      gtk_style_context_add_provider_for_display (
-          display,
-          GTK_STYLE_PROVIDER (
-              dark
-                  ? self->shc_theme_dark_css
-                  : self->shc_theme_light_css),
-          GTK_STYLE_PROVIDER_PRIORITY_USER);
-    }
-  gtk_style_context_add_provider_for_display (
-      display,
-      GTK_STYLE_PROVIDER (self->custom_css),
-      GTK_STYLE_PROVIDER_PRIORITY_USER);
+  // if (self->theme_setting == GCV_THEME_OPTION_SHC_DEFAULT ||
+  //     self->theme_setting == GCV_THEME_OPTION_SHC_LIGHT ||
+  //     self->theme_setting == GCV_THEME_OPTION_SHC_DARK)
+  //   {
+  //     gtk_style_context_add_provider_for_display (
+  //         display,
+  //         GTK_STYLE_PROVIDER (
+  //             dark
+  //                 ? self->shc_theme_dark_css
+  //                 : self->shc_theme_light_css),
+  //         GTK_STYLE_PROVIDER_PRIORITY_USER);
+  //   }
+  // gtk_style_context_add_provider_for_display (
+  //     display,
+  //     GTK_STYLE_PROVIDER (self->custom_css),
+  //     GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 static void

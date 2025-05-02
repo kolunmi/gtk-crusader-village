@@ -3,8 +3,8 @@
   <gresource prefix="/am/kolunmi/Gcv">
 
     <file>gtk/styles.css</file>
-    <file>gtk/shc-light.css</file>
-    <file>gtk/shc-dark.css</file>
+    <!-- <file>gtk/shc-light.css</file> -->
+    <!-- <file>gtk/shc-dark.css</file> -->
     
     <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-turn-left-up-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/draw-line-symbolic.svg</file>

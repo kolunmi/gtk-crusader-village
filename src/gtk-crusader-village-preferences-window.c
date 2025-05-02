@@ -34,9 +34,9 @@
 
 /* TODO: perhaps read from schema instead */
 static const char *theme_choices[] = {
-  [GCV_THEME_OPTION_SHC_DEFAULT] = "shc-default",
-  [GCV_THEME_OPTION_SHC_LIGHT]   = "shc-light",
-  [GCV_THEME_OPTION_SHC_DARK]    = "shc-dark",
+  // [GCV_THEME_OPTION_SHC_DEFAULT] = "shc-default",
+  // [GCV_THEME_OPTION_SHC_LIGHT]   = "shc-light",
+  // [GCV_THEME_OPTION_SHC_DARK]    = "shc-dark",
   [GCV_THEME_OPTION_DEFAULT]     = "default",
   [GCV_THEME_OPTION_LIGHT]       = "light",
   [GCV_THEME_OPTION_DARK]        = "dark",
