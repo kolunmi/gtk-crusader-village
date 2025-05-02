@@ -91,7 +91,7 @@ save_to_aiv_file_async_thread (GTask        *task,
 static void
 return_sourcehold_error (GTask        *task,
                          GCancellable *cancellable,
-                         GInputStream *sourcehold_output);
+                         const char   *sourcehold_output);
 
 static void
 gcv_map_dispose (GObject *object)
@@ -334,7 +334,7 @@ new_from_aiv_file_async_thread (GTask        *task,
   g_autofree char *tmp_file_path              = NULL;
   g_autoptr (GSubprocessLauncher) launcher    = NULL;
   g_autoptr (GSubprocess) sourcehold          = NULL;
-  GInputStream *sourcehold_output             = NULL;
+  g_autofree char *sourcehold_output          = NULL;
   g_autoptr (GFileInputStream) stream         = NULL;
   g_autoptr (JsonParser) parser               = NULL;
   gboolean  parse_result                      = FALSE;
@@ -371,9 +371,10 @@ new_from_aiv_file_async_thread (GTask        *task,
       NULL);
   if (sourcehold == NULL)
     goto err;
+  if (!g_subprocess_communicate_utf8 (sourcehold, NULL, cancellable, &sourcehold_output, NULL, &local_error))
+    goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
@@ -534,7 +535,7 @@ save_to_aiv_file_async_thread (GTask        *task,
   g_autofree char *tmp_file_path              = NULL;
   g_autoptr (GSubprocessLauncher) launcher    = NULL;
   g_autoptr (GSubprocess) sourcehold          = NULL;
-  GInputStream *sourcehold_output             = NULL;
+  g_autofree char *sourcehold_output          = NULL;
 
   if (g_task_return_error_if_cancelled (task))
     return;
@@ -676,9 +677,10 @@ save_to_aiv_file_async_thread (GTask        *task,
       NULL);
   if (sourcehold == NULL)
     goto err;
+  if (!g_subprocess_communicate_utf8 (sourcehold, NULL, cancellable, &sourcehold_output, NULL, &local_error))
+    goto err;
   if (!g_subprocess_wait (sourcehold, cancellable, &local_error))
     goto err;
-  sourcehold_output = g_subprocess_get_stdout_pipe (sourcehold);
   if (!g_subprocess_get_successful (sourcehold))
     goto err_sourcehold;
 
@@ -701,39 +703,11 @@ done:
 static void
 return_sourcehold_error (GTask        *task,
                          GCancellable *cancellable,
-                         GInputStream *sourcehold_output)
+                         const char   *sourcehold_output)
 {
-  g_autoptr (GError) local_error                = NULL;
-  g_autoptr (GBytes) sourcehold_output_bytes    = NULL;
-  gsize            sourcehold_output_bytes_size = 0;
-  gconstpointer    sourcehold_output_bytes_data = NULL;
-  g_autofree char *sourcehold_output_string     = NULL;
+  g_autoptr (GError) local_error = NULL;
 
-  sourcehold_output_bytes = g_input_stream_read_bytes (
-      sourcehold_output, 16384, cancellable, &local_error);
-  if (sourcehold_output_bytes == NULL)
-    {
-      g_task_return_new_error (
-          task,
-          GCV_MAP_ERROR,
-          GCV_MAP_ERROR_SOURCEHOLD_FAILED,
-          "The Sourcehold process terminated abnormally (Could not retrieve output: %s)",
-          local_error->message);
-      return;
-    }
-
-  sourcehold_output_bytes_data = g_bytes_get_data (sourcehold_output_bytes, &sourcehold_output_bytes_size);
-  if (sourcehold_output_bytes_data != NULL && sourcehold_output_bytes_size > 0)
-    {
-      gsize length = 0;
-
-      length = MIN (sourcehold_output_bytes_size, 2048);
-
-      sourcehold_output_string = g_malloc (length + 1);
-      memcpy (sourcehold_output_string, sourcehold_output_bytes_data, length);
-      sourcehold_output_string[length] = '\0';
-    }
-  else
+  if (sourcehold_output == NULL || sourcehold_output[0] == '\0')
     {
       g_task_return_new_error_literal (
           task,
@@ -743,7 +717,7 @@ return_sourcehold_error (GTask        *task,
       return;
     }
 
-  if (sourcehold_output_bytes_size > 2048)
+  if (strnlen (sourcehold_output, 2048) >= 2048)
     {
       g_autoptr (GFile) output_file    = NULL;
       g_autoptr (GFileIOStream) stream = NULL;
@@ -755,9 +729,8 @@ return_sourcehold_error (GTask        *task,
           gboolean       write_result  = FALSE;
 
           output_stream = g_io_stream_get_output_stream (G_IO_STREAM (stream));
-          write_result  = g_output_stream_write (
-              output_stream, sourcehold_output_bytes_data,
-              sourcehold_output_bytes_size, cancellable, &local_error);
+          write_result  = g_output_stream_printf (
+              output_stream, NULL, cancellable, &local_error, "%s", sourcehold_output);
 
           if (write_result)
             write_result = g_io_stream_close (G_IO_STREAM (stream), cancellable, &local_error);
@@ -794,7 +767,7 @@ return_sourcehold_error (GTask        *task,
             "output to a log file, but that also failed and you "
             "probably have bigger issues :( (%s). Nevertheless, here"
             "is the output truncated to 2048 bytes: \n\n%s",
-            local_error->message, sourcehold_output_string);
+            local_error->message, sourcehold_output);
     }
   else
     g_task_return_new_error (
@@ -803,5 +776,5 @@ return_sourcehold_error (GTask        *task,
         GCV_MAP_ERROR_SOURCEHOLD_FAILED,
         "The Sourcehold process terminated abnormally "
         "with the following full output: \n\n%s",
-        sourcehold_output_string);
+        sourcehold_output);
 }

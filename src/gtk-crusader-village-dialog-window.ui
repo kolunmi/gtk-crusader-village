@@ -17,34 +17,42 @@
     <property name="child">
       <object class="GtkBox" id="main_box">
         <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
-        <property name="margin-start">10</property>
-        <property name="margin-end">10</property>
-        <property name="margin-top">10</property>
-        <property name="margin-bottom">10</property>
+        <property name="margin-start">5</property>
+        <property name="margin-end">5</property>
+        <property name="margin-top">5</property>
+        <property name="margin-bottom">5</property>
 
         <child>
           <object class="GtkBox">
-            <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
             <property name="vexpand">TRUE</property>
-            <property name="halign">GTK_ALIGN_START</property>
-            <property name="margin-bottom">15</property>
+            <property name="hexpand">TRUE</property>
+            <property name="margin-bottom">5</property>
+            <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
             <child>
               <object class="GtkLabel" id="header">
                 <style>
                   <class name="title-2"/>
                 </style>
+                <property name="halign">GTK_ALIGN_START</property>
                 <property name="xalign">0.0</property>
               </object>
             </child>
             <child>
-              <object class="GtkLabel" id="message">
-                <style>
-                  <class name="body"/>
-                </style>
-                <property name="height-request">0</property>
-                <property name="xalign">0.0</property>
-                <property name="wrap">TRUE</property>
-                <property name="wrap-mode">PANGO_WRAP_WORD_CHAR</property>
+              <object class="GtkScrolledWindow" id="scrolled_window">
+                <property name="vscrollbar-policy">GTK_POLICY_NEVER</property>
+                <property name="hscrollbar-policy">GTK_POLICY_ALWAYS</property>
+                <property name="propagate-natural-height">TRUE</property>
+                <property name="overlay-scrolling">FALSE</property>
+                <property name="has-frame">TRUE</property>
+                <property name="child">
+                  <object class="GtkLabel" id="message">
+                    <style>
+                      <class name="body"/>
+                    </style>
+                    <property name="halign">GTK_ALIGN_START</property>
+                    <property name="xalign">0.0</property>
+                  </object>
+                </property>
               </object>
             </child>
           </object>
@@ -61,9 +69,19 @@
               </object>
             </property>
             <property name="end-widget">
-              <object class="GtkButton" id="ok_button">
-                <property name="valign">GTK_ALIGN_END</property>
-                <property name="label">OK</property>
+              <object class="GtkBox">
+                <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkButton" id="copy_button">
+                    <property name="label">Copy Text</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="ok_button">
+                    <property name="label">OK</property>
+                  </object>
+                </child>
               </object>
             </property>
           </object>

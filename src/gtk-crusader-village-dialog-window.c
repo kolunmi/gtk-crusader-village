@@ -31,10 +31,12 @@ struct _GcvDialogWindow
   GVariant  *final_submission;
 
   /* Template widgets */
-  GtkLabel  *header;
-  GtkLabel  *message;
-  GtkBox    *option_box;
-  GtkButton *ok_button;
+  GtkLabel          *header;
+  GtkLabel          *message;
+  GtkScrolledWindow *scrolled_window;
+  GtkBox            *option_box;
+  GtkButton         *ok_button;
+  GtkButton         *copy_button;
 };
 
 G_DEFINE_FINAL_TYPE (GcvDialogWindow, gcv_dialog_window, GTK_TYPE_WINDOW)
@@ -55,7 +57,11 @@ static GVariant *static_close = NULL;
 
 static void
 ok_clicked (GtkButton       *self,
-            GcvDialogWindow *user_data);
+            GcvDialogWindow *dialog);
+
+static void
+copy_clicked (GtkButton       *self,
+              GcvDialogWindow *dialog);
 
 static gboolean
 register_dictionary_variant (GcvDialogWindow *self,
@@ -156,8 +162,10 @@ gcv_dialog_window_class_init (GcvDialogWindowClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class, "/am/kolunmi/Gcv/gtk-crusader-village-dialog-window.ui");
   gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, header);
   gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, message);
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, scrolled_window);
   gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, option_box);
   gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, ok_button);
+  gtk_widget_class_bind_template_child (widget_class, GcvDialogWindow, copy_button);
 }
 
 static void
@@ -169,6 +177,7 @@ gcv_dialog_window_init (GcvDialogWindow *self)
   self->results = g_ptr_array_new_with_free_func (maybe_free_variant_pp);
 
   g_signal_connect (self->ok_button, "clicked", G_CALLBACK (ok_clicked), self);
+  g_signal_connect (self->copy_button, "clicked", G_CALLBACK (copy_clicked), self);
 }
 
 static void
@@ -198,6 +207,21 @@ ok_clicked (GtkButton       *self,
 
   g_object_notify_by_pspec (G_OBJECT (dialog), props[PROP_FINAL_SUBMISSION]);
   gtk_window_close (GTK_WINDOW (dialog));
+}
+
+static void
+copy_clicked (GtkButton       *self,
+              GcvDialogWindow *dialog)
+{
+  GdkDisplay   *display   = NULL;
+  GdkClipboard *clipboard = NULL;
+
+  display = gdk_display_get_default ();
+  if (display == NULL)
+    return;
+
+  clipboard = gdk_display_get_clipboard (display);
+  gdk_clipboard_set_text (clipboard, gtk_label_get_text (dialog->message));
 }
 
 /* These are inefficient, could just read at end,
@@ -282,7 +306,12 @@ gcv_dialog (const char *title,
   gtk_window_set_title (GTK_WINDOW (dialog), title != NULL ? title : "Dialog");
   gtk_label_set_label (dialog->header, header);
   if (use_markup)
-    gtk_label_set_markup (dialog->message, message);
+    {
+      gtk_scrolled_window_set_policy (dialog->scrolled_window, GTK_POLICY_NEVER, GTK_POLICY_NEVER);
+      gtk_label_set_wrap (dialog->message, TRUE);
+      gtk_scrolled_window_set_has_frame (dialog->scrolled_window, FALSE);
+      gtk_label_set_markup (dialog->message, message);
+    }
   else
     {
       gtk_widget_add_css_class (GTK_WIDGET (dialog->message), "monospace");
