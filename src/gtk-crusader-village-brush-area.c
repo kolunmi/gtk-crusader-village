@@ -305,21 +305,11 @@ image_dialog_finish_cb (GObject      *source_object,
         file, G_PRIORITY_DEFAULT, NULL, load_brush_image_file_finish_cb, self);
   else
     {
-      GtkWidget      *app_window  = NULL;
-      GtkApplication *application = NULL;
-      GtkWindow      *window      = NULL;
-
-      /* TODO create function for this */
-      app_window = gtk_widget_get_ancestor (GTK_WIDGET (self), GTK_TYPE_WINDOW);
-      g_assert (app_window != NULL);
-      application = gtk_window_get_application (GTK_WINDOW (app_window));
-      window      = gtk_application_get_active_window (application);
-
-      gcv_dialog (
+      gcv_dialog_for_widget (
           "An Error Occurred",
-          "Could not retrieve image mask from disk.",
+          "Could not retrieve image mask from disk",
           local_error->message,
-          FALSE, window, NULL);
+          FALSE, GTK_WIDGET (self), NULL);
 
       gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
       gtk_widget_set_visible (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);
@@ -340,23 +330,11 @@ load_brush_image_file_finish_cb (GObject      *source_object,
   if (brush != NULL)
     g_list_store_append (self->brush_store, brush);
   else
-    {
-      GtkWidget      *app_window  = NULL;
-      GtkApplication *application = NULL;
-      GtkWindow      *window      = NULL;
-
-      /* TODO create function for this */
-      app_window = gtk_widget_get_ancestor (GTK_WIDGET (self), GTK_TYPE_WINDOW);
-      g_assert (app_window != NULL);
-      application = gtk_window_get_application (GTK_WINDOW (app_window));
-      window      = gtk_application_get_active_window (application);
-
-      gcv_dialog (
-          "An Error Occurred",
-          "Could not retrieve image mask from disk.",
-          local_error->message,
-          FALSE, window, NULL);
-    }
+    gcv_dialog_for_widget (
+        "An Error Occurred",
+        "Could not retrieve image mask from disk",
+        local_error->message,
+        FALSE, GTK_WIDGET (self), NULL);
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->new_mask_brush), TRUE);
   gtk_widget_set_visible (GTK_WIDGET (self->new_mask_brush_spinner), FALSE);

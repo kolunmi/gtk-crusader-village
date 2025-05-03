@@ -2683,21 +2683,11 @@ background_texture_load_finish_cb (GObject      *source_object,
 
   if (texture == NULL)
     {
-      GtkWidget      *app_window  = NULL;
-      GtkApplication *application = NULL;
-      GtkWindow      *window      = NULL;
-
-      app_window = gtk_widget_get_ancestor (GTK_WIDGET (editor), GTK_TYPE_WINDOW);
-      g_assert (app_window != NULL);
-
-      application = gtk_window_get_application (GTK_WINDOW (app_window));
-      window      = gtk_application_get_active_window (application);
-
-      gcv_dialog (
+      gcv_dialog_for_widget (
           "Error",
           "Could not load background image",
           local_error->message,
-          FALSE, window, NULL);
+          FALSE, GTK_WIDGET (editor), NULL);
 
       if (editor->settings != NULL)
         g_settings_set_string (editor->settings, "background-image", "");

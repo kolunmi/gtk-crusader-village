@@ -36,4 +36,12 @@ gcv_dialog (const char *title,
             GtkWindow  *parent,
             GVariant   *structure);
 
+GcvDialogWindow *
+gcv_dialog_for_widget (const char *title,
+                       const char *header,
+                       const char *message,
+                       gboolean    use_markup,
+                       GtkWidget  *widget,
+                       GVariant   *structure);
+
 G_END_DECLS

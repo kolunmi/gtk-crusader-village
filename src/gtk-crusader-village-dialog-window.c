@@ -328,6 +328,40 @@ gcv_dialog (const char *title,
   return g_steal_pointer (&dialog);
 }
 
+GcvDialogWindow *
+gcv_dialog_for_widget (const char *title,
+                       const char *header,
+                       const char *message,
+                       gboolean    use_markup,
+                       GtkWidget  *widget,
+                       GVariant   *structure)
+{
+  GtkWidget      *app_window  = NULL;
+  GtkApplication *application = NULL;
+  GtkWindow      *window      = NULL;
+
+  g_return_val_if_fail (header != NULL || message != NULL, NULL);
+  g_return_val_if_fail (GTK_IS_WIDGET (widget), NULL);
+
+  app_window = gtk_widget_get_ancestor (widget, GTK_TYPE_WINDOW);
+  if (app_window == NULL)
+    {
+      g_critical ("%s: window not found", G_STRFUNC);
+      return NULL;
+    }
+
+  application = gtk_window_get_application (GTK_WINDOW (app_window));
+  window      = gtk_application_get_active_window (application);
+
+  return gcv_dialog (
+      title,
+      header,
+      message,
+      use_markup,
+      window,
+      structure);
+}
+
 static gboolean
 register_dictionary_variant (GcvDialogWindow *self,
                              GVariant        *dictionary,
