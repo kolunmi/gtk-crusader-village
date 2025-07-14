@@ -94,6 +94,18 @@ return_sourcehold_error (GTask        *task,
                          const char   *sourcehold_output);
 
 static void
+new_from_json_aiv_file_async_thread (GTask        *task,
+                                     gpointer      object,
+                                     gpointer      task_data,
+                                     GCancellable *cancellable);
+
+static void
+save_to_json_aiv_file_async_thread (GTask        *task,
+                                    gpointer      object,
+                                    gpointer      task_data,
+                                    GCancellable *cancellable);
+
+static void
 gcv_map_dispose (GObject *object)
 {
   GcvMap *self = GCV_MAP (object);
@@ -777,4 +789,508 @@ return_sourcehold_error (GTask        *task,
         "The Sourcehold process terminated abnormally "
         "with the following full output: \n\n%s",
         sourcehold_output);
+}
+
+// JSON AIV file support
+
+typedef struct
+{
+  GcvItemStore *store;
+} JsonLoadData;
+
+typedef struct
+{
+  GPtrArray *strokes;
+} JsonSaveData;
+
+static void
+destroy_json_load_data (gpointer data)
+{
+  JsonLoadData *self = data;
+
+  g_clear_object (&self->store);
+  g_free (self);
+}
+
+static void
+destroy_json_save_data (gpointer data)
+{
+  JsonSaveData *self = data;
+
+  g_clear_pointer (&self->strokes, g_ptr_array_unref);
+  g_free (self);
+}
+
+void
+gcv_map_new_from_json_aiv_file_async (GFile              *file,
+                                      GcvItemStore       *store,
+                                      int                 io_priority,
+                                      GCancellable       *cancellable,
+                                      GAsyncReadyCallback callback,
+                                      gpointer            user_data)
+{
+  g_autoptr (GTask) task = NULL;
+  JsonLoadData *data     = NULL;
+
+  g_return_if_fail (G_IS_FILE (file));
+  g_return_if_fail (GCV_IS_ITEM_STORE (store));
+
+  data        = g_new0 (typeof (*data), 1);
+  data->store = g_object_ref (store);
+
+  task = g_task_new (file, cancellable, callback, user_data);
+  g_task_set_source_tag (task, gcv_map_new_from_json_aiv_file_async);
+  g_task_set_task_data (task, data, destroy_json_load_data);
+  g_task_set_priority (task, io_priority);
+  g_task_set_check_cancellable (task, TRUE);
+  g_task_run_in_thread (task, new_from_json_aiv_file_async_thread);
+}
+
+GcvMap *
+gcv_map_new_from_json_aiv_file_finish (GAsyncResult *result,
+                                       GError      **error)
+{
+  g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
+                            gcv_map_new_from_json_aiv_file_async,
+                        NULL);
+
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
+
+void
+gcv_map_save_to_json_aiv_file_async (GcvMap             *self,
+                                     GFile              *file,
+                                     int                 io_priority,
+                                     GCancellable       *cancellable,
+                                     GAsyncReadyCallback callback,
+                                     gpointer            user_data)
+{
+  g_autoptr (GTask) task = NULL;
+  JsonSaveData *data     = NULL;
+
+  g_return_if_fail (GCV_IS_MAP (self));
+  g_return_if_fail (G_IS_FILE (file));
+
+  data             = g_new0 (typeof (*data), 1);
+  data->strokes    = g_ptr_array_new_with_free_func (g_object_unref);
+
+  g_ptr_array_set_size (data->strokes, g_list_model_get_n_items (G_LIST_MODEL (self->strokes)));
+  for (guint i = 0; i < data->strokes->len; i++)
+    g_ptr_array_index (data->strokes, i) = g_list_model_get_item (G_LIST_MODEL (self->strokes), i);
+
+  task = g_task_new (file, cancellable, callback, user_data);
+  g_task_set_source_tag (task, gcv_map_save_to_json_aiv_file_async);
+  g_task_set_task_data (task, data, destroy_json_save_data);
+  g_task_set_priority (task, io_priority);
+  g_task_set_check_cancellable (task, TRUE);
+  g_task_run_in_thread (task, save_to_json_aiv_file_async_thread);
+}
+
+gboolean
+gcv_map_save_to_json_aiv_file_finish (GAsyncResult *result,
+                                      GError      **error)
+{
+  g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) ==
+                            gcv_map_save_to_json_aiv_file_async,
+                        FALSE);
+
+  return g_task_propagate_boolean (G_TASK (result), error);
+}
+
+static void
+new_from_json_aiv_file_async_thread (GTask        *task,
+                                     gpointer      object,
+                                     gpointer      task_data,
+                                     GCancellable *cancellable)
+{
+  GFile        *file                    = object;
+  JsonLoadData *data                    = task_data;
+  g_autoptr (GcvMap) map                = NULL;
+  g_autoptr (GError) local_error        = NULL;
+  g_autoptr (GFileInputStream) stream   = NULL;
+  g_autoptr (JsonParser) parser         = NULL;
+  gboolean      parse_result            = FALSE;
+  JsonNode     *root                    = NULL;
+  g_autoptr (GVariant) variant          = NULL;
+  g_autoptr (GVariantIter) frames_iter  = NULL;
+  g_autoptr (GVariantIter) misc_iter    = NULL;
+  gint64        pause_delay_amount      = 0;
+
+  if (g_task_return_error_if_cancelled (task))
+    return;
+
+  map       = g_object_new (GCV_TYPE_MAP, NULL);
+  map->name = g_file_get_basename (file);
+
+  stream = g_file_read (file, cancellable, &local_error);
+  if (stream == NULL)
+    goto err;
+
+  parser       = json_parser_new_immutable ();
+  parse_result = json_parser_load_from_stream (parser, G_INPUT_STREAM (stream), cancellable, &local_error);
+  if (!parse_result)
+    goto err;
+
+  root    = json_parser_get_root (parser);
+  variant = json_gvariant_deserialize (root, NULL, &local_error);
+  if (variant == NULL)
+    goto err;
+  variant = g_variant_ref_sink (variant);
+
+  if (!g_variant_lookup (variant, "pauseDelayAmount", "x", &pause_delay_amount))
+    goto err_inval;
+  if (!g_variant_lookup (variant, "frames", "av", &frames_iter))
+    goto err_inval;
+  if (!g_variant_lookup (variant, "miscItems", "av", &misc_iter))
+    goto err_inval;
+
+  for (;;)
+    {
+      g_autoptr (GVariant) frame              = NULL;
+      gint64 id                               = 0;
+      g_autoptr (GcvItem) item                = NULL;
+      int item_tile_width                     = 0;
+      int item_tile_height                    = 0;
+      int item_tile_offset_x                  = 0;
+      int item_tile_offset_y                  = 0;
+      g_autoptr (GVariantIter) instances_iter = NULL;
+      g_autoptr (GcvItemStroke) stroke        = NULL;
+
+      if (!g_variant_iter_next (frames_iter, "v", &frame))
+        break;
+      if (!g_variant_is_of_type (frame, G_VARIANT_TYPE_DICTIONARY))
+        goto err_inval;
+
+      if (!g_variant_lookup (frame, "itemType", "x", &id))
+        goto err_inval;
+      item = gcv_item_store_query_id (data->store, id);
+      if (item == NULL)
+        continue;
+      g_object_get (
+          item,
+          "tile-width", &item_tile_width,
+          "tile-height", &item_tile_height,
+          "tile-offset-x", &item_tile_offset_x,
+          "tile-offset-y", &item_tile_offset_y,
+          NULL);
+
+      if (!g_variant_lookup (frame, "tilePositionOfsets", "av", &instances_iter))
+        goto err_inval;
+
+      stroke = g_object_new (
+          GCV_TYPE_ITEM_STROKE,
+          "item", item,
+          NULL);
+      for (;;)
+        {
+          g_autoptr (GVariant) tile_variant = NULL;
+          gint64 tile                       = 0;
+
+          if (!g_variant_iter_next (instances_iter, "v", &tile_variant))
+            break;
+          if (!g_variant_is_of_type (tile_variant, G_VARIANT_TYPE_INT64))
+            goto err_inval;
+
+          tile = g_variant_get_int64 (tile_variant);
+
+          gcv_item_stroke_add_instance (
+              stroke,
+              tile % 100,
+              tile / 100,
+              item_tile_offset_x,
+              item_tile_offset_y);
+        }
+
+      g_list_store_append (map->strokes, stroke);
+    }
+
+  // Process misc items (units)
+  for (;;)
+    {
+      g_autoptr (GVariant) misc_item = NULL;
+      gint64 id                       = 0;
+      gint64 position                 = 0;
+      gint64 number                   = 0;
+      g_autoptr (GcvItem) item        = NULL;
+      int item_tile_width             = 0;
+      int item_tile_height            = 0;
+      int item_tile_offset_x          = 0;
+      int item_tile_offset_y          = 0;
+      g_autoptr (GcvItemStroke) stroke = NULL;
+
+      if (!g_variant_iter_next (misc_iter, "v", &misc_item))
+        break;
+      if (!g_variant_is_of_type (misc_item, G_VARIANT_TYPE_DICTIONARY))
+        goto err_inval;
+
+      if (!g_variant_lookup (misc_item, "itemType", "x", &id))
+        goto err_inval;
+      if (!g_variant_lookup (misc_item, "positionOfset", "x", &position))
+        goto err_inval;
+      if (!g_variant_lookup (misc_item, "number", "x", &number))
+        goto err_inval;
+
+      item = gcv_item_store_query_id (data->store, id);
+      if (item == NULL)
+        continue;
+      g_object_get (
+          item,
+          "tile-width", &item_tile_width,
+          "tile-height", &item_tile_height,
+          "tile-offset-x", &item_tile_offset_x,
+          "tile-offset-y", &item_tile_offset_y,
+          NULL);
+
+      stroke = g_object_new (
+          GCV_TYPE_ITEM_STROKE,
+          "item", item,
+          NULL);
+
+      gcv_item_stroke_add_instance (
+          stroke,
+          position % 100,
+          position / 100,
+          item_tile_offset_x,
+          item_tile_offset_y);
+
+      g_list_store_append (map->strokes, stroke);
+    }
+
+  g_task_return_pointer (task, g_steal_pointer (&map), g_object_unref);
+  goto done;
+
+err:
+  g_task_return_error (task, g_steal_pointer (&local_error));
+  goto done;
+
+err_inval:
+  g_task_return_new_error_literal (
+      task,
+      GCV_MAP_ERROR,
+      GCV_MAP_ERROR_INVALID_JSON_FORMAT,
+      "Invalid JSON AIV file format");
+
+done:
+  return;
+}
+
+static void
+save_to_json_aiv_file_async_thread (GTask        *task,
+                                    gpointer      object,
+                                    gpointer      task_data,
+                                    GCancellable *cancellable)
+{
+  GFile        *file                    = object;
+  JsonSaveData *data                    = task_data;
+  g_autoptr (GError) local_error        = NULL;
+  g_autoptr (GFileOutputStream) stream  = NULL;
+  g_autoptr (GDataOutputStream) dstream = NULL;
+
+  if (g_task_return_error_if_cancellable (task))
+    return;
+
+  stream = g_file_replace (file, NULL, FALSE, G_FILE_CREATE_NONE, cancellable, &local_error);
+  if (stream == NULL)
+    goto err;
+
+  dstream = g_data_output_stream_new (G_OUTPUT_STREAM (stream));
+
+  // Write JSON header
+  g_data_output_stream_put_string (dstream, "{\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  // Write frames array
+  g_data_output_stream_put_string (dstream, "  \"frames\": [\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  if (data->strokes->len > 0)
+    {
+      g_autoptr (GHashTable) unit_counts = NULL;
+
+      unit_counts = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+      for (guint i = 0, written = 0; i < data->strokes->len; i++)
+        {
+          GcvItemStroke *stroke        = NULL;
+          g_autoptr (GcvItem) item     = NULL;
+          g_autoptr (GArray) instances = NULL;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
+
+          stroke = g_ptr_array_index (data->strokes, i);
+          g_object_get (
+              stroke,
+              "item", &item,
+              "instances", &instances,
+              NULL);
+          g_object_get (
+              item,
+              "id", &id,
+              "kind", &kind,
+              NULL);
+
+          if (kind == GCV_ITEM_KIND_UNIT)
+            continue;
+
+          if (written++ > 0)
+            g_data_output_stream_put_string (dstream, ",\n", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, "    {\n", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, "      \"itemType\": ", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_autofree char *id_str = g_strdup_printf ("%d", id);
+          g_data_output_stream_put_string (dstream, id_str, cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, ",\n", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, "      \"tilePositionOfsets\": [", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          if (instances->len > 0)
+            {
+              for (guint j = 0; j < instances->len; j++)
+                {
+                  GcvItemStrokeInstance *instance = NULL;
+
+                  instance = &g_array_index (instances, GcvItemStrokeInstance, j);
+
+                  if (j > 0)
+                    g_data_output_stream_put_string (dstream, ", ", cancellable, &local_error);
+                  if (local_error != NULL)
+                    goto err;
+
+                  g_autofree char *pos_str = g_strdup_printf ("%d", 100 * instance->y + instance->x);
+                  g_data_output_stream_put_string (dstream, pos_str, cancellable, &local_error);
+                  if (local_error != NULL)
+                    goto err;
+                }
+            }
+
+          g_data_output_stream_put_string (dstream, "],\n", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, "      \"shouldPause\": false\n", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+
+          g_data_output_stream_put_string (dstream, "    }", cancellable, &local_error);
+          if (local_error != NULL)
+            goto err;
+        }
+    }
+
+  g_data_output_stream_put_string (dstream, "\n  ],\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  // Write misc items array
+  g_data_output_stream_put_string (dstream, "  \"miscItems\": [\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  if (data->strokes->len > 0)
+    {
+      g_autoptr (GHashTable) unit_counts = NULL;
+
+      unit_counts = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+      for (guint i = 0, written = 0; i < data->strokes->len; i++)
+        {
+          GcvItemStroke *stroke        = NULL;
+          g_autoptr (GcvItem) item     = NULL;
+          g_autoptr (GArray) instances = NULL;
+          int         id               = 0;
+          GcvItemKind kind             = 0;
+          guint       count            = 0;
+
+          stroke = g_ptr_array_index (data->strokes, i);
+          g_object_get (
+              stroke,
+              "item", &item,
+              "instances", &instances,
+              NULL);
+          g_object_get (
+              item,
+              "id", &id,
+              "kind", &kind,
+              NULL);
+
+          if (kind != GCV_ITEM_KIND_UNIT)
+            continue;
+
+          count = GPOINTER_TO_UINT (g_hash_table_lookup (unit_counts, GINT_TO_POINTER (id)));
+          for (guint j = 0; j < instances->len; j++)
+            {
+              GcvItemStrokeInstance *instance = NULL;
+
+              instance = &g_array_index (instances, GcvItemStrokeInstance, j);
+
+              if (written++ > 0)
+                g_data_output_stream_put_string (dstream, ",\n", cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+
+              g_data_output_stream_put_string (dstream, "    {\n", cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+
+              g_autofree char *id_str = g_strdup_printf ("      \"itemType\": %d,\n", id);
+              g_data_output_stream_put_string (dstream, id_str, cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+
+              g_autofree char *pos_str = g_strdup_printf ("      \"positionOfset\": %d,\n", 100 * instance->y + instance->x);
+              g_data_output_stream_put_string (dstream, pos_str, cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+
+              g_autofree char *num_str = g_strdup_printf ("      \"number\": %d\n", count + j);
+              g_data_output_stream_put_string (dstream, num_str, cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+
+              g_data_output_stream_put_string (dstream, "    }", cancellable, &local_error);
+              if (local_error != NULL)
+                goto err;
+            }
+          g_hash_table_replace (unit_counts, GINT_TO_POINTER (id), GUINT_TO_POINTER (count + instances->len));
+        }
+    }
+
+  g_data_output_stream_put_string (dstream, "\n  ],\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  // Write footer
+  g_data_output_stream_put_string (dstream, "  \"pauseDelayAmount\": 30\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  g_data_output_stream_put_string (dstream, "}\n", cancellable, &local_error);
+  if (local_error != NULL)
+    goto err;
+
+  g_task_return_boolean (task, TRUE);
+  goto done;
+
+err:
+  g_task_return_error (task, g_steal_pointer (&local_error));
+
+done:
+  return;
 }

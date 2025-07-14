@@ -33,6 +33,7 @@ typedef enum
 {
   GCV_MAP_ERROR_SOURCEHOLD_FAILED = 0,
   GCV_MAP_ERROR_INVALID_JSON_STRUCTURE,
+  GCV_MAP_ERROR_INVALID_JSON_FORMAT,
 } GcvMapError;
 
 #define GCV_TYPE_MAP (gcv_map_get_type ())
@@ -54,6 +55,18 @@ gcv_map_new_from_aiv_file_finish (GAsyncResult *result,
                                   GError      **error);
 
 void
+gcv_map_new_from_json_aiv_file_async (GFile              *file,
+                                      GcvItemStore       *store,
+                                      int                 io_priority,
+                                      GCancellable       *cancellable,
+                                      GAsyncReadyCallback callback,
+                                      gpointer            user_data);
+
+GcvMap *
+gcv_map_new_from_json_aiv_file_finish (GAsyncResult *result,
+                                       GError      **error);
+
+void
 gcv_map_save_to_aiv_file_async (GcvMap             *self,
                                 GFile              *file,
                                 const char         *python_exe,
@@ -66,5 +79,17 @@ gcv_map_save_to_aiv_file_async (GcvMap             *self,
 gboolean
 gcv_map_save_to_aiv_file_finish (GAsyncResult *result,
                                  GError      **error);
+
+void
+gcv_map_save_to_json_aiv_file_async (GcvMap             *self,
+                                     GFile              *file,
+                                     int                 io_priority,
+                                     GCancellable       *cancellable,
+                                     GAsyncReadyCallback callback,
+                                     gpointer            user_data);
+
+gboolean
+gcv_map_save_to_json_aiv_file_finish (GAsyncResult *result,
+                                      GError      **error);
 
 G_END_DECLS
